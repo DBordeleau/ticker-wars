@@ -185,3 +185,45 @@ class SupabaseDatabase:
             written += len(cleaned_batch)
 
         return written
+
+    def fetch_prediction_scores(self, batch_size: int = 1000) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+
+        while True:
+            end = start + batch_size - 1
+            response = (
+                self._client.table("prediction_scores")
+                .select("*")
+                .order("scored_at")
+                .range(start, end)
+                .execute()
+            )
+            batch = response.data or []
+            rows.extend(batch)
+
+            if len(batch) < batch_size:
+                return rows
+
+            start += batch_size
+
+    def replace_dashboard_table(
+        self,
+        table_name: str,
+        rows: list[dict[str, Any]],
+        batch_size: int = 500,
+    ) -> int:
+        self._client.table(table_name).delete().neq(
+            "generated_at",
+            "0001-01-01T00:00:00+00:00",
+        ).execute()
+
+        if not rows:
+            return 0
+
+        written = 0
+        for batch in _chunks(rows, batch_size):
+            self._client.table(table_name).insert(batch).execute()
+            written += len(batch)
+
+        return written
