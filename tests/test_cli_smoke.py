@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import unittest
 from contextlib import redirect_stdout
 from io import StringIO
-import unittest
+from unittest.mock import patch
 
 from pipeline.cli import main
 
@@ -17,7 +18,8 @@ class CliSmokeTest(unittest.TestCase):
         self.assertIn("run-daily", output.getvalue())
 
     def test_backfill_placeholder_runs(self) -> None:
-        self.assertEqual(main(["backfill", "--start", "2020-01-01"]), 0)
+        with patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=None):
+            self.assertEqual(main(["backfill", "--start", "2020-01-01"]), 0)
 
 
 if __name__ == "__main__":

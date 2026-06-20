@@ -4,7 +4,9 @@ import argparse
 import logging
 
 from pipeline.config import load_settings
-
+from pipeline.dates import parse_date
+from pipeline.db import SupabaseDatabase
+from pipeline.ingestion.market_data import fetch_daily_prices
 
 LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     backfill = subparsers.add_parser("backfill", help="Backfill historical OHLCV data.")
     backfill.add_argument("--start", default=None, help="Start date in YYYY-MM-DD format.")
+    backfill.add_argument("--end", default=None, help="Optional end date in YYYY-MM-DD format.")
 
     subparsers.add_parser("run-daily", help="Run the daily pipeline.")
     subparsers.add_parser("score", help="Score matured predictions.")
@@ -46,10 +49,34 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "backfill":
         start = args.start or load_settings().start_date
-        LOGGER.info("backfill is scaffolded. Start date: %s", start)
-        return 0
+        return run_backfill(start, args.end)
 
     return run_placeholder_step(args.command)
+
+
+def run_backfill(start_date: str, end_date: str | None = None) -> int:
+    parse_date(start_date)
+    if end_date is not None:
+        parse_date(end_date)
+
+    settings = load_settings()
+    database = SupabaseDatabase.from_settings(settings)
+    if database is None:
+        LOGGER.info("Backfill skipped because Supabase credentials are not configured.")
+        return 0
+
+    result = fetch_daily_prices(start_date=start_date, end_date=end_date)
+    written = database.upsert_prices(result.rows)
+
+    LOGGER.info("Backfill wrote %s price rows.", written)
+    if result.failed_tickers:
+        LOGGER.warning(
+            "Backfill skipped %s tickers: %s",
+            len(result.failed_tickers),
+            result.failed_tickers,
+        )
+
+    return 0
 
 
 if __name__ == "__main__":
