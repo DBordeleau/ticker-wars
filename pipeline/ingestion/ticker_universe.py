@@ -31,4 +31,4 @@ MVP_TICKERS: tuple[str, ...] = (
 
 
 def to_yfinance_symbol(ticker: str) -> str:
-    return ticker.replace("-", ".")
+    return ticker

@@ -11,7 +11,7 @@ class ProjectScaffoldTest(unittest.TestCase):
         self.assertEqual(len(MVP_TICKERS), 25)
 
     def test_provider_ticker_normalization(self) -> None:
-        self.assertEqual(to_yfinance_symbol("BRK-B"), "BRK.B")
+        self.assertEqual(to_yfinance_symbol("BRK-B"), "BRK-B")
 
     def test_baseline_predicts_zero_return(self) -> None:
         self.assertEqual(predict_zero_return(), 0.0)
