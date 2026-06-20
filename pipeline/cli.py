@@ -6,6 +6,8 @@ import logging
 from pipeline.config import load_settings
 from pipeline.dates import parse_date
 from pipeline.db import SupabaseDatabase
+from pipeline.evaluation.metrics import calculate_model_metrics
+from pipeline.evaluation.scoring import score_matured_predictions
 from pipeline.features.build_features import build_feature_rows
 from pipeline.ingestion.market_data import fetch_daily_prices
 from pipeline.models.training import train_and_predict
@@ -63,6 +65,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "train-predict":
         return run_train_predict()
 
+    if args.command == "score":
+        return run_score()
+
     if args.command == "run-daily":
         settings = load_settings()
         backfill_status = run_backfill(settings.start_date)
@@ -71,6 +76,9 @@ def main(argv: list[str] | None = None) -> int:
         feature_status = run_build_features()
         if feature_status != 0:
             return feature_status
+        score_status = run_score()
+        if score_status != 0:
+            return score_status
         return run_train_predict()
 
     return run_placeholder_step(args.command)
@@ -158,6 +166,27 @@ def run_train_predict() -> int:
         if len(training_result.skipped) > 10:
             LOGGER.warning("...and %s more skips.", len(training_result.skipped) - 10)
 
+    return 0
+
+
+def run_score() -> int:
+    database = SupabaseDatabase.from_settings()
+    if database is None:
+        LOGGER.info("Prediction scoring skipped because Supabase credentials are not configured.")
+        return 0
+
+    prediction_rows = database.fetch_predictions()
+    price_rows = database.fetch_prices()
+    if not prediction_rows or not price_rows:
+        LOGGER.warning("Prediction scoring skipped because predictions or prices are missing.")
+        return 0
+
+    score_rows = score_matured_predictions(prediction_rows, price_rows)
+    written = database.upsert_prediction_scores(score_rows)
+    metrics = calculate_model_metrics(score_rows)
+
+    LOGGER.info("Prediction scoring wrote %s score rows.", written)
+    LOGGER.info("Calculated %s model metric rows for this scoring batch.", len(metrics))
     return 0
 
 
