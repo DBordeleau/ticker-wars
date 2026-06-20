@@ -93,3 +93,39 @@ class SupabaseDatabase:
             written += len(batch)
 
         return written
+
+    def fetch_features(self, batch_size: int = 1000) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+
+        while True:
+            end = start + batch_size - 1
+            response = (
+                self._client.table("features")
+                .select("*")
+                .order("ticker")
+                .order("date")
+                .range(start, end)
+                .execute()
+            )
+            batch = response.data or []
+            rows.extend(batch)
+
+            if len(batch) < batch_size:
+                return rows
+
+            start += batch_size
+
+    def upsert_predictions(self, rows: list[dict[str, Any]], batch_size: int = 500) -> int:
+        if not rows:
+            return 0
+
+        written = 0
+        for batch in _chunks(rows, batch_size):
+            self._client.table("predictions").upsert(
+                batch,
+                on_conflict="ticker,target_date,model_name",
+            ).execute()
+            written += len(batch)
+
+        return written
