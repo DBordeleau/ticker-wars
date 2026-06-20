@@ -129,3 +129,59 @@ class SupabaseDatabase:
             written += len(batch)
 
         return written
+
+    def fetch_predictions(self, batch_size: int = 1000) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+
+        while True:
+            end = start + batch_size - 1
+            response = (
+                self._client.table("predictions")
+                .select("*")
+                .order("ticker")
+                .order("target_date")
+                .range(start, end)
+                .execute()
+            )
+            batch = response.data or []
+            rows.extend(batch)
+
+            if len(batch) < batch_size:
+                return rows
+
+            start += batch_size
+
+    def upsert_prediction_scores(
+        self,
+        rows: list[dict[str, Any]],
+        batch_size: int = 500,
+    ) -> int:
+        if not rows:
+            return 0
+
+        table_columns = {
+            "prediction_id",
+            "actual_close",
+            "actual_return",
+            "absolute_error",
+            "squared_error",
+            "absolute_pct_error",
+            "predicted_direction",
+            "actual_direction",
+            "direction_correct",
+            "scored_at",
+        }
+        written = 0
+        for batch in _chunks(rows, batch_size):
+            cleaned_batch = [
+                {key: value for key, value in row.items() if key in table_columns}
+                for row in batch
+            ]
+            self._client.table("prediction_scores").upsert(
+                cleaned_batch,
+                on_conflict="prediction_id",
+            ).execute()
+            written += len(cleaned_batch)
+
+        return written
