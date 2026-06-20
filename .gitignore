@@ -1,7 +1,6 @@
 test/
 .env
 .env.*
-!.env.example
 
 __pycache__/
 .pytest_cache/
@@ -19,3 +18,4 @@ data_exports/*.json
 !data_exports/.gitkeep
 
 README.md
+.env.example
