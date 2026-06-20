@@ -7,7 +7,7 @@ from typing import Any
 import pandas as pd
 
 from pipeline.config import Settings
-from pipeline.dates import next_business_day
+from pipeline.dates import next_trading_day
 from pipeline.features.build_features import FEATURE_COLUMNS
 from pipeline.llm.client import is_llm_configured, request_structured_prediction
 from pipeline.llm.prompt_templates import WARREN_BUFFBOT_PROMPT_VERSION, build_warren_buffbot_prompt
@@ -39,7 +39,7 @@ def generate_warren_buffbot_predictions(
     for ticker, ticker_features in features.groupby("ticker", sort=True):
         latest_row = ticker_features.sort_values("date").iloc[-1]
         prediction_date = pd.Timestamp(latest_row["date"]).date()
-        target_date = next_business_day(prediction_date)
+        target_date = next_trading_day(prediction_date)
         reference_close = latest_prices.get(ticker)
         if reference_close is None:
             LOGGER.warning(

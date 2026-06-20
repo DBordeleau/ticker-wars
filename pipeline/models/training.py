@@ -7,7 +7,7 @@ from typing import Any
 
 import pandas as pd
 
-from pipeline.dates import next_business_day
+from pipeline.dates import next_trading_day
 from pipeline.features.build_features import FEATURE_COLUMNS
 from pipeline.models.registry import MODEL_SPECS, ModelSpec
 
@@ -38,7 +38,7 @@ def train_and_predict(
         ticker_features = ticker_features.sort_values("date")
         latest_row = ticker_features.iloc[-1]
         prediction_date = pd.Timestamp(latest_row["date"]).date()
-        target_date = next_business_day(prediction_date)
+        target_date = next_trading_day(prediction_date)
 
         reference_close = latest_prices.get(ticker)
         if reference_close is None:

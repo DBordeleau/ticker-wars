@@ -11,6 +11,17 @@ def _feature_row(ticker: str, day: int, target: float | None) -> dict:
     feature_json = {name: 0.01 for name in FEATURE_COLUMNS}
     feature_json["return_1d"] = day / 10_000
     feature_date = date(2024, 1, 2) + timedelta(days=day - 1)
+    return _feature_row_for_date(ticker, feature_date, target, day)
+
+
+def _feature_row_for_date(
+    ticker: str,
+    feature_date: date,
+    target: float | None,
+    sequence: int,
+) -> dict:
+    feature_json = {name: 0.01 for name in FEATURE_COLUMNS}
+    feature_json["return_1d"] = sequence / 10_000
     return {
         "ticker": ticker,
         "date": feature_date.isoformat(),
@@ -64,6 +75,22 @@ class TrainingWindowTest(unittest.TestCase):
             all(row["prediction_date"] == "2024-04-11" for row in result.prediction_rows)
         )
         self.assertFalse(result.skipped)
+
+    def test_predictions_target_next_trading_day_not_next_weekday(self) -> None:
+        latest_date = date(2026, 6, 18)
+        start_date = latest_date - timedelta(days=100)
+        feature_rows = [
+            _feature_row_for_date("AAPL", start_date + timedelta(days=day), 0.001, day)
+            for day in range(100)
+        ]
+        feature_rows.append(_feature_row_for_date("AAPL", latest_date, None, 101))
+        price_rows = [{"ticker": "AAPL", "date": "2026-06-18", "close": 150.0}]
+
+        result = train_and_predict(feature_rows, price_rows)
+
+        self.assertTrue(
+            all(row["target_date"] == "2026-06-22" for row in result.prediction_rows)
+        )
 
 
 if __name__ == "__main__":
