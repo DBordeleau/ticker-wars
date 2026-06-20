@@ -8,6 +8,8 @@ from pipeline.dates import parse_date
 from pipeline.db import SupabaseDatabase
 from pipeline.features.build_features import build_feature_rows
 from pipeline.ingestion.market_data import fetch_daily_prices
+from pipeline.models.training import train_and_predict
+from pipeline.models.warren_buffbot import generate_warren_buffbot_predictions
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("run-daily", help="Run the daily pipeline.")
     subparsers.add_parser("build-features", help="Build and upsert feature rows from prices.")
+    subparsers.add_parser("train-predict", help="Train models and upsert next-day predictions.")
     subparsers.add_parser("score", help="Score matured predictions.")
     subparsers.add_parser("refresh-dashboard", help="Refresh dashboard tables.")
     subparsers.add_parser("export-snapshot", help="Export dashboard JSON snapshots.")
@@ -57,12 +60,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "build-features":
         return run_build_features()
 
+    if args.command == "train-predict":
+        return run_train_predict()
+
     if args.command == "run-daily":
         settings = load_settings()
         backfill_status = run_backfill(settings.start_date)
         if backfill_status != 0:
             return backfill_status
-        return run_build_features()
+        feature_status = run_build_features()
+        if feature_status != 0:
+            return feature_status
+        return run_train_predict()
 
     return run_placeholder_step(args.command)
 
@@ -117,6 +126,38 @@ def run_build_features() -> int:
     feature_rows = build_feature_rows(price_rows)
     written = database.upsert_features(feature_rows)
     LOGGER.info("Feature generation wrote %s feature rows.", written)
+    return 0
+
+
+def run_train_predict() -> int:
+    settings = load_settings()
+    database = SupabaseDatabase.from_settings(settings)
+    if database is None:
+        LOGGER.info("Model training skipped because Supabase credentials are not configured.")
+        return 0
+
+    feature_rows = database.fetch_features()
+    price_rows = database.fetch_prices()
+    if not feature_rows or not price_rows:
+        LOGGER.warning("Model training skipped because features or prices are missing.")
+        return 0
+
+    training_result = train_and_predict(feature_rows, price_rows)
+    buffbot_rows = generate_warren_buffbot_predictions(feature_rows, price_rows, settings)
+    prediction_rows = training_result.prediction_rows + buffbot_rows
+    written = database.upsert_predictions(prediction_rows)
+
+    LOGGER.info("Model training wrote %s predictions.", written)
+    if training_result.skipped:
+        LOGGER.warning(
+            "Model training skipped %s model/ticker pairs.",
+            len(training_result.skipped),
+        )
+        for message in training_result.skipped[:10]:
+            LOGGER.warning(message)
+        if len(training_result.skipped) > 10:
+            LOGGER.warning("...and %s more skips.", len(training_result.skipped) - 10)
+
     return 0
 
 
