@@ -1,9 +1,13 @@
+import { Avatar } from "@mantine/core";
+
 export default function WarrenBuffbotHead() {
   return (
-    <img
+    <Avatar
       className="buffbot-head"
       src="/assets/warren_buffbot.png"
-      alt="Warren Buffbot robot headshot"
+      alt="Fictional Warren Buffbot robot headshot"
+      size={120}
+      radius={120}
     />
   );
 }

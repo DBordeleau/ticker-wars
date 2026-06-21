@@ -1,4 +1,4 @@
-import { supabase } from "./supabaseClient";
+import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 export type LeaderboardRow = {
   generated_at?: string;
@@ -50,24 +50,19 @@ export type RunMetadata = {
   last_pipeline_status: string;
 };
 
-export const scaffoldLeaderboard: LeaderboardRow[] = [
-  {
-    window: "30d",
-    model_name: "Baseline",
-    model_slug: "baseline",
-    mae: null,
-    rmse: null,
-    directional_accuracy: null,
-    prediction_count: 0,
-    rank: null,
-  },
-];
+export type MetricWindow = LeaderboardRow["window"];
 
-export const scaffoldPredictions: LatestPrediction[] = [];
+export type DashboardData = {
+  leaderboard: LeaderboardRow[];
+  latestPredictions: LatestPrediction[];
+  tickerHistory: TickerHistoryRow[];
+  metadata: RunMetadata | null;
+  hasSupabaseConfig: boolean;
+};
 
 export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
   if (!supabase) {
-    return scaffoldLeaderboard;
+    return [];
   }
 
   const { data, error } = await supabase
@@ -86,7 +81,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
 
 export async function fetchLatestPredictions(): Promise<LatestPrediction[]> {
   if (!supabase) {
-    return scaffoldPredictions;
+    return [];
   }
 
   const { data, error } = await supabase
@@ -138,4 +133,20 @@ export async function fetchRunMetadata(): Promise<RunMetadata | null> {
   }
 
   return data;
+}
+
+export async function fetchDashboardData(): Promise<DashboardData> {
+  const [leaderboard, latestPredictions, metadata] = await Promise.all([
+    fetchLeaderboard(),
+    fetchLatestPredictions(),
+    fetchRunMetadata(),
+  ]);
+
+  return {
+    leaderboard,
+    latestPredictions,
+    tickerHistory: [],
+    metadata,
+    hasSupabaseConfig: isSupabaseConfigured,
+  };
 }
