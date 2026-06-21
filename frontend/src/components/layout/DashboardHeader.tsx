@@ -1,12 +1,12 @@
 export default function DashboardHeader() {
   return (
     <header className="dashboard-header hero-header">
-      <p className="hero-eyebrow">Machine Learning Price Prediction</p>
+      <p className="hero-eyebrow">Multi-Horizon Market Predictions</p>
       <h1 className="hero-title">
-        <span className="hero-title-text">Next Day Price</span>
+        <span className="hero-title-text">Ticker Wars</span>
       </h1>
       <p className="hero-subtitle">
-        A live leaderboard for machine-learning models competing to predict tomorrow's closing price.
+        A live leaderboard for machine-learning models competing across 1W, 1M, 3M, and 1Y market predictions.
       </p>
     </header>
   );
