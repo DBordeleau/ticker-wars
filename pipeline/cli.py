@@ -12,6 +12,7 @@ from pipeline.db import SupabaseDatabase
 from pipeline.evaluation.metrics import calculate_model_metrics
 from pipeline.evaluation.scoring import score_matured_predictions
 from pipeline.features.build_features import build_feature_rows
+from pipeline.ingestion.fundamentals import fetch_fundamentals
 from pipeline.ingestion.market_data import fetch_daily_prices
 from pipeline.models.training import train_and_predict
 from pipeline.models.warren_buffbot import generate_warren_buffbot_predictions
@@ -31,6 +32,16 @@ def build_parser() -> argparse.ArgumentParser:
     backfill = subparsers.add_parser("backfill", help="Backfill historical OHLCV data.")
     backfill.add_argument("--start", default=None, help="Start date in YYYY-MM-DD format.")
     backfill.add_argument("--end", default=None, help="Optional end date in YYYY-MM-DD format.")
+
+    fundamentals = subparsers.add_parser(
+        "ingest-fundamentals",
+        help="Fetch and upsert cached yfinance fundamentals.",
+    )
+    fundamentals.add_argument(
+        "--force",
+        action="store_true",
+        help="Refresh fundamentals even when cached rows are still fresh.",
+    )
 
     subparsers.add_parser("run-daily", help="Run the daily pipeline.")
     subparsers.add_parser("build-features", help="Build and upsert feature rows from prices.")
@@ -65,6 +76,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "build-features":
         return run_build_features()
 
+    if args.command == "ingest-fundamentals":
+        return run_ingest_fundamentals(force=args.force)
+
     if args.command == "train-predict":
         return run_train_predict()
 
@@ -82,6 +96,9 @@ def main(argv: list[str] | None = None) -> int:
         backfill_status = run_backfill(settings.start_date)
         if backfill_status != 0:
             return backfill_status
+        fundamentals_status = run_ingest_fundamentals()
+        if fundamentals_status != 0:
+            return fundamentals_status
         feature_status = run_build_features()
         if feature_status != 0:
             return feature_status
@@ -114,6 +131,35 @@ def run_backfill(start_date: str, end_date: str | None = None) -> int:
     if result.failed_tickers:
         LOGGER.warning(
             "Backfill skipped %s tickers: %s",
+            len(result.failed_tickers),
+            result.failed_tickers,
+        )
+
+    return 0
+
+
+def run_ingest_fundamentals(force: bool = False) -> int:
+    settings = load_settings()
+    database = SupabaseDatabase.from_settings(settings)
+    if database is None:
+        LOGGER.info(
+            "Fundamentals ingestion skipped because Supabase credentials are not configured."
+        )
+        return 0
+
+    existing_rows = database.fetch_latest_fundamentals()
+    result = fetch_fundamentals(existing_rows=existing_rows, force=force)
+    written = database.upsert_fundamentals(result.rows)
+
+    LOGGER.info("Fundamentals ingestion wrote %s rows.", written)
+    if result.skipped_tickers:
+        LOGGER.info(
+            "Fundamentals ingestion used cached rows for %s tickers.",
+            len(result.skipped_tickers),
+        )
+    if result.failed_tickers:
+        LOGGER.warning(
+            "Fundamentals ingestion failed for %s tickers: %s",
             len(result.failed_tickers),
             result.failed_tickers,
         )

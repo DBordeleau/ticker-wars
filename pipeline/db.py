@@ -116,6 +116,42 @@ class SupabaseDatabase:
 
             start += batch_size
 
+    def upsert_fundamentals(self, rows: list[dict[str, Any]], batch_size: int = 500) -> int:
+        if not rows:
+            return 0
+
+        written = 0
+        for batch in _chunks(rows, batch_size):
+            self._client.table("fundamentals").upsert(
+                batch,
+                on_conflict="ticker,as_of_date",
+            ).execute()
+            written += len(batch)
+
+        return written
+
+    def fetch_latest_fundamentals(self, batch_size: int = 1000) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+
+        while True:
+            end = start + batch_size - 1
+            response = (
+                self._client.table("fundamentals")
+                .select("*")
+                .order("ticker")
+                .order("as_of_date", desc=True)
+                .range(start, end)
+                .execute()
+            )
+            batch = response.data or []
+            rows.extend(batch)
+
+            if len(batch) < batch_size:
+                return _latest_fundamentals_by_ticker(rows)
+
+            start += batch_size
+
     def upsert_predictions(self, rows: list[dict[str, Any]], batch_size: int = 500) -> int:
         if not rows:
             return 0
@@ -227,3 +263,13 @@ class SupabaseDatabase:
             written += len(batch)
 
         return written
+
+
+def _latest_fundamentals_by_ticker(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    latest: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        ticker = str(row.get("ticker", ""))
+        if not ticker or ticker in latest:
+            continue
+        latest[ticker] = row
+    return list(latest.values())
