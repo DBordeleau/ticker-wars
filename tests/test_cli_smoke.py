@@ -21,6 +21,10 @@ class CliSmokeTest(unittest.TestCase):
         with patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=None):
             self.assertEqual(main(["backfill", "--start", "2020-01-01"]), 0)
 
+    def test_ingest_fundamentals_runs_without_supabase(self) -> None:
+        with patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=None):
+            self.assertEqual(main(["ingest-fundamentals"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
