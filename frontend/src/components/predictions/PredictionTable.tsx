@@ -229,7 +229,7 @@ export default function PredictionTable({ rows, loading, collapsible = false }: 
         >
           <div className="collapsible-inner">
             <Group className="collapsible-panel-topline" justify="space-between" align="flex-end" gap="md">
-              <Text className="secondary-text">Targeted next-day closes across tickers and models.</Text>
+              <Text className="secondary-text">Targeted closes across tickers, models, and prediction horizons.</Text>
               {filters}
             </Group>
             {predictions}
@@ -242,7 +242,7 @@ export default function PredictionTable({ rows, loading, collapsible = false }: 
   return (
     <SectionPanel
       title="Latest Predictions"
-      subtitle="Targeted next-day closes across tickers and models."
+      subtitle="Targeted closes across tickers, models, and prediction horizons."
       action={filters}
     >
       {predictions}

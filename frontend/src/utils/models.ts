@@ -10,11 +10,11 @@ export type ModelInfo = {
 const descriptions: Record<string, Omit<ModelInfo, "slug" | "name">> = {
   baseline: {
     type: "Baseline",
-    description: "Naive baseline model that always predicts zero next-day return.",
+    description: "Naive baseline model that always predicts zero return for the selected horizon.",
   },
   "linear-regression": {
     type: "Statistical",
-    description: "Fits a simple linear relationship between engineered market features and next-day return.",
+    description: "Fits a simple linear relationship between engineered market features and horizon-specific returns.",
   },
   ridge: {
     type: "Statistical",
@@ -30,7 +30,7 @@ const descriptions: Record<string, Omit<ModelInfo, "slug" | "name">> = {
   },
   "warren-buffbot": {
     type: "Toy LLM",
-    description: "A LLM (Gemini flash 1.5 or Groq) that's been instructed to act as Warren Buffet's brain in a vat and make predictions using value-oriented investment principles.",
+    description: "A LLM (Gemini flash 1.5 or Groq) that's been instructed to make predictions using value-oriented investment principles.",
   },
 };
 
