@@ -1,7 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import App from "./App";
 
-test("renders the dashboard scaffold", () => {
+test("renders the dashboard", async () => {
   render(<App />);
-  expect(screen.getByText("Next-Day Price Prediction")).toBeInTheDocument();
+  expect(
+    await screen.findByRole("heading", { name: "Next Day Price" }),
+  ).toBeInTheDocument();
 });

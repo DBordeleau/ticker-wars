@@ -1,6 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import "@mantine/core/styles.css";
+import "@mantine/notifications/styles.css";
 import "./styles/global.css";
 
 const rootElement = document.getElementById("root");
