@@ -11,8 +11,8 @@ class DashboardContractTest(unittest.TestCase):
     def test_latest_predictions_use_latest_target_date(self) -> None:
         tables = build_dashboard_tables(
             prediction_rows=[
-                _prediction("AAPL", "2026-01-02", "Baseline"),
-                _prediction("AAPL", "2026-01-03", "Baseline"),
+                _prediction("AAPL", "2026-01-02", "Baseline", prediction_date="2026-01-01"),
+                _prediction("AAPL", "2026-01-03", "Baseline", prediction_date="2026-01-02"),
             ],
             score_rows=[],
             price_rows=[_price("AAPL", "2026-01-02", 100.0)],
@@ -35,15 +35,17 @@ class DashboardContractTest(unittest.TestCase):
         )
 
         leaderboard = tables["dashboard_model_leaderboard"]
-        windows = {row["window"] for row in leaderboard}
+        windows = {row["evaluation_window"] for row in leaderboard}
         baseline_30d = [
             row
             for row in leaderboard
-            if row["window"] == "30d" and row["model_name"] == "Baseline"
+            if row["evaluation_window"] == "30d"
+            and row["prediction_horizon"] == "1w"
+            and row["model_name"] == "Baseline"
         ][0]
 
         self.assertEqual(windows, set(METRIC_WINDOWS))
-        self.assertEqual(baseline_30d["prediction_count"], 1)
+        self.assertEqual(baseline_30d["scored_count"], 1)
         self.assertEqual(baseline_30d["rank"], 1)
 
     def test_latest_predictions_contain_frontend_required_columns(self) -> None:
@@ -57,6 +59,8 @@ class DashboardContractTest(unittest.TestCase):
         latest = tables["dashboard_latest_predictions"][0]
 
         self.assertIn("target_date", latest)
+        self.assertIn("prediction_date", latest)
+        self.assertIn("prediction_horizon", latest)
         self.assertIn("ticker", latest)
         self.assertIn("model_name", latest)
         self.assertIn("model_slug", latest)
@@ -81,13 +85,22 @@ class DashboardContractTest(unittest.TestCase):
         self.assertIsNone(history[1]["actual_close"])
 
 
-def _prediction(ticker: str, target_date: str, model_name: str) -> dict:
+def _prediction(
+    ticker: str,
+    target_date: str,
+    model_name: str,
+    prediction_date: str = "2026-01-01",
+) -> dict:
     return {
         "prediction_id": f"{ticker}:{target_date}:{model_name}",
         "ticker": ticker,
-        "prediction_date": "2026-01-01",
+        "prediction_date": prediction_date,
         "target_date": target_date,
+        "prediction_horizon": "1w",
+        "horizon_calendar_days": 1,
+        "horizon_trading_days": 1,
         "model_name": model_name,
+        "model_slug": model_name.lower().replace(" ", "-"),
         "predicted_return": 0.01,
         "predicted_close": 101.0,
         "reference_close": 100.0,
@@ -99,6 +112,12 @@ def _prediction(ticker: str, target_date: str, model_name: str) -> dict:
 def _score(prediction_id: str) -> dict:
     return {
         "prediction_id": prediction_id,
+        "ticker": "AAPL",
+        "prediction_date": "2026-01-01",
+        "target_date": "2026-01-02",
+        "prediction_horizon": "1w",
+        "model_name": "Baseline",
+        "model_slug": "baseline",
         "actual_close": 101.0,
         "actual_return": 0.01,
         "absolute_error": 0.0,

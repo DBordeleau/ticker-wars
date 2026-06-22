@@ -127,6 +127,8 @@ def _feature_rows_to_frame(feature_rows: list[dict[str, Any]]) -> pd.DataFrame:
     records: list[dict[str, Any]] = []
     for row in feature_rows:
         feature_json = row.get("feature_json") or {}
+        if not _has_current_feature_contract(feature_json):
+            continue
         record = {
             "ticker": row["ticker"],
             "date": pd.to_datetime(row["date"]),
@@ -139,6 +141,10 @@ def _feature_rows_to_frame(feature_rows: list[dict[str, Any]]) -> pd.DataFrame:
         records.append(record)
 
     return pd.DataFrame(records)
+
+
+def _has_current_feature_contract(feature_json: dict[str, Any]) -> bool:
+    return all(name in feature_json for name in FEATURE_COLUMNS)
 
 
 def _latest_close_by_ticker(price_rows: list[dict[str, Any]]) -> dict[str, float]:

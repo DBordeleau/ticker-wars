@@ -111,8 +111,6 @@ def build_feature_rows(
                     },
                     **_target_date_fields(row),
                     **_target_return_fields(row),
-                    # Deprecated compatibility field until the trainer moves to horizon targets.
-                    "target_next_return": _clean_nullable_float(row["target_next_return"]),
                     "created_at": created_at,
                 }
             )

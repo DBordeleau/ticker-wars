@@ -3,6 +3,8 @@ import { isSupabaseConfigured, supabase } from "./supabaseClient";
 export type LeaderboardRow = {
   generated_at?: string;
   window: "7d" | "30d" | "90d" | "all";
+  evaluation_window?: "7d" | "30d" | "90d" | "all";
+  prediction_horizon?: "1w" | "1m" | "3m" | "1y";
   model_name: string;
   model_slug: string;
   mae: number | null;
@@ -10,13 +12,18 @@ export type LeaderboardRow = {
   mape?: number | null;
   directional_accuracy: number | null;
   prediction_count: number;
+  scored_count?: number;
+  winkler_score?: number | null;
   rank: number | null;
   is_toy_model?: boolean;
 };
 
 export type LatestPrediction = {
   generated_at?: string;
+  prediction_id?: string;
+  prediction_date?: string;
   target_date: string;
+  prediction_horizon?: string;
   ticker: string;
   model_name: string;
   model_slug: string;
@@ -31,6 +38,9 @@ export type TickerHistoryRow = {
   generated_at?: string;
   ticker: string;
   date: string;
+  prediction_date?: string;
+  target_date?: string;
+  prediction_horizon?: string;
   actual_close: number | null;
   model_name: string;
   model_slug: string;
@@ -44,8 +54,11 @@ export type RunMetadata = {
   generated_at: string;
   latest_price_date: string | null;
   next_target_date: string | null;
+  latest_prediction_date?: string | null;
   ticker_count: number;
   model_count: number;
+  prediction_count?: number;
+  scored_count?: number;
   data_source: string;
   last_pipeline_status: string;
 };
@@ -68,7 +81,8 @@ export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
   const { data, error } = await supabase
     .from("dashboard_model_leaderboard")
     .select("*")
-    .order("window")
+    .eq("prediction_horizon", "1w")
+    .order("evaluation_window")
     .order("rank", { nullsFirst: false })
     .order("model_name");
 
@@ -76,7 +90,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
     throw error;
   }
 
-  return data ?? [];
+  return (data ?? []).map(normalizeLeaderboardRow);
 }
 
 export async function fetchLatestPredictions(): Promise<LatestPrediction[]> {
@@ -106,14 +120,14 @@ export async function fetchTickerHistory(ticker: string): Promise<TickerHistoryR
     .from("dashboard_ticker_history")
     .select("*")
     .eq("ticker", ticker)
-    .order("date")
+    .order("target_date")
     .order("model_name");
 
   if (error) {
     throw error;
   }
 
-  return data ?? [];
+  return (data ?? []).map(normalizeTickerHistoryRow);
 }
 
 export async function fetchRunMetadata(): Promise<RunMetadata | null> {
@@ -132,7 +146,7 @@ export async function fetchRunMetadata(): Promise<RunMetadata | null> {
     throw error;
   }
 
-  return data;
+  return data ? normalizeRunMetadata(data) : null;
 }
 
 export async function fetchDashboardData(): Promise<DashboardData> {
@@ -149,4 +163,30 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     metadata,
     hasSupabaseConfig: isSupabaseConfigured,
   };
+}
+
+function normalizeLeaderboardRow(row: Partial<LeaderboardRow>): LeaderboardRow {
+  const window = row.window ?? row.evaluation_window ?? "all";
+  const predictionCount = row.prediction_count ?? row.scored_count ?? 0;
+  return {
+    ...row,
+    window,
+    prediction_count: predictionCount,
+    rmse: row.rmse ?? null,
+    mape: row.mape ?? null,
+  } as LeaderboardRow;
+}
+
+function normalizeTickerHistoryRow(row: Partial<TickerHistoryRow>): TickerHistoryRow {
+  return {
+    ...row,
+    date: row.date ?? row.target_date ?? "",
+  } as TickerHistoryRow;
+}
+
+function normalizeRunMetadata(row: Partial<RunMetadata>): RunMetadata {
+  return {
+    ...row,
+    next_target_date: row.next_target_date ?? row.latest_prediction_date ?? null,
+  } as RunMetadata;
 }
