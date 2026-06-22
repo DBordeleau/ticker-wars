@@ -204,12 +204,18 @@ def run_train_predict() -> int:
 
     feature_rows = database.fetch_features()
     price_rows = database.fetch_prices()
+    fundamental_rows = database.fetch_latest_fundamentals()
     if not feature_rows or not price_rows:
         LOGGER.warning("Model training skipped because features or prices are missing.")
         return 0
 
     training_result = train_and_predict(feature_rows, price_rows)
-    buffbot_rows = generate_warren_buffbot_predictions(feature_rows, price_rows, settings)
+    buffbot_rows = generate_warren_buffbot_predictions(
+        feature_rows,
+        price_rows,
+        settings,
+        fundamental_rows,
+    )
     prediction_rows = training_result.prediction_rows + buffbot_rows
     written = database.upsert_predictions(prediction_rows)
 

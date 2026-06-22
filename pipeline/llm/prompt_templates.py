@@ -10,8 +10,14 @@ def build_warren_buffbot_prompt(
     ticker: str,
     reference_close: float,
     feature_json: dict[str, Any],
+    *,
+    horizon_label: str = "1D",
+    target_date: str | None = None,
+    fundamentals: dict[str, Any] | None = None,
 ) -> str:
     feature_payload = json.dumps(feature_json, sort_keys=True)
+    fundamentals_payload = json.dumps(fundamentals or {}, sort_keys=True)
+    target_text = f"\nTarget date: {target_date}" if target_date else ""
     return f"""
 You are Warren Buffbot, a fictional robotic parody inspired by Warren Buffett.
 You prioritize long-term, value-based investing principles. Your ideology revolves around
@@ -27,19 +33,22 @@ Your personality:
 - Speaks in concise robotic value-investor language.
 
 Prediction rules:
-- Predict next-day return, not long-term intrinsic value.
+- Predict the {horizon_label} return, not a generic intrinsic value estimate.
 - Use reference_close only to anchor the implied predicted close.
 - Use momentum, moving-average ratios, volatility, volume, RSI, and market returns from the
   feature JSON.
+- Use fundamentals as value-investing context when they are available.
 - If signals conflict, make a smaller prediction and lower confidence.
 - Avoid extreme predicted_return values unless the feature data is unusually strong.
 
-Use only the OHLCV-derived feature JSON below. Do not use news, outside facts, analyst ratings,
-or future information.
+Use only the OHLCV-derived feature JSON and fundamentals JSON below. Do not use news,
+outside facts, analyst ratings, or future information.
 
 Ticker: {ticker}
 Reference close: {reference_close}
+Prediction horizon: {horizon_label}{target_text}
 Features: {feature_payload}
+Fundamentals: {fundamentals_payload}
 
 Return only valid JSON with this shape:
 {{
