@@ -160,7 +160,7 @@ class SupabaseDatabase:
         for batch in _chunks(rows, batch_size):
             self._client.table("predictions").upsert(
                 batch,
-                on_conflict="ticker,target_date,model_name",
+                on_conflict="ticker,prediction_date,target_date,prediction_horizon,model_slug",
             ).execute()
             written += len(batch)
 
