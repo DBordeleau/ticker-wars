@@ -151,7 +151,7 @@ export default function TickerChart({
                 <ChartTooltip label={tooltip.label} payload={tooltip.payload} />
               </div>
             ) : null}
-            <ResponsiveContainer width="100%" height={360}>
+            <ResponsiveContainer width="100%" height={530}>
               <LineChart
                 data={chartData}
                 margin={{ top: 34, right: 18, bottom: 12, left: 6 }}
