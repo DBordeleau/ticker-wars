@@ -16,6 +16,7 @@ export type LeaderboardRow = {
   winkler_score?: number | null;
   rank: number | null;
   is_toy_model?: boolean;
+  model_type?: string;
 };
 
 export type LatestPrediction = {
@@ -73,6 +74,8 @@ export type DashboardData = {
   hasSupabaseConfig: boolean;
 };
 
+const hiddenModelSlugs = new Set(["ridge", "ridge-regression", "lasso"]);
+
 export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
   if (!supabase) {
     return [];
@@ -90,7 +93,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
     throw error;
   }
 
-  return (data ?? []).map(normalizeLeaderboardRow);
+  return (data ?? []).map(normalizeLeaderboardRow).filter(isVisibleModelRow);
 }
 
 export async function fetchLatestPredictions(): Promise<LatestPrediction[]> {
@@ -108,7 +111,7 @@ export async function fetchLatestPredictions(): Promise<LatestPrediction[]> {
     throw error;
   }
 
-  return data ?? [];
+  return (data ?? []).filter(isVisibleModelRow);
 }
 
 export async function fetchTickerHistory(ticker: string): Promise<TickerHistoryRow[]> {
@@ -127,7 +130,7 @@ export async function fetchTickerHistory(ticker: string): Promise<TickerHistoryR
     throw error;
   }
 
-  return (data ?? []).map(normalizeTickerHistoryRow);
+  return (data ?? []).map(normalizeTickerHistoryRow).filter(isVisibleModelRow);
 }
 
 export async function fetchRunMetadata(): Promise<RunMetadata | null> {
@@ -174,6 +177,7 @@ function normalizeLeaderboardRow(row: Partial<LeaderboardRow>): LeaderboardRow {
     prediction_count: predictionCount,
     rmse: row.rmse ?? null,
     mape: row.mape ?? null,
+    model_type: row.model_type ?? fallbackModelType(row.model_slug),
   } as LeaderboardRow;
 }
 
@@ -189,4 +193,21 @@ function normalizeRunMetadata(row: Partial<RunMetadata>): RunMetadata {
     ...row,
     next_target_date: row.next_target_date ?? row.latest_prediction_date ?? null,
   } as RunMetadata;
+}
+
+function isVisibleModelRow(row: { model_slug?: string }) {
+  return !hiddenModelSlugs.has(row.model_slug ?? "");
+}
+
+function fallbackModelType(modelSlug?: string) {
+  if (modelSlug === "baseline") {
+    return "Benchmark";
+  }
+  if (modelSlug === "warren-buffbot") {
+    return "Toy LLM";
+  }
+  if (modelSlug === "timesfm" || modelSlug === "chronos-2") {
+    return "Time Series";
+  }
+  return "Classic ML";
 }

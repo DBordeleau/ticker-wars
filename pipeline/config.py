@@ -22,6 +22,11 @@ class Settings:
     timesfm_model_id: str = "google/timesfm-2.5-200m-pytorch"
     timesfm_context_length: int = 1024
     timesfm_backend: str = "torch"
+    chronos_enabled: bool = False
+    chronos_model_id: str = "amazon/chronos-2"
+    chronos_context_length: int = 1024
+    chronos_device_map: str = "cpu"
+    chronos_frequency: str = "B"
     export_dir: str = "data_exports"
     start_date: str = "2020-01-01"
 
@@ -49,6 +54,12 @@ def load_settings() -> Settings:
         ),
         timesfm_context_length=int(os.getenv("TIMESFM_CONTEXT_LENGTH", "1024")),
         timesfm_backend=os.getenv("TIMESFM_BACKEND", "torch"),
+        chronos_enabled=os.getenv("CHRONOS_ENABLED", "false").lower()
+        in {"1", "true", "yes"},
+        chronos_model_id=os.getenv("CHRONOS_MODEL_ID", "amazon/chronos-2"),
+        chronos_context_length=int(os.getenv("CHRONOS_CONTEXT_LENGTH", "1024")),
+        chronos_device_map=os.getenv("CHRONOS_DEVICE_MAP", "cpu"),
+        chronos_frequency=os.getenv("CHRONOS_FREQUENCY", "B"),
         export_dir=os.getenv("EXPORT_DIR", "data_exports"),
         start_date=os.getenv("START_DATE", "2020-01-01"),
     )

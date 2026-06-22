@@ -6,7 +6,12 @@ from typing import Any
 
 from pipeline.config import Settings
 from pipeline.evaluation.metrics import METRIC_WINDOWS, calculate_model_metrics
-from pipeline.models.registry import MODEL_SLUGS
+from pipeline.models.registry import (
+    ACTIVE_MODEL_NAMES,
+    HIDDEN_MODEL_SLUGS,
+    MODEL_SLUGS,
+    MODEL_TYPES,
+)
 
 
 @dataclass(frozen=True)
@@ -115,6 +120,7 @@ def _build_model_leaderboard(
                         "prediction_horizon": horizon,
                         "model_name": model_name,
                         "model_slug": _model_slug(model_name),
+                        "model_type": _model_type(model_name),
                         "mae": metric.get("mae"),
                         "directional_accuracy": metric.get("directional_accuracy"),
                         "winkler_score": metric.get("winkler_score"),
@@ -211,10 +217,20 @@ def _merge_predictions_and_scores(
 
 
 def _known_model_names(scored_predictions: list[dict[str, Any]]) -> list[str]:
-    known_names = list(MODEL_SLUGS)
-    observed_names = sorted({row["model_name"] for row in scored_predictions})
+    known_names = list(ACTIVE_MODEL_NAMES)
+    observed_names = sorted(
+        {
+            row["model_name"]
+            for row in scored_predictions
+            if _model_slug(row["model_name"]) not in HIDDEN_MODEL_SLUGS
+        }
+    )
     return known_names + [name for name in observed_names if name not in MODEL_SLUGS]
 
 
 def _model_slug(model_name: str) -> str:
     return MODEL_SLUGS.get(model_name, model_name.lower().replace(" ", "-"))
+
+
+def _model_type(model_name: str) -> str:
+    return MODEL_TYPES.get(model_name, "Classic ML")

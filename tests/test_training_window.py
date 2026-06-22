@@ -57,7 +57,7 @@ class TrainingWindowTest(unittest.TestCase):
         self.assertTrue(all(row["predicted_return"] == 0.0 for row in baseline))
         self.assertTrue(all(row["predicted_close"] == 100.0 for row in baseline))
 
-    def test_statistical_models_skip_tickers_with_insufficient_rows(self) -> None:
+    def test_classic_ml_models_skip_tickers_with_insufficient_rows(self) -> None:
         feature_rows = [_feature_row("AAPL", day, 0.001) for day in range(1, 5)]
         feature_rows.append(_feature_row("AAPL", 5, None))
         price_rows = [{"ticker": "AAPL", "date": "2024-01-06", "close": 100.0}]
@@ -66,7 +66,7 @@ class TrainingWindowTest(unittest.TestCase):
 
         self.assertEqual(len(result.prediction_rows), 4)
         self.assertIn("fewer than 100 completed rows", result.skipped[0])
-        self.assertEqual(len(result.skipped), 16)
+        self.assertEqual(len(result.skipped), 8)
 
     def test_models_train_on_completed_rows_and_predict_latest_feature_row(self) -> None:
         feature_rows = [_feature_row("AAPL", day, day / 10_000) for day in range(1, 101)]
@@ -81,12 +81,10 @@ class TrainingWindowTest(unittest.TestCase):
             {
                 "Baseline",
                 "Linear Regression",
-                "Ridge Regression",
-                "Lasso Regression",
                 "Random Forest",
             },
         )
-        self.assertEqual(len(result.prediction_rows), 20)
+        self.assertEqual(len(result.prediction_rows), 12)
         self.assertEqual(
             {row["prediction_horizon"] for row in result.prediction_rows},
             set(FORECAST_HORIZONS),

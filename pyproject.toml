@@ -25,6 +25,10 @@ dev = [
 timesfm = [
     "timesfm[torch]>=2.0.0",
 ]
+chronos = [
+    "chronos-forecasting>=2.3.0",
+    "pandas[pyarrow]>=2.2",
+]
 
 [tool.setuptools.packages.find]
 include = ["pipeline*"]

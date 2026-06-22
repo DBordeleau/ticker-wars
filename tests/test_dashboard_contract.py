@@ -47,6 +47,23 @@ class DashboardContractTest(unittest.TestCase):
         self.assertEqual(windows, set(METRIC_WINDOWS))
         self.assertEqual(baseline_30d["scored_count"], 1)
         self.assertEqual(baseline_30d["rank"], 1)
+        self.assertEqual(baseline_30d["model_type"], "Benchmark")
+
+    def test_model_leaderboard_hides_removed_linear_variants(self) -> None:
+        ridge_prediction = _prediction("AAPL", "2026-01-02", "Ridge Regression")
+        tables = build_dashboard_tables(
+            prediction_rows=[ridge_prediction],
+            score_rows=[_score(ridge_prediction["prediction_id"], model_name="Ridge Regression")],
+            price_rows=[_price("AAPL", "2026-01-02", 101.0)],
+            settings=Settings(),
+        )
+
+        model_names = {row["model_name"] for row in tables["dashboard_model_leaderboard"]}
+
+        self.assertNotIn("Ridge Regression", model_names)
+        self.assertNotIn("Lasso Regression", model_names)
+        self.assertIn("Chronos-2", model_names)
+        self.assertIn("TimesFM", model_names)
 
     def test_latest_predictions_contain_frontend_required_columns(self) -> None:
         tables = build_dashboard_tables(
@@ -109,15 +126,15 @@ def _prediction(
     }
 
 
-def _score(prediction_id: str) -> dict:
+def _score(prediction_id: str, model_name: str = "Baseline") -> dict:
     return {
         "prediction_id": prediction_id,
         "ticker": "AAPL",
         "prediction_date": "2026-01-01",
         "target_date": "2026-01-02",
         "prediction_horizon": "1w",
-        "model_name": "Baseline",
-        "model_slug": "baseline",
+        "model_name": model_name,
+        "model_slug": model_name.lower().replace(" ", "-"),
         "actual_close": 101.0,
         "actual_return": 0.01,
         "absolute_error": 0.0,

@@ -8,7 +8,7 @@ import SectionPanel from "../components/layout/SectionPanel";
 import PredictionTable from "../components/predictions/PredictionTable";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { formatMetric, formatPercent } from "../utils/format";
-import { getModelInfo } from "../utils/models";
+import { getModelInfo, modelTypeColor } from "../utils/models";
 
 const windowLabels = {
   "7d": "1W",
@@ -54,10 +54,7 @@ export default function ModelDetail() {
           ) : (
             <>
               <Group gap="xs" mb="sm">
-                <Badge color={info.type === "Toy LLM" ? "yellow" : info.type === "Baseline" ? "gray" : "green"}>
-                  {info.type}
-                </Badge>
-                {modelSlug === "baseline" ? <Badge color="gray">Benchmark</Badge> : null}
+                <Badge color={modelTypeColor(info.type)}>{info.type}</Badge>
               </Group>
               <Title order={1} c="green">
                 {info.name}
