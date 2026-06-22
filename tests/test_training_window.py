@@ -96,6 +96,19 @@ class TrainingWindowTest(unittest.TestCase):
         )
         self.assertFalse(result.skipped)
 
+    def test_stale_feature_rows_without_horizon_features_are_skipped(self) -> None:
+        stale_row = _feature_row("AAPL", 1, 0.001)
+        stale_row["feature_json"] = {"return_1d": 0.001}
+        feature_rows = [stale_row]
+        feature_rows.extend(_feature_row("AAPL", day, 0.001) for day in range(2, 5))
+        feature_rows.append(_feature_row("AAPL", 5, None))
+        price_rows = [{"ticker": "AAPL", "date": "2024-01-06", "close": 100.0}]
+
+        result = train_and_predict(feature_rows, price_rows)
+
+        baseline = [row for row in result.prediction_rows if row["model_name"] == "Baseline"]
+        self.assertEqual(len(baseline), 4)
+
     def test_predictions_target_each_horizon_from_latest_feature_row(self) -> None:
         latest_date = date(2026, 6, 18)
         start_date = latest_date - timedelta(days=100)

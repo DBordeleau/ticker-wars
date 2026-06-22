@@ -27,10 +27,10 @@ def calculate_model_metrics(score_rows: list[dict[str, Any]]) -> list[dict[str, 
 
     for window in METRIC_WINDOWS:
         window_rows = _filter_score_rows(score_rows, window)
-        model_groups = _group_by_model(window_rows)
+        model_groups = _group_by_horizon_and_model(window_rows)
         window_metrics = [
-            _calculate_single_model_metrics(model_name, window, rows)
-            for model_name, rows in model_groups.items()
+            _calculate_single_model_metrics(horizon, model_name, window, rows)
+            for (horizon, model_name), rows in model_groups.items()
             if rows
         ]
         metrics.extend(_rank_window_metrics(window_metrics))
@@ -48,14 +48,17 @@ def _filter_score_rows(score_rows: list[dict[str, Any]], window: str) -> list[di
     return [row for row in score_rows if _parse_date(row["target_date"]) in included_dates]
 
 
-def _group_by_model(score_rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+def _group_by_horizon_and_model(
+    score_rows: list[dict[str, Any]],
+) -> dict[tuple[str, str], list[dict[str, Any]]]:
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for row in score_rows:
-        grouped[row["model_name"]].append(row)
+        grouped[(row.get("prediction_horizon", "1w"), row["model_name"])].append(row)
     return dict(grouped)
 
 
 def _calculate_single_model_metrics(
+    horizon: str,
     model_name: str,
     window: str,
     rows: list[dict[str, Any]],
@@ -67,20 +70,34 @@ def _calculate_single_model_metrics(
 
     return {
         "window": window,
+        "prediction_horizon": horizon,
         "model_name": model_name,
         "mae": sum(absolute_errors) / len(absolute_errors),
         "rmse": math.sqrt(sum(squared_errors) / len(squared_errors)),
         "mape": sum(absolute_pct_errors) / len(absolute_pct_errors),
         "directional_accuracy": sum(direction_correct) / len(direction_correct),
+        "winkler_score": _average_optional_float(row.get("winkler_score") for row in rows),
         "prediction_count": len(rows),
     }
 
 
 def _rank_window_metrics(metrics: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_horizon: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in metrics:
+        by_horizon[row["prediction_horizon"]].append(row)
+
+    ranked_metrics: list[dict[str, Any]] = []
+    for horizon_metrics in by_horizon.values():
+        ranked_metrics.extend(_rank_horizon_metrics(horizon_metrics))
+    return ranked_metrics
+
+
+def _rank_horizon_metrics(metrics: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ranked = sorted(
         metrics,
         key=lambda row: (
             row["mae"],
+            row["winkler_score"] if row["winkler_score"] is not None else math.inf,
             -row["directional_accuracy"],
             -row["prediction_count"],
             row["model_name"],
@@ -89,6 +106,13 @@ def _rank_window_metrics(metrics: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for rank, row in enumerate(ranked, start=1):
         row["rank"] = rank
     return ranked
+
+
+def _average_optional_float(values: Any) -> float | None:
+    numbers = [float(value) for value in values if value is not None]
+    if not numbers:
+        return None
+    return sum(numbers) / len(numbers)
 
 
 def _parse_date(value: object) -> date:

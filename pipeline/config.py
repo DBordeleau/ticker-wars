@@ -14,10 +14,14 @@ class Settings:
     supabase_publishable_key: str | None = None
     llm_provider: str = "gemini"
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-3.5-flash"
     groq_api_key: str | None = None
     groq_model: str = "llama-3.1-8b-instant"
     warren_buffbot_enabled: bool = False
+    timesfm_enabled: bool = False
+    timesfm_model_id: str = "google/timesfm-2.5-200m-pytorch"
+    timesfm_context_length: int = 1024
+    timesfm_backend: str = "torch"
     export_dir: str = "data_exports"
     start_date: str = "2020-01-01"
 
@@ -32,11 +36,19 @@ def load_settings() -> Settings:
         supabase_publishable_key=os.getenv("SUPABASE_PUBLISHABLE_KEY"),
         llm_provider=os.getenv("LLM_PROVIDER", "gemini"),
         gemini_api_key=os.getenv("GEMINI_API_KEY"),
-        gemini_model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
         groq_api_key=os.getenv("GROQ_API_KEY"),
         groq_model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
         warren_buffbot_enabled=os.getenv("WARREN_BUFFBOT_ENABLED", "false").lower()
         in {"1", "true", "yes"},
+        timesfm_enabled=os.getenv("TIMESFM_ENABLED", "false").lower()
+        in {"1", "true", "yes"},
+        timesfm_model_id=os.getenv(
+            "TIMESFM_MODEL_ID",
+            "google/timesfm-2.5-200m-pytorch",
+        ),
+        timesfm_context_length=int(os.getenv("TIMESFM_CONTEXT_LENGTH", "1024")),
+        timesfm_backend=os.getenv("TIMESFM_BACKEND", "torch"),
         export_dir=os.getenv("EXPORT_DIR", "data_exports"),
         start_date=os.getenv("START_DATE", "2020-01-01"),
     )
