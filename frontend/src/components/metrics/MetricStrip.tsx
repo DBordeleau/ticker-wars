@@ -1,4 +1,5 @@
 import { FiAward, FiTarget, FiTrendingUp } from "react-icons/fi";
+import { BsAwardFill } from "react-icons/bs";
 import type { LeaderboardRow, MetricWindow } from "../../api/dashboardData";
 import { formatMetric, formatPercent } from "../../utils/format";
 import MetricCard from "./MetricCard";
@@ -38,7 +39,7 @@ export default function MetricStrip({ leaderboard, window, loading }: Props) {
         value={bestByMae?.model_name ?? "Pending"}
         detail={topModelDetail}
         loading={loading}
-        icon={FiAward}
+        icon={BsAwardFill}
       />
       <MetricCard
         label="Directional Leader"
