@@ -5,12 +5,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from pipeline.models.baseline import BaselineReturnModel
-from pipeline.models.linear import (
-    make_lasso_regression,
-    make_linear_regression,
-    make_ridge_regression,
-)
+from pipeline.models.linear import make_linear_regression
 from pipeline.models.random_forest import make_random_forest
+
+MODEL_TYPE_BASELINE = "Benchmark"
+MODEL_TYPE_CLASSIC_ML = "Classic ML"
+MODEL_TYPE_TIME_SERIES = "Time Series"
+MODEL_TYPE_TOY_LLM = "Toy LLM"
 
 MODEL_SLUGS: dict[str, str] = {
     "Baseline": "baseline",
@@ -22,6 +23,24 @@ MODEL_SLUGS: dict[str, str] = {
     "TimesFM": "timesfm",
     "Chronos-2": "chronos-2",
 }
+
+MODEL_TYPES: dict[str, str] = {
+    "Baseline": MODEL_TYPE_BASELINE,
+    "Linear Regression": MODEL_TYPE_CLASSIC_ML,
+    "Random Forest": MODEL_TYPE_CLASSIC_ML,
+    "Warren Buffbot": MODEL_TYPE_TOY_LLM,
+    "TimesFM": MODEL_TYPE_TIME_SERIES,
+    "Chronos-2": MODEL_TYPE_TIME_SERIES,
+}
+ACTIVE_MODEL_NAMES: tuple[str, ...] = (
+    "Baseline",
+    "Linear Regression",
+    "Random Forest",
+    "Warren Buffbot",
+    "TimesFM",
+    "Chronos-2",
+)
+HIDDEN_MODEL_SLUGS: set[str] = {"ridge", "lasso", "ridge-regression"}
 
 
 @dataclass(frozen=True)
@@ -43,18 +62,6 @@ MODEL_SPECS: tuple[ModelSpec, ...] = (
         name="Linear Regression",
         slug=MODEL_SLUGS["Linear Regression"],
         make_model=make_linear_regression,
-        minimum_training_rows=100,
-    ),
-    ModelSpec(
-        name="Ridge Regression",
-        slug=MODEL_SLUGS["Ridge Regression"],
-        make_model=make_ridge_regression,
-        minimum_training_rows=100,
-    ),
-    ModelSpec(
-        name="Lasso Regression",
-        slug=MODEL_SLUGS["Lasso Regression"],
-        make_model=make_lasso_regression,
         minimum_training_rows=100,
     ),
     ModelSpec(

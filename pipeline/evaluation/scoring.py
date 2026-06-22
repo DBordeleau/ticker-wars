@@ -31,9 +31,12 @@ def score_matured_predictions(
         score_rows.append(
             {
                 "prediction_id": prediction["prediction_id"],
+                "prediction_date": prediction["prediction_date"],
                 "target_date": prediction["target_date"],
+                "prediction_horizon": prediction["prediction_horizon"],
                 "ticker": prediction["ticker"],
                 "model_name": prediction["model_name"],
+                "model_slug": prediction["model_slug"],
                 "actual_close": actual_close,
                 "actual_return": actual_return,
                 "absolute_error": absolute_error,
@@ -42,6 +45,7 @@ def score_matured_predictions(
                 "predicted_direction": direction(predicted_return),
                 "actual_direction": direction(actual_return),
                 "direction_correct": int(direction(predicted_return) == direction(actual_return)),
+                **_interval_score_fields(prediction, actual_close, reference_close),
                 "scored_at": scored_at,
             }
         )
@@ -61,3 +65,54 @@ def _actual_close_by_ticker_date(price_rows: list[dict[str, Any]]) -> dict[tuple
         (str(row["ticker"]), str(row["date"])): float(row["close"])
         for row in prices.to_dict("records")
     }
+
+
+def _interval_score_fields(
+    prediction: dict[str, Any],
+    actual_close: float,
+    reference_close: float,
+) -> dict[str, float | bool | None]:
+    lower = prediction.get("predicted_close_lower")
+    upper = prediction.get("predicted_close_upper")
+    if lower is None or upper is None:
+        return {
+            "interval_hit": None,
+            "interval_width": None,
+            "interval_width_pct": None,
+            "interval_miss_distance": None,
+            "winkler_score": None,
+        }
+
+    lower_close = float(lower)
+    upper_close = float(upper)
+    interval_level = float(prediction.get("interval_level") or 0.80)
+    alpha = 1 - interval_level
+    width = upper_close - lower_close
+    miss_distance = _interval_miss_distance(actual_close, lower_close, upper_close)
+
+    if actual_close < lower_close:
+        winkler_score = width + (2 / alpha) * (lower_close - actual_close)
+    elif actual_close > upper_close:
+        winkler_score = width + (2 / alpha) * (actual_close - upper_close)
+    else:
+        winkler_score = width
+
+    return {
+        "interval_hit": miss_distance == 0,
+        "interval_width": width,
+        "interval_width_pct": width / reference_close if reference_close else None,
+        "interval_miss_distance": miss_distance,
+        "winkler_score": winkler_score,
+    }
+
+
+def _interval_miss_distance(
+    actual_close: float,
+    lower_close: float,
+    upper_close: float,
+) -> float:
+    if actual_close < lower_close:
+        return lower_close - actual_close
+    if actual_close > upper_close:
+        return actual_close - upper_close
+    return 0.0

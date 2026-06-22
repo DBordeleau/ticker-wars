@@ -7,8 +7,16 @@ from unittest.mock import patch
 from pipeline.config import Settings
 from pipeline.features.build_features import FEATURE_COLUMNS
 from pipeline.forecasting.horizons import FORECAST_HORIZONS, resolve_horizon_target
-from pipeline.llm.client import LLMResponse, parse_llm_response
-from pipeline.llm.prompt_templates import build_warren_buffbot_prompt
+from pipeline.llm.client import (
+    LLMQuotaExceeded,
+    LLMResponse,
+    parse_llm_horizon_response,
+    parse_llm_response,
+)
+from pipeline.llm.prompt_templates import (
+    build_warren_buffbot_multi_horizon_prompt,
+    build_warren_buffbot_prompt,
+)
 from pipeline.models.warren_buffbot import generate_warren_buffbot_predictions
 
 
@@ -47,6 +55,61 @@ class WarrenBuffbotTest(unittest.TestCase):
         self.assertEqual(response.confidence, 0.7)
         self.assertEqual(response.reasoning_summary, "Momentum is positive but measured.")
 
+    def test_multi_horizon_response_parses_all_horizons(self) -> None:
+        responses = parse_llm_horizon_response(
+            """
+            {
+              "predictions": {
+                "1w": {
+                  "predicted_return": 0.001,
+                  "confidence": 0.4,
+                  "reasoning_summary": "Steady."
+                },
+                "1m": {
+                  "predicted_return": 0.002,
+                  "confidence": 0.5,
+                  "reasoning_summary": "Improving."
+                },
+                "3m": {
+                  "predicted_return": 0.003,
+                  "confidence": 0.6,
+                  "reasoning_summary": "Durable."
+                },
+                "1y": {
+                  "predicted_return": 0.004,
+                  "confidence": 0.7,
+                  "reasoning_summary": "Undervalued."
+                }
+              }
+            }
+            """,
+            FORECAST_HORIZONS,
+        )
+
+        self.assertEqual(set(responses), set(FORECAST_HORIZONS))
+        self.assertEqual(responses["1y"].predicted_return, 0.004)
+
+    def test_multi_horizon_prompt_requests_all_horizons(self) -> None:
+        feature_json = {name: 0.1 for name in FEATURE_COLUMNS}
+        prompt = build_warren_buffbot_multi_horizon_prompt(
+            "AAPL",
+            123.45,
+            feature_json,
+            horizon_targets={
+                "1w": {"label": "1W", "target_date": "2026-06-29"},
+                "1m": {"label": "1M", "target_date": "2026-07-22"},
+                "3m": {"label": "3M", "target_date": "2026-09-22"},
+                "1y": {"label": "1Y", "target_date": "2027-06-22"},
+            },
+            fundamentals={"market_cap": 123_000_000_000},
+        )
+
+        self.assertIn('"1w"', prompt)
+        self.assertIn('"1m"', prompt)
+        self.assertIn('"3m"', prompt)
+        self.assertIn('"1y"', prompt)
+        self.assertIn("Return every requested horizon exactly once.", prompt)
+
     def test_reasoning_summary_is_clamped(self) -> None:
         response = parse_llm_response(
             {
@@ -67,13 +130,16 @@ class WarrenBuffbotTest(unittest.TestCase):
         with (
             patch("pipeline.models.warren_buffbot.is_llm_configured", return_value=True),
             patch(
-                "pipeline.models.warren_buffbot.request_structured_prediction",
-                return_value=LLMResponse(
-                    predicted_return=0.01,
-                    confidence=0.6,
-                    reasoning_summary="Value signals are constructive.",
-                ),
-            ),
+                "pipeline.models.warren_buffbot.request_structured_horizon_predictions",
+                return_value={
+                    horizon: LLMResponse(
+                        predicted_return=0.01,
+                        confidence=0.6,
+                        reasoning_summary="Value signals are constructive.",
+                    )
+                    for horizon in FORECAST_HORIZONS
+                },
+            ) as llm_request,
         ):
             rows = generate_warren_buffbot_predictions(
                 feature_rows=[_feature_row("AAPL", date(2026, 6, 18))],
@@ -83,11 +149,35 @@ class WarrenBuffbotTest(unittest.TestCase):
             )
 
         self.assertEqual(len(rows), 4)
+        llm_request.assert_called_once()
         self.assertEqual({row["prediction_horizon"] for row in rows}, set(FORECAST_HORIZONS))
         self.assertTrue(all(row["model_slug"] == "warren-buffbot" for row in rows))
         self.assertTrue(
             all(row["model_metadata"]["fundamentals_available"] for row in rows)
         )
+
+    def test_buffbot_stops_remaining_tickers_when_quota_is_exhausted(self) -> None:
+        with (
+            patch("pipeline.models.warren_buffbot.is_llm_configured", return_value=True),
+            patch(
+                "pipeline.models.warren_buffbot.request_structured_horizon_predictions",
+                side_effect=LLMQuotaExceeded("quota exhausted"),
+            ) as llm_request,
+        ):
+            rows = generate_warren_buffbot_predictions(
+                feature_rows=[
+                    _feature_row("AAPL", date(2026, 6, 18)),
+                    _feature_row("MSFT", date(2026, 6, 18)),
+                ],
+                price_rows=[
+                    {"ticker": "AAPL", "date": "2026-06-18", "close": 100.0},
+                    {"ticker": "MSFT", "date": "2026-06-18", "close": 200.0},
+                ],
+                settings=Settings(gemini_api_key="fake", warren_buffbot_enabled=True),
+            )
+
+        self.assertEqual(rows, [])
+        llm_request.assert_called_once()
 
 
 def _feature_row(ticker: str, feature_date: date) -> dict:

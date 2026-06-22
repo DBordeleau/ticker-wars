@@ -14,6 +14,8 @@ from pipeline.evaluation.scoring import score_matured_predictions
 from pipeline.features.build_features import build_feature_rows
 from pipeline.ingestion.fundamentals import fetch_fundamentals
 from pipeline.ingestion.market_data import fetch_daily_prices
+from pipeline.models.chronos_model import generate_chronos_predictions
+from pipeline.models.timesfm_model import generate_timesfm_predictions
 from pipeline.models.training import train_and_predict
 from pipeline.models.warren_buffbot import generate_warren_buffbot_predictions
 
@@ -216,7 +218,9 @@ def run_train_predict() -> int:
         settings,
         fundamental_rows,
     )
-    prediction_rows = training_result.prediction_rows + buffbot_rows
+    timesfm_rows = generate_timesfm_predictions(price_rows, settings)
+    chronos_rows = generate_chronos_predictions(price_rows, settings)
+    prediction_rows = training_result.prediction_rows + buffbot_rows + timesfm_rows + chronos_rows
     written = database.upsert_predictions(prediction_rows)
 
     LOGGER.info("Model training wrote %s predictions.", written)

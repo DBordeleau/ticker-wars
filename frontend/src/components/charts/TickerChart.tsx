@@ -24,6 +24,13 @@ type Props = {
 };
 
 const lineColors = ["#22c55e", "#60a5fa", "#f59e0b", "#a78bfa", "#ef4444", "#14b8a6"];
+const preferredDefaultModels = [
+  "Baseline",
+  "Linear Regression",
+  "Random Forest",
+  "TimesFM",
+  "Chronos-2",
+];
 
 type ChartHoverState = {
   isTooltipActive?: boolean;
@@ -67,11 +74,15 @@ export default function TickerChart({
     setVisibleModels((current) => {
       const retained = current.filter((model) => models.includes(model));
       if (retained.length > 0) {
-        return retained;
+        return withPreferredDefaults(retained, models);
       }
 
-      const baseline = models.find((model) => model.toLowerCase().includes("baseline"));
-      return baseline ? [baseline, ...models.filter((model) => model !== baseline).slice(0, 2)] : models.slice(0, 3);
+      const defaults = preferredDefaultModels.filter((model) => models.includes(model));
+      if (defaults.length > 0) {
+        return defaults;
+      }
+
+      return models.filter((model) => !isBuffbot(model)).slice(0, 3);
     });
   }, [models]);
 
@@ -210,6 +221,21 @@ export default function TickerChart({
       )}
     </SectionPanel>
   );
+}
+
+function withPreferredDefaults(current: string[], models: string[]) {
+  const selected = new Set(current);
+  preferredDefaultModels.forEach((model) => {
+    if (models.includes(model)) {
+      selected.add(model);
+    }
+  });
+
+  return Array.from(selected).filter((model) => models.includes(model));
+}
+
+function isBuffbot(model: string) {
+  return model.toLowerCase().includes("buffbot");
 }
 
 function ChartLoadingState() {

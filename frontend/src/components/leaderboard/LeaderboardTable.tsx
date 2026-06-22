@@ -4,6 +4,7 @@ import { FiExternalLink } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import type { LeaderboardRow, MetricWindow } from "../../api/dashboardData";
 import { formatMetric, formatPercent } from "../../utils/format";
+import { modelTypeColor, normalizeModelType } from "../../utils/models";
 import SectionPanel from "../layout/SectionPanel";
 
 type Props = {
@@ -43,58 +44,66 @@ export default function LeaderboardTable({ rows, window, loading }: Props) {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {visibleRows.map((row, index) => (
-                <motion.tr
-                  key={`${row.window}-${row.model_slug}`}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  whileHover={{ x: 4 }}
-                  transition={{ duration: 0.2, delay: index * 0.025 }}
-                  className={`leaderboard-row ${row.model_slug === "baseline" ? "baseline-row" : ""}`}
-                >
-                  <Table.Td>
-                    <Text fw={800}>{row.rank ? `#${row.rank}` : "Pending"}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Group gap="xs">
-                      <Text
-                        component={Link}
-                        to={`/models/${row.model_slug}`}
-                        fw={800}
-                        className="leaderboard-model-link"
-                      >
-                        <span>{row.model_name}</span>
-                        <FiExternalLink aria-hidden />
-                      </Text>
-                      {row.model_slug === "baseline" ? <Badge color="gray">Baseline</Badge> : null}
-                      {row.is_toy_model ? <Badge color="yellow">Toy LLM</Badge> : null}
-                    </Group>
-                  </Table.Td>
-                  <Table.Td>{formatMetric(row.mae)}</Table.Td>
-                  <Table.Td>{formatMetric(row.rmse)}</Table.Td>
-                  <Table.Td>{formatPercent(row.mape)}</Table.Td>
-                  <Table.Td>
-                    <Group gap="xs" wrap="nowrap">
-                      <Progress.Root className="direction-progress" size="lg">
-                        <Progress.Section
-                          value={row.directional_accuracy == null ? 0 : row.directional_accuracy * 100}
-                          color="green"
-                        />
-                        <Progress.Section
-                          value={
-                            row.directional_accuracy == null
-                              ? 100
-                              : Math.max(0, (1 - row.directional_accuracy) * 100)
-                          }
-                          color={row.directional_accuracy == null ? "dark.3" : "red"}
-                        />
-                      </Progress.Root>
-                      <Text size="sm">{formatPercent(row.directional_accuracy)}</Text>
-                    </Group>
-                  </Table.Td>
-                  <Table.Td className="score-column">{row.prediction_count.toLocaleString()}</Table.Td>
-                </motion.tr>
-              ))}
+              {visibleRows.map((row, index) => {
+                const modelType = normalizeModelType(row.model_type);
+                return (
+                  <motion.tr
+                    key={`${row.window}-${row.model_slug}`}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    whileHover={{ x: 4 }}
+                    transition={{ duration: 0.2, delay: index * 0.025 }}
+                    className={`leaderboard-row ${row.model_slug === "baseline" ? "baseline-row" : ""}`}
+                  >
+                    <Table.Td>
+                      <Text fw={800}>{row.rank ? `#${row.rank}` : "Pending"}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Group gap="xs">
+                        <Text
+                          component={Link}
+                          to={`/models/${row.model_slug}`}
+                          fw={800}
+                          className="leaderboard-model-link"
+                        >
+                          <span>{row.model_name}</span>
+                          <FiExternalLink aria-hidden />
+                        </Text>
+                        <Badge color={modelTypeColor(modelType)}>{modelType}</Badge>
+                      </Group>
+                    </Table.Td>
+                    <Table.Td>{formatMetric(row.mae)}</Table.Td>
+                    <Table.Td>{formatMetric(row.rmse)}</Table.Td>
+                    <Table.Td>{formatPercent(row.mape)}</Table.Td>
+                    <Table.Td>
+                      <Group gap="xs" wrap="nowrap">
+                        <Progress.Root className="direction-progress" size="lg">
+                          <Progress.Section
+                            value={
+                              row.directional_accuracy == null
+                                ? 0
+                                : row.directional_accuracy * 100
+                            }
+                            color="green"
+                          />
+                          <Progress.Section
+                            value={
+                              row.directional_accuracy == null
+                                ? 100
+                                : Math.max(0, (1 - row.directional_accuracy) * 100)
+                            }
+                            color={row.directional_accuracy == null ? "dark.3" : "red"}
+                          />
+                        </Progress.Root>
+                        <Text size="sm">{formatPercent(row.directional_accuracy)}</Text>
+                      </Group>
+                    </Table.Td>
+                    <Table.Td className="score-column">
+                      {row.prediction_count.toLocaleString()}
+                    </Table.Td>
+                  </motion.tr>
+                );
+              })}
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>

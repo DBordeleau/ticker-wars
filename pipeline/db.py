@@ -198,6 +198,12 @@ class SupabaseDatabase:
 
         table_columns = {
             "prediction_id",
+            "ticker",
+            "prediction_date",
+            "target_date",
+            "prediction_horizon",
+            "model_name",
+            "model_slug",
             "actual_close",
             "actual_return",
             "absolute_error",
@@ -206,6 +212,11 @@ class SupabaseDatabase:
             "predicted_direction",
             "actual_direction",
             "direction_correct",
+            "interval_hit",
+            "interval_width",
+            "interval_width_pct",
+            "interval_miss_distance",
+            "winkler_score",
             "scored_at",
         }
         written = 0

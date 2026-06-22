@@ -186,7 +186,6 @@ export default function AuroraBackground() {
       <div className="aurora-blob aurora-blob-emerald" />
       <div className="aurora-blob aurora-blob-teal" />
       <div className="aurora-blob aurora-blob-cyan" />
-      <div className="aurora-blob aurora-blob-lime" />
       <canvas ref={canvasRef} className="gravity-stars-canvas" />
       <div className="aurora-grain" />
       <div className="aurora-vignette" />

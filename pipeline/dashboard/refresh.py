@@ -6,7 +6,12 @@ from typing import Any
 
 from pipeline.config import Settings
 from pipeline.evaluation.metrics import METRIC_WINDOWS, calculate_model_metrics
-from pipeline.models.registry import MODEL_SLUGS
+from pipeline.models.registry import (
+    ACTIVE_MODEL_NAMES,
+    HIDDEN_MODEL_SLUGS,
+    MODEL_SLUGS,
+    MODEL_TYPES,
+)
 
 
 @dataclass(frozen=True)
@@ -42,6 +47,7 @@ def build_dashboard_tables(
         "dashboard_run_metadata": [
             _build_run_metadata(
                 prediction_rows=prediction_rows,
+                score_rows=score_rows,
                 price_rows=price_rows,
                 generated_at=generated_at,
                 settings=settings,
@@ -57,21 +63,29 @@ def _build_latest_predictions(
     if not prediction_rows:
         return []
 
-    latest_target_date = max(str(row["target_date"]) for row in prediction_rows)
+    latest_prediction_date = max(str(row["prediction_date"]) for row in prediction_rows)
     latest_rows = [
-        row for row in prediction_rows if str(row["target_date"]) == latest_target_date
+        row
+        for row in prediction_rows
+        if str(row["prediction_date"]) == latest_prediction_date
     ]
 
     return [
         {
             "generated_at": generated_at,
+            "prediction_id": row["prediction_id"],
+            "prediction_date": row["prediction_date"],
             "target_date": row["target_date"],
+            "prediction_horizon": row["prediction_horizon"],
             "ticker": row["ticker"],
             "model_name": row["model_name"],
-            "model_slug": _model_slug(row["model_name"]),
+            "model_slug": row.get("model_slug") or _model_slug(row["model_name"]),
             "reference_close": row["reference_close"],
             "predicted_return": row["predicted_return"],
             "predicted_close": row["predicted_close"],
+            "predicted_close_lower": row.get("predicted_close_lower"),
+            "predicted_close_upper": row.get("predicted_close_upper"),
+            "interval_level": row.get("interval_level"),
             "reasoning_summary": row.get("reasoning_summary"),
             "model_metadata": row.get("model_metadata"),
         }
@@ -87,31 +101,34 @@ def _build_model_leaderboard(
         row for row in scored_predictions if row.get("absolute_error") is not None
     ]
     metric_rows = calculate_model_metrics(matured_predictions)
-    by_window_and_model = {
-        (row["window"], row["model_name"]): row
+    by_window_horizon_and_model = {
+        (row["window"], row["prediction_horizon"], row["model_name"]): row
         for row in metric_rows
     }
     model_names = _known_model_names(scored_predictions)
+    horizons = _known_horizons(scored_predictions)
     rows: list[dict[str, Any]] = []
 
     for window in METRIC_WINDOWS:
-        for model_name in model_names:
-            metric = by_window_and_model.get((window, model_name), {})
-            rows.append(
-                {
-                    "generated_at": generated_at,
-                    "window": window,
-                    "model_name": model_name,
-                    "model_slug": _model_slug(model_name),
-                    "mae": metric.get("mae"),
-                    "rmse": metric.get("rmse"),
-                    "mape": metric.get("mape"),
-                    "directional_accuracy": metric.get("directional_accuracy"),
-                    "prediction_count": metric.get("prediction_count", 0),
-                    "rank": metric.get("rank"),
-                    "is_toy_model": model_name == "Warren Buffbot",
-                }
-            )
+        for horizon in horizons:
+            for model_name in model_names:
+                metric = by_window_horizon_and_model.get((window, horizon, model_name), {})
+                rows.append(
+                    {
+                        "generated_at": generated_at,
+                        "evaluation_window": window,
+                        "prediction_horizon": horizon,
+                        "model_name": model_name,
+                        "model_slug": _model_slug(model_name),
+                        "model_type": _model_type(model_name),
+                        "mae": metric.get("mae"),
+                        "directional_accuracy": metric.get("directional_accuracy"),
+                        "winkler_score": metric.get("winkler_score"),
+                        "scored_count": metric.get("prediction_count", 0),
+                        "rank": metric.get("rank"),
+                        "is_toy_model": model_name == "Warren Buffbot",
+                    }
+                )
 
     return rows
 
@@ -124,13 +141,18 @@ def _build_ticker_history(
         {
             "generated_at": generated_at,
             "ticker": row["ticker"],
-            "date": row["target_date"],
+            "prediction_date": row["prediction_date"],
+            "target_date": row["target_date"],
+            "prediction_horizon": row["prediction_horizon"],
             "actual_close": row.get("actual_close"),
             "model_name": row["model_name"],
-            "model_slug": _model_slug(row["model_name"]),
+            "model_slug": row.get("model_slug") or _model_slug(row["model_name"]),
             "predicted_close": row["predicted_close"],
+            "predicted_close_lower": row.get("predicted_close_lower"),
+            "predicted_close_upper": row.get("predicted_close_upper"),
             "predicted_return": row["predicted_return"],
             "actual_return": row.get("actual_return"),
+            "winkler_score": row.get("winkler_score"),
             "reasoning_summary": row.get("reasoning_summary"),
         }
         for row in sorted(
@@ -142,6 +164,7 @@ def _build_ticker_history(
 
 def _build_run_metadata(
     prediction_rows: list[dict[str, Any]],
+    score_rows: list[dict[str, Any]],
     price_rows: list[dict[str, Any]],
     generated_at: str,
     settings: Settings,
@@ -151,15 +174,27 @@ def _build_run_metadata(
     return {
         "generated_at": generated_at,
         "latest_price_date": max((str(row["date"]) for row in price_rows), default=None),
-        "next_target_date": max(
-            (str(row["target_date"]) for row in prediction_rows),
+        "latest_prediction_date": max(
+            (str(row["prediction_date"]) for row in prediction_rows),
             default=None,
         ),
         "ticker_count": len(prediction_tickers or price_tickers),
         "model_count": len({row["model_name"] for row in prediction_rows}),
+        "prediction_count": len(prediction_rows),
+        "scored_count": len(score_rows),
         "data_source": settings.market_data_source,
         "last_pipeline_status": "success",
     }
+
+
+def _known_horizons(scored_predictions: list[dict[str, Any]]) -> list[str]:
+    observed = sorted({row.get("prediction_horizon") for row in scored_predictions})
+    return [horizon for horizon in ("1w", "1m", "3m", "1y") if horizon in observed] or [
+        "1w",
+        "1m",
+        "3m",
+        "1y",
+    ]
 
 
 def _merge_predictions_and_scores(
@@ -182,10 +217,20 @@ def _merge_predictions_and_scores(
 
 
 def _known_model_names(scored_predictions: list[dict[str, Any]]) -> list[str]:
-    known_names = list(MODEL_SLUGS)
-    observed_names = sorted({row["model_name"] for row in scored_predictions})
+    known_names = list(ACTIVE_MODEL_NAMES)
+    observed_names = sorted(
+        {
+            row["model_name"]
+            for row in scored_predictions
+            if _model_slug(row["model_name"]) not in HIDDEN_MODEL_SLUGS
+        }
+    )
     return known_names + [name for name in observed_names if name not in MODEL_SLUGS]
 
 
 def _model_slug(model_name: str) -> str:
     return MODEL_SLUGS.get(model_name, model_name.lower().replace(" ", "-"))
+
+
+def _model_type(model_name: str) -> str:
+    return MODEL_TYPES.get(model_name, "Classic ML")

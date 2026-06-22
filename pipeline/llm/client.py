@@ -2,14 +2,22 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+import time
 from dataclasses import dataclass
 from typing import Any
 from urllib import request
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 from pipeline.config import Settings, load_settings
 
 LOGGER = logging.getLogger(__name__)
+MAX_HTTP_RETRIES = 0
+DEFAULT_RETRY_DELAY_SECONDS = 10.0
+
+
+class LLMQuotaExceeded(RuntimeError):
+    """Raised when the selected LLM provider refuses requests for quota reasons."""
 
 
 @dataclass(frozen=True)
@@ -47,8 +55,53 @@ def request_structured_prediction(prompt: str, settings: Settings | None = None)
     return parse_llm_response(text)
 
 
+def request_structured_horizon_predictions(
+    prompt: str,
+    expected_horizons: tuple[str, ...],
+    settings: Settings | None = None,
+) -> dict[str, LLMResponse]:
+    settings = settings or load_settings()
+    provider = settings.llm_provider.lower()
+
+    if provider == "gemini":
+        if not settings.gemini_api_key:
+            raise ValueError("GEMINI_API_KEY is not configured.")
+        text = _request_gemini(prompt, settings)
+    elif provider == "groq":
+        if not settings.groq_api_key:
+            raise ValueError("GROQ_API_KEY is not configured.")
+        text = _request_groq(prompt, settings)
+    else:
+        raise ValueError(f"Unsupported LLM_PROVIDER: {settings.llm_provider}")
+
+    return parse_llm_horizon_response(text, expected_horizons)
+
+
 def parse_llm_response(text: str) -> LLMResponse:
     payload = _loads_json_object(text)
+    return _parse_response_payload(payload)
+
+
+def parse_llm_horizon_response(
+    text: str,
+    expected_horizons: tuple[str, ...],
+) -> dict[str, LLMResponse]:
+    payload = _loads_json_object(text)
+    predictions = payload.get("predictions", payload)
+    if not isinstance(predictions, dict):
+        raise ValueError("LLM horizon response did not contain a predictions object.")
+
+    parsed: dict[str, LLMResponse] = {}
+    for horizon in expected_horizons:
+        horizon_payload = predictions.get(horizon)
+        if not isinstance(horizon_payload, dict):
+            raise ValueError(f"LLM horizon response missing {horizon!r}.")
+        parsed[horizon] = _parse_response_payload(horizon_payload)
+
+    return parsed
+
+
+def _parse_response_payload(payload: dict[str, Any]) -> LLMResponse:
     predicted_return = float(payload["predicted_return"])
     confidence = payload.get("confidence")
     reasoning = str(payload.get("reasoning_summary", "")).strip()
@@ -100,12 +153,32 @@ def _post_json(
     body = json.dumps(payload).encode("utf-8")
     request_headers = {"Content-Type": "application/json", **(headers or {})}
     http_request = request.Request(url, data=body, headers=request_headers, method="POST")
-    try:
-        with request.urlopen(http_request, timeout=30) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except URLError as exc:
-        LOGGER.warning("LLM request failed: %s", exc)
-        raise
+    for attempt in range(MAX_HTTP_RETRIES + 1):
+        try:
+            with request.urlopen(http_request, timeout=30) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            response_body = exc.read().decode("utf-8", errors="replace")
+            LOGGER.warning(
+                "LLM request failed: HTTP %s %s",
+                exc.code,
+                response_body[:500],
+            )
+            if exc.code != 429 or attempt >= MAX_HTTP_RETRIES:
+                if exc.code == 429:
+                    raise LLMQuotaExceeded(
+                        f"LLM quota exhausted: HTTP 429 {response_body[:500]}"
+                    ) from exc
+                raise
+
+            retry_delay = _retry_delay_seconds(response_body)
+            LOGGER.info("Retrying LLM request after %.1f seconds.", retry_delay)
+            time.sleep(retry_delay)
+        except URLError as exc:
+            LOGGER.warning("LLM request failed: %s", exc)
+            raise
+
+    raise RuntimeError("LLM request retry loop exited unexpectedly.")
 
 
 def _loads_json_object(text: str) -> dict[str, Any]:
@@ -128,3 +201,14 @@ def _clamp_reasoning(value: str, max_length: int = 220) -> str:
     if len(value) <= max_length:
         return value
     return value[: max_length - 3].rstrip() + "..."
+
+
+def _retry_delay_seconds(response_body: str) -> float:
+    match = re.search(r"Please retry in ([\d.]+)(ms|s)", response_body)
+    if match is None:
+        return DEFAULT_RETRY_DELAY_SECONDS
+
+    value = float(match.group(1))
+    if match.group(2) == "ms":
+        return max(1.0, value / 1000)
+    return max(1.0, value)
