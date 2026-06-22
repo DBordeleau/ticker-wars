@@ -107,7 +107,10 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertEqual(written, 1)
         self.assertEqual(client.operations[0]["table"], "predictions")
         self.assertEqual(client.operations[0]["action"], "upsert")
-        self.assertEqual(client.operations[0]["on_conflict"], "ticker,target_date,model_name")
+        self.assertEqual(
+            client.operations[0]["on_conflict"],
+            "ticker,prediction_date,target_date,prediction_horizon,model_slug",
+        )
         self.assertEqual(client.operations[0]["rows"], rows)
 
     def test_prediction_score_upsert_writes_only_known_score_columns(self) -> None:
