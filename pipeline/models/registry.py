@@ -19,6 +19,8 @@ MODEL_SLUGS: dict[str, str] = {
     "Lasso Regression": "lasso",
     "Random Forest": "random-forest",
     "Warren Buffbot": "warren-buffbot",
+    "TimesFM": "timesfm",
+    "Chronos-2": "chronos-2",
 }
 
 
