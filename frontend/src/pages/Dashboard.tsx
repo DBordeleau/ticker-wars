@@ -13,7 +13,7 @@ import { useDashboardData } from "../hooks/useDashboardData";
 
 export default function Dashboard() {
   const window: MetricWindow = "all";
-  const [horizon, setHorizon] = useState<MetricHorizon>("1w");
+  const [horizon, setHorizon] = useState<MetricHorizon>("all");
   const dashboard = useDashboardData();
 
   return (
@@ -63,11 +63,11 @@ export default function Dashboard() {
               loading={dashboard.loading}
             />
           </AnimatedSection>
-          <AnimatedSection delay={0.36}>
-            <PredictionTable rows={dashboard.latestPredictions} loading={dashboard.loading} collapsible />
-          </AnimatedSection>
         </div>
       </div>
+      <AnimatedSection delay={0.36}>
+        <PredictionTable rows={dashboard.latestPredictions} loading={dashboard.loading} collapsible />
+      </AnimatedSection>
       <AnimatedSection delay={0.42}>
         <DashboardFooter metadata={dashboard.metadata} loading={dashboard.loading} />
       </AnimatedSection>

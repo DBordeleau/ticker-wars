@@ -1,7 +1,11 @@
 import { Badge, Group, Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 import type { LatestPrediction } from "../../api/dashboardData";
-import { formatCurrency, formatSignedPercent } from "../../utils/format";
+import {
+  formatDate,
+  formatHorizon,
+} from "../../utils/format";
+import PredictionValue from "./PredictionValue";
 
 type Props = {
   rows: LatestPrediction[];
@@ -11,7 +15,7 @@ export default function PredictionCardList({ rows }: Props) {
   return (
     <div className="prediction-card-list">
       {rows.map((row) => (
-        <article className="prediction-card" key={`${row.target_date}-${row.ticker}-${row.model_slug}`}>
+        <article className="prediction-card" key={row.prediction_id}>
           <Group justify="space-between" align="flex-start" wrap="nowrap">
             <div className="prediction-card-copy">
               <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
@@ -21,15 +25,27 @@ export default function PredictionCardList({ rows }: Props) {
                 {row.model_name}
               </Text>
             </div>
-            <Badge color={row.predicted_return >= 0 ? "green" : "red"}>
-              {formatSignedPercent(row.predicted_return)}
+            <Badge variant="light" color="green">
+              {formatHorizon(row.prediction_horizon)}
             </Badge>
           </Group>
           <Group mt="sm" justify="space-between">
             <Text size="xs" c="dimmed">
-              Predicted close
+              Predicted
             </Text>
-            <Text fw={700}>{formatCurrency(row.predicted_close)}</Text>
+            <PredictionValue row={row} align="right" />
+          </Group>
+          <Group mt={6} justify="space-between">
+            <Text size="xs" c="dimmed">
+              Matures on
+            </Text>
+            <Text size="sm">{formatDate(row.target_date)}</Text>
+          </Group>
+          <Group mt={6} justify="space-between">
+            <Text size="xs" c="dimmed">
+              Predicted on
+            </Text>
+            <Text size="sm">{formatDate(row.prediction_date)}</Text>
           </Group>
         </article>
       ))}

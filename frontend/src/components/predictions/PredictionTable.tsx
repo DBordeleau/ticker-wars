@@ -1,15 +1,20 @@
-import { Badge, Button, Group, Skeleton, Table, Text, UnstyledButton } from "@mantine/core";
+import { Badge, Button, Group, Skeleton, Table, Text, Tooltip, UnstyledButton } from "@mantine/core";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { FiArrowDown, FiArrowUp, FiChevronDown } from "react-icons/fi";
 import { Link } from "react-router-dom";
-import type { LatestPrediction } from "../../api/dashboardData";
-import { formatCurrency, formatDate, formatSignedPercent } from "../../utils/format";
+import type { LatestPrediction, MetricHorizon } from "../../api/dashboardData";
+import {
+  formatDate,
+  formatHorizon,
+} from "../../utils/format";
 import SectionPanel from "../layout/SectionPanel";
 import PredictionCardList from "./PredictionCardList";
 import PredictionFilters from "./PredictionFilters";
+import PredictionHorizonSelector from "./PredictionHorizonSelector";
+import PredictionValue from "./PredictionValue";
 
-type SortKey = "ticker" | "model" | "return" | "close" | "target";
+type SortKey = "ticker" | "model" | "horizon" | "close" | "target" | "prediction";
 
 type Props = {
   rows: LatestPrediction[];
@@ -27,26 +32,30 @@ export default function PredictionTable({ rows, loading, collapsible = false }: 
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [isPaged, setIsPaged] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(!collapsible);
+  const [horizon, setHorizon] = useState<MetricHorizon>("all");
+
+  const predictionRows = useMemo(
+    () => rows.filter((row) => row.model_slug !== "baseline"),
+    [rows],
+  );
 
   const modelOptions = useMemo(
-    () => Array.from(new Set(rows.map((row) => row.model_name))).sort(),
-    [rows],
+    () => Array.from(new Set(predictionRows.map((row) => row.model_name))).sort(),
+    [predictionRows],
   );
 
   const visibleRows = useMemo(() => {
     const query = tickerQuery.trim().toUpperCase();
 
-    return rows
+    return predictionRows
       .filter((row) => (query ? row.ticker.includes(query) : true))
       .filter((row) => (model ? row.model_name === model : true))
+      .filter((row) => (horizon === "all" ? true : row.prediction_horizon === horizon))
       .sort((a, b) => {
         const direction = sortDirection === "asc" ? 1 : -1;
-        if (sortKey === "return") {
-          return (a.predicted_return - b.predicted_return) * direction;
-        }
         if (sortKey === "close") {
-          return (a.predicted_close - b.predicted_close) * direction;
+          return (a.predicted_return - b.predicted_return) * direction;
         }
         if (sortKey === "model") {
           return a.model_name.localeCompare(b.model_name) * direction;
@@ -54,14 +63,20 @@ export default function PredictionTable({ rows, loading, collapsible = false }: 
         if (sortKey === "target") {
           return a.target_date.localeCompare(b.target_date) * direction;
         }
+        if (sortKey === "prediction") {
+          return a.prediction_date.localeCompare(b.prediction_date) * direction;
+        }
+        if (sortKey === "horizon") {
+          return (horizonWeight(a.prediction_horizon) - horizonWeight(b.prediction_horizon)) * direction;
+        }
         return a.ticker.localeCompare(b.ticker) * direction;
       });
-  }, [model, rows, sortDirection, sortKey, tickerQuery]);
+  }, [horizon, model, predictionRows, sortDirection, sortKey, tickerQuery]);
 
   useEffect(() => {
     setIsPaged(false);
     setCurrentPage(0);
-  }, [model, sortDirection, sortKey, tickerQuery]);
+  }, [horizon, model, sortDirection, sortKey, tickerQuery]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, Math.max(0, Math.ceil(visibleRows.length / predictionPageSize) - 1)));
@@ -86,49 +101,92 @@ export default function PredictionTable({ rows, loading, collapsible = false }: 
   };
 
   const filters = (
-    <PredictionFilters
-      tickerQuery={tickerQuery}
-      model={model}
-      models={modelOptions}
-      onTickerQueryChange={setTickerQuery}
-      onModelChange={setModel}
-    />
+    <Group className="prediction-controls" justify="flex-end" gap="sm">
+      <PredictionHorizonSelector value={horizon} onChange={setHorizon} />
+      <PredictionFilters
+        tickerQuery={tickerQuery}
+        model={model}
+        models={modelOptions}
+        onTickerQueryChange={setTickerQuery}
+        onModelChange={setModel}
+      />
+    </Group>
   );
 
   const predictions = loading ? (
     <Skeleton height={360} radius="sm" />
-  ) : rows.length === 0 ? (
+  ) : predictionRows.length === 0 ? (
     <Text c="dimmed" size="sm">
       Latest predictions will appear after the pipeline publishes dashboard rows.
+    </Text>
+  ) : visibleRows.length === 0 ? (
+    <Text c="dimmed" size="sm">
+      No latest predictions match this horizon and filter selection.
     </Text>
   ) : (
     <>
       <div className="desktop-table">
-        <Table.ScrollContainer minWidth={700}>
-          <Table highlightOnHover verticalSpacing="sm">
+        <Table.ScrollContainer minWidth={780}>
+          <Table highlightOnHover verticalSpacing="sm" className="prediction-table">
             <Table.Thead>
               <Table.Tr>
-                <SortableHeader active={sortKey === "ticker"} direction={sortDirection} onClick={() => setSort("ticker")}>
+                <SortableHeader
+                  active={sortKey === "ticker"}
+                  direction={sortDirection}
+                  tooltip="The stock ticker this prediction is for."
+                  onClick={() => setSort("ticker")}
+                >
                   Ticker
                 </SortableHeader>
-                <SortableHeader active={sortKey === "model"} direction={sortDirection} onClick={() => setSort("model")}>
+                <SortableHeader
+                  active={sortKey === "model"}
+                  direction={sortDirection}
+                  tooltip="The model that made the prediction."
+                  onClick={() => setSort("model")}
+                >
                   Model
                 </SortableHeader>
-                <SortableHeader active={sortKey === "return"} direction={sortDirection} onClick={() => setSort("return")}>
-                  Return
+                <SortableHeader
+                  active={sortKey === "horizon"}
+                  direction={sortDirection}
+                  tooltip="How far ahead the model is predicting."
+                  className="prediction-table-center"
+                  onClick={() => setSort("horizon")}
+                >
+                  Horizon
                 </SortableHeader>
-                <Table.Th>Reference</Table.Th>
-                <SortableHeader active={sortKey === "close"} direction={sortDirection} onClick={() => setSort("close")}>
+                <SortableHeader
+                  active={sortKey === "close"}
+                  direction={sortDirection}
+                  tooltip="The predicted price, expected return, and 80% confidence interval. Sorting uses expected return."
+                  className="prediction-table-center"
+                  onClick={() => setSort("close")}
+                >
                   Predicted
                 </SortableHeader>
-                <SortableHeader active={sortKey === "target"} direction={sortDirection} onClick={() => setSort("target")}>
-                  Target
+                <SortableHeader
+                  active={sortKey === "target"}
+                  direction={sortDirection}
+                  tooltip="The date when the prediction can be evaluated and scored."
+                  className="prediction-table-center"
+                  onClick={() => setSort("target")}
+                >
+                  Matures On
+                </SortableHeader>
+                <SortableHeader
+                  active={sortKey === "prediction"}
+                  direction={sortDirection}
+                  tooltip="The date the model made this prediction."
+                  className="prediction-table-center"
+                  onClick={() => setSort("prediction")}
+                >
+                  Predicted On
                 </SortableHeader>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {displayedRows.map((row) => (
-                <Table.Tr key={`${row.target_date}-${row.ticker}-${row.model_slug}`}>
+                <Table.Tr key={row.prediction_id}>
                   <Table.Td>
                     <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
                       {row.ticker}
@@ -139,17 +197,18 @@ export default function PredictionTable({ rows, loading, collapsible = false }: 
                       <Text component={Link} to={`/models/${row.model_slug}`} className="plain-link">
                         {row.model_name}
                       </Text>
-                      {row.model_slug === "baseline" ? <Badge color="gray">Baseline</Badge> : null}
                     </Group>
                   </Table.Td>
-                  <Table.Td>
-                    <Text c={row.predicted_return >= 0 ? "green.5" : "red.5"} fw={700}>
-                      {formatSignedPercent(row.predicted_return)}
-                    </Text>
+                  <Table.Td className="prediction-table-center">
+                    <Badge variant="light" color="green">
+                      {formatHorizon(row.prediction_horizon)}
+                    </Badge>
                   </Table.Td>
-                  <Table.Td>{formatCurrency(row.reference_close)}</Table.Td>
-                  <Table.Td>{formatCurrency(row.predicted_close)}</Table.Td>
-                  <Table.Td>{formatDate(row.target_date)}</Table.Td>
+                  <Table.Td className="prediction-table-center">
+                    <PredictionValue row={row} align="center" />
+                  </Table.Td>
+                  <Table.Td className="prediction-table-center">{formatDate(row.target_date)}</Table.Td>
+                  <Table.Td className="prediction-table-center">{formatDate(row.prediction_date)}</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -250,22 +309,52 @@ export default function PredictionTable({ rows, loading, collapsible = false }: 
   );
 }
 
+function horizonWeight(horizon: string) {
+  if (horizon === "all") {
+    return 0;
+  }
+  if (horizon === "1w") {
+    return 1;
+  }
+  if (horizon === "1m") {
+    return 2;
+  }
+  if (horizon === "3m") {
+    return 3;
+  }
+  if (horizon === "1y") {
+    return 4;
+  }
+  return 99;
+}
+
 type HeaderProps = {
   children: string;
   active: boolean;
   direction: "asc" | "desc";
+  tooltip: string;
+  className?: string;
   onClick: () => void;
 };
 
-function SortableHeader({ children, active, direction, onClick }: HeaderProps) {
+function SortableHeader({
+  children,
+  active,
+  direction,
+  tooltip,
+  className,
+  onClick,
+}: HeaderProps) {
   const Icon = direction === "asc" ? FiArrowUp : FiArrowDown;
 
   return (
-    <Table.Th>
-      <UnstyledButton className="sort-button" onClick={onClick}>
-        <span>{children}</span>
-        {active ? <Icon /> : null}
-      </UnstyledButton>
+    <Table.Th className={className}>
+      <Tooltip label={tooltip} openDelay={250}>
+        <UnstyledButton className="sort-button" onClick={onClick}>
+          <span>{children}</span>
+          {active ? <Icon /> : null}
+        </UnstyledButton>
+      </Tooltip>
     </Table.Th>
   );
 }

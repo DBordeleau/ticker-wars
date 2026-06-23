@@ -2,9 +2,10 @@ import { Group, Select, Skeleton, Text } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
+  Area,
+  ComposedChart,
   Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
   XAxis,
   YAxis,
@@ -31,6 +32,12 @@ const preferredDefaultModels = [
   "TimesFM",
   "Chronos-2",
 ];
+
+type ChartRow = {
+  date: string;
+  actual: number | null;
+  [key: string]: string | number | [number, number] | null;
+};
 
 type ChartHoverState = {
   isTooltipActive?: boolean;
@@ -87,12 +94,18 @@ export default function TickerChart({
   }, [models]);
 
   const chartData = useMemo(() => {
-    const byDate = new Map<string, Record<string, string | number | null>>();
+    const byDate = new Map<string, ChartRow>();
 
     history.forEach((row) => {
       const current = byDate.get(row.date) ?? { date: row.date, actual: row.actual_close };
       current.actual = row.actual_close;
       current[row.model_name] = row.predicted_close;
+      if (row.predicted_close_lower != null && row.predicted_close_upper != null) {
+        current[rangeKey(row.model_name)] = [
+          row.predicted_close_lower,
+          row.predicted_close_upper,
+        ];
+      }
       byDate.set(row.date, current);
     });
 
@@ -163,7 +176,7 @@ export default function TickerChart({
               </div>
             ) : null}
             <ResponsiveContainer width="100%" height={530}>
-              <LineChart
+              <ComposedChart
                 data={chartData}
                 margin={{ top: 34, right: 18, bottom: 12, left: 6 }}
                 onMouseMove={handleChartMouseMove}
@@ -201,6 +214,23 @@ export default function TickerChart({
                   dot={false}
                   connectNulls
                 />
+                {visibleModels.map((model, index) => {
+                  const color = lineColors[index % lineColors.length];
+                  return (
+                    <Area
+                      key={`${model}-range`}
+                      type="monotone"
+                      dataKey={rangeKey(model)}
+                      name={`${model} 80% range`}
+                      stroke="none"
+                      fill={color}
+                      fillOpacity={0.1}
+                      connectNulls
+                      legendType="none"
+                      activeDot={false}
+                    />
+                  );
+                })}
                 {visibleModels.map((model, index) => (
                   <Line
                     key={model}
@@ -214,7 +244,7 @@ export default function TickerChart({
                     connectNulls
                   />
                 ))}
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </>
@@ -236,6 +266,10 @@ function withPreferredDefaults(current: string[], models: string[]) {
 
 function isBuffbot(model: string) {
   return model.toLowerCase().includes("buffbot");
+}
+
+function rangeKey(model: string) {
+  return `${model} 80% range`;
 }
 
 function ChartLoadingState() {
