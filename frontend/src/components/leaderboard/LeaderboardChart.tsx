@@ -8,29 +8,50 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { LeaderboardRow, MetricHorizon, MetricWindow } from "../../api/dashboardData";
+import type {
+  LeaderboardRow,
+  MetricHorizon,
+  MetricWindow,
+  UserLeaderboardRow,
+} from "../../api/dashboardData";
+import type { DashboardView } from "../dashboard/DashboardViewToggle";
 import SectionPanel from "../layout/SectionPanel";
 
 type Props = {
   rows: LeaderboardRow[];
+  userRows: UserLeaderboardRow[];
+  view: DashboardView;
   window: MetricWindow;
   horizon: MetricHorizon;
   loading: boolean;
 };
 
-export default function LeaderboardChart({ rows, window, horizon, loading }: Props) {
-  const data = rows
+type DisplayLeaderboardRow = LeaderboardRow | UserLeaderboardRow;
+
+export default function LeaderboardChart({
+  rows,
+  userRows,
+  view,
+  window,
+  horizon,
+  loading,
+}: Props) {
+  const sourceRows: DisplayLeaderboardRow[] = view === "models" ? rows : userRows;
+  const data = sourceRows
     .filter(
       (row) => row.window === window && row.prediction_horizon === horizon && row.mae != null,
     )
     .sort((a, b) => (a.mae ?? 0) - (b.mae ?? 0))
     .map((row) => ({
-      model: row.model_name,
+      name: "model_name" in row ? row.model_name : row.username,
       mae: row.mae,
     }));
 
   return (
-    <SectionPanel title="Error Snapshot" subtitle="Lower MAE is better for the selected window.">
+    <SectionPanel
+      title="Error Snapshot"
+      subtitle={`Lower MAE is better for the selected ${view === "models" ? "model" : "user"} view.`}
+    >
       {loading ? (
         <Skeleton height={260} radius="sm" />
       ) : data.length === 0 ? (
@@ -44,7 +65,7 @@ export default function LeaderboardChart({ rows, window, horizon, loading }: Pro
               <CartesianGrid stroke="rgba(255, 255, 255, 0.08)" horizontal={false} />
               <XAxis type="number" stroke="#b8c6bf" tickLine={false} axisLine={false} />
               <YAxis
-                dataKey="model"
+                dataKey="name"
                 type="category"
                 width={112}
                 stroke="#b8c6bf"

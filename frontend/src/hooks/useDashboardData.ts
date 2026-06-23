@@ -18,8 +18,10 @@ type DashboardState = DashboardData & {
 
 const emptyData: DashboardData = {
   leaderboard: [],
+  userLeaderboard: [],
   modelMetrics: [],
   latestPredictions: [],
+  latestUserPredictions: [],
   tickerHistory: [],
   metadata: null,
   hasSupabaseConfig: isSupabaseConfigured,
