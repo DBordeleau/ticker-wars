@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from typing import Any
 
 from pipeline.config import load_settings
@@ -25,7 +26,7 @@ LOGGER = logging.getLogger(__name__)
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m pipeline.cli",
-        description="Run the next-day price prediction pipeline.",
+        description="Run the Ticker Wars prediction pipeline.",
     )
     parser.add_argument("--log-level", default="INFO", help="Python logging level.")
 
@@ -47,7 +48,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("run-daily", help="Run the daily pipeline.")
     subparsers.add_parser("build-features", help="Build and upsert feature rows from prices.")
-    subparsers.add_parser("train-predict", help="Train models and upsert next-day predictions.")
+    subparsers.add_parser(
+        "predict-horizons",
+        help="Train enabled models and upsert horizon-aware predictions.",
+    )
     subparsers.add_parser("score", help="Score matured predictions.")
     subparsers.add_parser("refresh-dashboard", help="Refresh dashboard tables.")
     subparsers.add_parser("export-snapshot", help="Export dashboard JSON snapshots.")
@@ -62,8 +66,14 @@ def run_placeholder_step(name: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    used_deprecated_train_predict = "train-predict" in raw_argv
+    normalized_argv = [
+        "predict-horizons" if arg == "train-predict" else arg for arg in raw_argv
+    ]
+
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(normalized_argv)
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO))
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -81,8 +91,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "ingest-fundamentals":
         return run_ingest_fundamentals(force=args.force)
 
-    if args.command == "train-predict":
-        return run_train_predict()
+    if args.command == "predict-horizons":
+        if used_deprecated_train_predict:
+            return run_train_predict_alias()
+        return run_predict_horizons()
 
     if args.command == "score":
         return run_score()
@@ -107,10 +119,13 @@ def main(argv: list[str] | None = None) -> int:
         score_status = run_score()
         if score_status != 0:
             return score_status
-        train_status = run_train_predict()
-        if train_status != 0:
-            return train_status
-        return run_refresh_dashboard()
+        prediction_status = run_predict_horizons()
+        if prediction_status != 0:
+            return prediction_status
+        refresh_status = run_refresh_dashboard()
+        if refresh_status != 0:
+            return refresh_status
+        return run_export_snapshot()
 
     return run_placeholder_step(args.command)
 
@@ -197,18 +212,25 @@ def run_build_features() -> int:
     return 0
 
 
-def run_train_predict() -> int:
+def run_train_predict_alias() -> int:
+    LOGGER.warning("train-predict is deprecated; use predict-horizons instead.")
+    return run_predict_horizons()
+
+
+def run_predict_horizons() -> int:
     settings = load_settings()
     database = SupabaseDatabase.from_settings(settings)
     if database is None:
-        LOGGER.info("Model training skipped because Supabase credentials are not configured.")
+        LOGGER.info(
+            "Prediction generation skipped because Supabase credentials are not configured."
+        )
         return 0
 
     feature_rows = database.fetch_features()
     price_rows = database.fetch_prices()
     fundamental_rows = database.fetch_latest_fundamentals()
     if not feature_rows or not price_rows:
-        LOGGER.warning("Model training skipped because features or prices are missing.")
+        LOGGER.warning("Prediction generation skipped because features or prices are missing.")
         return 0
 
     training_result = train_and_predict(feature_rows, price_rows)
@@ -223,10 +245,16 @@ def run_train_predict() -> int:
     prediction_rows = training_result.prediction_rows + buffbot_rows + timesfm_rows + chronos_rows
     written = database.upsert_predictions(prediction_rows)
 
-    LOGGER.info("Model training wrote %s predictions.", written)
+    LOGGER.info("Prediction generation wrote %s predictions.", written)
+    latest_prediction_date = max(
+        (str(row["prediction_date"]) for row in prediction_rows),
+        default=None,
+    )
+    if latest_prediction_date is not None:
+        LOGGER.info("Latest prediction date: %s", latest_prediction_date)
     if training_result.skipped:
         LOGGER.warning(
-            "Model training skipped %s model/ticker pairs.",
+            "Prediction generation skipped %s model/ticker pairs.",
             len(training_result.skipped),
         )
         for message in training_result.skipped[:10]:
@@ -253,7 +281,13 @@ def run_score() -> int:
     written = database.upsert_prediction_scores(score_rows)
     metrics = calculate_model_metrics(score_rows)
 
-    LOGGER.info("Prediction scoring wrote %s score rows.", written)
+    LOGGER.info("Prediction scoring wrote %s scored predictions.", written)
+    latest_scored_target_date = max(
+        (str(row["target_date"]) for row in score_rows),
+        default=None,
+    )
+    if latest_scored_target_date is not None:
+        LOGGER.info("Latest scored target date: %s", latest_scored_target_date)
     LOGGER.info("Calculated %s model metric rows for this scoring batch.", len(metrics))
     return 0
 
