@@ -383,8 +383,27 @@ h2,
 
 .leaderboard-horizon-control {
   display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   justify-content: center;
+  align-items: center;
   margin: 4px 0 22px;
+}
+
+.dashboard-view-toggle .mantine-SegmentedControl-root {
+  border: 1px solid rgba(74, 222, 128, 0.24);
+  background: rgba(8, 13, 11, 0.42);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dashboard-view-toggle .mantine-SegmentedControl-label {
+  color: #dbe6df;
+  font-weight: 850;
+}
+
+.dashboard-view-toggle .mantine-SegmentedControl-label[data-active] {
+  color: #ffffff;
 }
 
 .horizon-selector-wrap {

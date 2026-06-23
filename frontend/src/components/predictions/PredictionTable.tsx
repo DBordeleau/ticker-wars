@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { FiArrowDown, FiArrowUp, FiChevronDown } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import type { LatestPrediction, MetricHorizon } from "../../api/dashboardData";
+import type { DashboardView } from "../dashboard/DashboardViewToggle";
+import DashboardViewToggle from "../dashboard/DashboardViewToggle";
 import {
   formatDate,
   formatHorizon,
@@ -21,12 +23,20 @@ type Props = {
   rows: LatestPrediction[];
   loading: boolean;
   collapsible?: boolean;
+  view?: DashboardView;
+  onViewChange?: (view: DashboardView) => void;
 };
 
 const predictionPreviewSize = 5;
 const predictionPageSize = 25;
 
-export default function PredictionTable({ rows, loading, collapsible = false }: Props) {
+export default function PredictionTable({
+  rows,
+  loading,
+  collapsible = false,
+  view = "models",
+  onViewChange,
+}: Props) {
   const [tickerQuery, setTickerQuery] = useState("");
   const [model, setModel] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("target");
@@ -103,6 +113,9 @@ export default function PredictionTable({ rows, loading, collapsible = false }: 
 
   const filters = (
     <Group className="prediction-controls" justify="flex-end" gap="sm">
+      {onViewChange ? (
+        <DashboardViewToggle value={view} onChange={onViewChange} label="Latest prediction view" />
+      ) : null}
       <PredictionHorizonSelector value={horizon} onChange={setHorizon} />
       <PredictionFilters
         tickerQuery={tickerQuery}
