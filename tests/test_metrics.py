@@ -5,6 +5,7 @@ import unittest
 from pipeline.evaluation.metrics import (
     absolute_percentage_error,
     calculate_model_metrics,
+    calculate_user_metrics,
     direction,
 )
 
@@ -92,6 +93,39 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(len(seven_day_metrics), 1)
         self.assertEqual(seven_day_metrics[0]["model_name"], "Baseline")
 
+    def test_user_metrics_rank_by_mae_and_include_pooled_horizon(self) -> None:
+        score_rows = [
+            _user_score_row(
+                user_id="user-a",
+                username="Ada",
+                absolute_error=2.0,
+            ),
+            _user_score_row(
+                user_id="user-b",
+                username="Grace",
+                absolute_error=1.0,
+            ),
+        ]
+
+        metrics = calculate_user_metrics(score_rows)
+        one_week_window = [
+            row
+            for row in metrics
+            if row["window"] == "all" and row["prediction_horizon"] == "1w"
+        ]
+        pooled_window = [
+            row
+            for row in metrics
+            if row["window"] == "all" and row["prediction_horizon"] == "all"
+        ]
+
+        self.assertEqual(len(one_week_window), 2)
+        self.assertEqual(len(pooled_window), 2)
+        self.assertEqual(one_week_window[0]["user_id"], "user-b")
+        self.assertEqual(one_week_window[0]["username"], "Grace")
+        self.assertEqual(one_week_window[0]["rank"], 1)
+        self.assertEqual(one_week_window[1]["rank"], 2)
+
 
 def _score_row(
     *,
@@ -105,6 +139,26 @@ def _score_row(
         "scored_at": scored_at,
         "prediction_horizon": "1w",
         "model_name": model_name,
+        "absolute_error": absolute_error,
+        "squared_error": absolute_error**2,
+        "absolute_pct_error": absolute_error / 100,
+        "direction_correct": 1,
+    }
+
+
+def _user_score_row(
+    *,
+    user_id: str,
+    username: str,
+    absolute_error: float,
+    scored_at: str = "2026-02-01T12:00:00+00:00",
+) -> dict:
+    return {
+        "user_id": user_id,
+        "username": username,
+        "target_date": "2026-01-02",
+        "scored_at": scored_at,
+        "prediction_horizon": "1w",
         "absolute_error": absolute_error,
         "squared_error": absolute_error**2,
         "absolute_pct_error": absolute_error / 100,
