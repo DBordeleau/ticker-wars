@@ -9,6 +9,7 @@ import DashboardFooter from "../components/layout/DashboardFooter";
 import SectionPanel from "../components/layout/SectionPanel";
 import PredictionHorizonSelector from "../components/predictions/PredictionHorizonSelector";
 import PredictionTable from "../components/predictions/PredictionTable";
+import UserPredictionButton from "../components/predictions/UserPredictionButton";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { useTickerHistory } from "../hooks/useTickerHistory";
 import {
@@ -48,7 +49,10 @@ export default function TickerDetail() {
           ) : (
             <>
               <Text className="eyebrow">Ticker Detail</Text>
-              <Title order={1}>{ticker}</Title>
+              <Group justify="space-between" align="center" gap="md">
+                <Title order={1}>{ticker}</Title>
+                <UserPredictionButton ticker={ticker} latestPredictions={dashboard.latestPredictions} />
+              </Group>
               <Group mt="md" gap="lg">
                 <div>
                   <Text c="dimmed" size="xs" tt="uppercase" fw={700}>
