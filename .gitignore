@@ -1,6 +1,6 @@
-test/
 .env
 .env.*
+test/*
 
 __pycache__/
 .pytest_cache/
@@ -17,5 +17,5 @@ frontend/.env.local
 data_exports/*.json
 !data_exports/.gitkeep
 
-README.md
-.env.example
+!.env.example
+!README.md

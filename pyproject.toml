@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "next-day-price"
 version = "0.1.0"
-description = "Next-day stock return prediction pipeline and dashboard."
+description = "Multi-horizon stock prediction pipeline and Ticker Wars dashboard."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

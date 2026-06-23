@@ -34,7 +34,7 @@ def resolve_horizon_target(
     horizon: ForecastHorizon,
     available_dates: Iterable[date] | None = None,
 ) -> HorizonTarget:
-    """Resolve a forecast horizon into a target date.
+    """Resolve a prediction horizon into a target date.
 
     If available dates are supplied, the target rolls forward to the first available
     market-data date on or after the calendar horizon. Otherwise it rolls forward by
@@ -76,7 +76,7 @@ def add_horizon_offset(start_date: date, horizon: ForecastHorizon) -> date:
     if horizon == "1y":
         return _add_months(start_date, 12)
 
-    raise ValueError(f"Unsupported forecast horizon: {horizon!r}")
+    raise ValueError(f"Unsupported prediction horizon: {horizon!r}")
 
 
 def roll_forward_to_trading_day(

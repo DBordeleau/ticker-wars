@@ -1,4 +1,4 @@
-"""Pipeline package for next-day stock return prediction."""
+"""Pipeline package for multi-horizon stock prediction."""
 
 __all__ = ["__version__"]
 
