@@ -1,6 +1,6 @@
-import { Button, Group, Loader, SimpleGrid, Slider, Stack, Text, Title, Tooltip } from "@mantine/core";
-import type { ReactNode } from "react";
+import { Button, Group, Popover, SimpleGrid, Slider, Stack, Text, Title, Tooltip } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
+import { FiEdit3, FiShuffle } from "react-icons/fi";
 import { avatarSkinColors, buildDiceBearAvatarUrl, defaultAvatarOptions, normalizeAvatarOptions } from "../../auth/avatar";
 import type { AvatarOptions } from "../../auth/types";
 
@@ -65,8 +65,10 @@ const fallbackMetadata: DiceBearMetadata = {
 export default function AvatarEditor({ seed, value, onChange }: Props) {
   const [metadata, setMetadata] = useState<DiceBearMetadata>(fallbackMetadata);
   const [styleDefinition, setStyleDefinition] = useState<DiceBearStyleDefinition | null>(null);
-  const [loading, setLoading] = useState(false);
   const avatarOptions = normalizeAvatarOptions(value);
+  const activeSkinColor = normalizeSkinColor(avatarOptions.backgroundColor);
+  const customSkinColor = `#${activeSkinColor}`;
+  const isCustomSkinColor = !avatarSkinColors.includes(activeSkinColor);
   const previewUrl = useMemo(
     () => buildDiceBearAvatarUrl(seed, avatarOptions),
     [avatarOptions, seed],
@@ -74,7 +76,6 @@ export default function AvatarEditor({ seed, value, onChange }: Props) {
 
   useEffect(() => {
     let isCurrent = true;
-    setLoading(true);
 
     Promise.all([loadDiceBearMetadata(), loadDiceBearStyleDefinition()])
       .then(([nextMetadata, nextStyleDefinition]) => {
@@ -90,11 +91,6 @@ export default function AvatarEditor({ seed, value, onChange }: Props) {
         }
         setMetadata(fallbackMetadata);
         setStyleDefinition(null);
-      })
-      .finally(() => {
-        if (isCurrent) {
-          setLoading(false);
-        }
       });
 
     return () => {
@@ -106,24 +102,40 @@ export default function AvatarEditor({ seed, value, onChange }: Props) {
     onChange(normalizeAvatarOptions({ ...avatarOptions, ...patch }));
   };
 
+  const randomizeAvatar = () => {
+    const glassesEnabled = Math.random() >= 0.5;
+
+    onChange(
+      normalizeAvatarOptions({
+        eyebrowsVariant: randomOption(metadata.eyebrowsVariant?.values, fallbackMetadata.eyebrowsVariant.values),
+        eyesVariant: randomOption(metadata.eyesVariant?.values, fallbackMetadata.eyesVariant.values),
+        glassesVariant: randomOption(metadata.glassesVariant?.values, fallbackMetadata.glassesVariant.values),
+        glassesProbability: glassesEnabled ? 100 : 0,
+        mouthVariant: randomOption(metadata.mouthVariant?.values, fallbackMetadata.mouthVariant.values),
+        backgroundColor: randomOption(avatarSkinColors, avatarSkinColors),
+        scale: randomSteppedNumber(0.8, 1.6, 0.05),
+        rotate: randomSteppedNumber(-20, 20, 1),
+      }),
+    );
+  };
+
   return (
     <div className="avatar-editor">
       <div className="avatar-preview-panel">
+        <Title order={3} className="avatar-editor-title">
+          Preview
+        </Title>
         <img src={previewUrl} alt="Avatar preview" className="avatar-preview-image" />
-        <div>
-          <Title order={3} className="avatar-editor-title">
-            Avatar
-          </Title>
-          <Text size="sm" className="secondary-text">
-            {loading ? (
-              <span className="avatar-options-loading">
-                <Loader size="xs" /> Loading options
-              </span>
-            ) : (
-              "Adventurer-neutral"
-            )}
-          </Text>
-        </div>
+        <Button
+          type="button"
+          color="green"
+          variant="light"
+          leftSection={<FiShuffle />}
+          className="avatar-randomize-button"
+          onClick={randomizeAvatar}
+        >
+          Randomize
+        </Button>
       </div>
 
       <Stack gap="lg">
@@ -149,12 +161,18 @@ export default function AvatarEditor({ seed, value, onChange }: Props) {
           styleDefinition={styleDefinition}
           values={metadata.glassesVariant?.values ?? fallbackMetadata.glassesVariant.values ?? []}
           selected={avatarOptions.glassesVariant}
-          onSelect={(glassesVariant) => update({ glassesVariant, glassesProbability: 100 })}
-          extraAction={
-            <Button size="xs" variant="subtle" color="gray" onClick={() => update({ glassesProbability: 0 })}>
-              None
-            </Button>
+          isSelected={(glassesVariant) =>
+            avatarOptions.glassesProbability > 0 && avatarOptions.glassesVariant === glassesVariant
           }
+          onSelect={(glassesVariant) => update({ glassesVariant, glassesProbability: 100 })}
+          leadingOptions={[
+            {
+              key: "none",
+              label: "None",
+              selected: avatarOptions.glassesProbability === 0,
+              onSelect: () => update({ glassesProbability: 0 }),
+            },
+          ]}
         />
         <VariantPicker
           label="Mouth"
@@ -173,13 +191,39 @@ export default function AvatarEditor({ seed, value, onChange }: Props) {
               <Tooltip key={color} label={`#${color}`}>
                 <button
                   type="button"
-                  className={`avatar-color-swatch ${avatarOptions.backgroundColor === color ? "avatar-color-swatch-active" : ""}`}
+                  className={`avatar-color-swatch ${activeSkinColor === color ? "avatar-color-swatch-active" : ""}`}
                   style={{ backgroundColor: `#${color}` }}
                   aria-label={`Use skin color ${color}`}
                   onClick={() => update({ backgroundColor: color })}
                 />
               </Tooltip>
             ))}
+            <Popover position="bottom-start" withArrow shadow="lg">
+              <Popover.Target>
+                <button
+                  type="button"
+                  className={`avatar-color-swatch avatar-color-swatch-custom ${
+                    isCustomSkinColor ? "avatar-color-swatch-active" : ""
+                  }`}
+                  style={{ backgroundColor: customSkinColor }}
+                  aria-label="Choose custom skin color"
+                >
+                  <FiEdit3 />
+                </button>
+              </Popover.Target>
+              <Popover.Dropdown className="avatar-color-popover">
+                <label className="avatar-native-color-picker">
+                  <span>Custom color</span>
+                  <input
+                    type="color"
+                    value={customSkinColor}
+                    aria-label="Custom skin color"
+                    onChange={(event) => update({ backgroundColor: normalizeSkinColor(event.currentTarget.value) })}
+                  />
+                  <span>{customSkinColor}</span>
+                </label>
+              </Popover.Dropdown>
+            </Popover>
           </Group>
         </div>
         <div>
@@ -219,11 +263,28 @@ type VariantPickerProps = {
   styleDefinition: DiceBearStyleDefinition | null;
   values: string[];
   selected: string;
+  isSelected?: (value: string) => boolean;
   onSelect: (value: string) => void;
-  extraAction?: ReactNode;
+  leadingOptions?: VariantPickerLeadingOption[];
 };
 
-function VariantPicker({ label, feature, styleDefinition, values, selected, onSelect, extraAction }: VariantPickerProps) {
+type VariantPickerLeadingOption = {
+  key: string;
+  label: string;
+  selected: boolean;
+  onSelect: () => void;
+};
+
+function VariantPicker({
+  label,
+  feature,
+  styleDefinition,
+  values,
+  selected,
+  isSelected,
+  onSelect,
+  leadingOptions = [],
+}: VariantPickerProps) {
   const thumbnailUrls = useMemo(
     () => new Map(values.map((value) => [value, buildVariantThumbnailUrl(styleDefinition, feature, value)])),
     [feature, styleDefinition, values],
@@ -233,18 +294,34 @@ function VariantPicker({ label, feature, styleDefinition, values, selected, onSe
     <div>
       <Group justify="space-between" mb="xs">
         <Text fw={800}>{label}</Text>
-        {extraAction}
       </Group>
       <SimpleGrid cols={{ base: 5, sm: 8, md: 10 }} spacing="xs">
+        {leadingOptions.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            className={`avatar-variant-button ${option.selected ? "avatar-variant-button-active" : ""}`}
+            aria-pressed={option.selected}
+            aria-label={`${label} ${option.label}`}
+            title={`${label} ${option.label}`}
+            onClick={option.onSelect}
+          >
+            <span className="avatar-variant-thumbnail-frame avatar-variant-empty-frame">
+              <span className="avatar-variant-fallback">{option.label}</span>
+            </span>
+          </button>
+        ))}
         {values.map((value) => {
           const thumbnailUrl = thumbnailUrls.get(value);
           const labelText = `${label} ${value.replace("variant", "")}`;
+          const valueSelected = isSelected ? isSelected(value) : selected === value;
 
           return (
             <button
               key={value}
               type="button"
-              className={`avatar-variant-button ${selected === value ? "avatar-variant-button-active" : ""}`}
+              className={`avatar-variant-button ${valueSelected ? "avatar-variant-button-active" : ""}`}
+              aria-pressed={valueSelected}
               aria-label={labelText}
               title={labelText}
               onClick={() => onSelect(value)}
@@ -375,4 +452,19 @@ function writeSessionCache(key: string, value: unknown) {
 
 function variants(count: number) {
   return Array.from({ length: count }, (_item, index) => `variant${String(index + 1).padStart(2, "0")}`);
+}
+
+function randomOption<T>(values: T[] | undefined, fallbackValues: T[] | undefined) {
+  const options = values?.length ? values : fallbackValues ?? [];
+  return options[Math.floor(Math.random() * options.length)];
+}
+
+function randomSteppedNumber(min: number, max: number, step: number) {
+  const steps = Math.round((max - min) / step);
+  return Number((min + Math.floor(Math.random() * (steps + 1)) * step).toFixed(2));
+}
+
+function normalizeSkinColor(color: string) {
+  const normalized = color.replace("#", "").trim().toLowerCase();
+  return /^[0-9a-f]{6}$/.test(normalized) ? normalized : defaultAvatarOptions.backgroundColor;
 }
