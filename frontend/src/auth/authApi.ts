@@ -48,6 +48,27 @@ export async function fetchOwnProfile(userId: string): Promise<UserProfile | nul
   return data ? normalizeProfile(data as Partial<UserProfile>) : null;
 }
 
+export async function isUsernameAvailable(displayUsername: string, userId: string): Promise<boolean> {
+  if (!supabase) {
+    throw new Error("Supabase is not configured for this React build.");
+  }
+
+  const username = displayUsername.trim().toLowerCase();
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("user_id")
+    .eq("username", username)
+    .neq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return !data;
+}
+
 export async function saveProfile(input: ProfileInput): Promise<UserProfile> {
   if (!supabase) {
     throw new Error("Supabase is not configured for this React build.");
@@ -72,6 +93,9 @@ export async function saveProfile(input: ProfileInput): Promise<UserProfile> {
     .single();
 
   if (error) {
+    if ("code" in error && error.code === "23505") {
+      throw new Error("That username is already taken.");
+    }
     throw error;
   }
 
