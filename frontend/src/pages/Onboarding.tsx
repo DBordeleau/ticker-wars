@@ -1,0 +1,152 @@
+import { Alert, Button, Card, Group, Stack, Switch, Text, TextInput, Title } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { useEffect, useMemo, useState } from "react";
+import { FiAlertTriangle, FiCheck } from "react-icons/fi";
+import { useLocation, useNavigate } from "react-router-dom";
+import { avatarSeedFromUsername, defaultAvatarOptions, normalizeAvatarOptions } from "../auth/avatar";
+import { saveProfile } from "../auth/authApi";
+import { useAuth } from "../auth/AuthProvider";
+import type { AvatarOptions } from "../auth/types";
+import AvatarEditor from "../components/users/AvatarEditor";
+import SignInModal from "../components/users/SignInModal";
+
+export default function Onboarding() {
+  const { user, profile, loading, profileLoading, setProfile } = useAuth();
+  const [signInOpen, setSignInOpen] = useState(false);
+  const [displayUsername, setDisplayUsername] = useState(profile?.display_username ?? "");
+  const [isPublic, setIsPublic] = useState(profile?.is_public ?? true);
+  const [avatarOptions, setAvatarOptions] = useState<AvatarOptions>(
+    normalizeAvatarOptions(profile?.avatar_options ?? defaultAvatarOptions),
+  );
+  const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const avatarSeed = useMemo(
+    () => profile?.avatar_seed ?? avatarSeedFromUsername(displayUsername || user?.id || "ticker-wars"),
+    [displayUsername, profile?.avatar_seed, user?.id],
+  );
+
+  useEffect(() => {
+    if (profile) {
+      setDisplayUsername(profile.display_username);
+      setIsPublic(profile.is_public);
+      setAvatarOptions(normalizeAvatarOptions(profile.avatar_options));
+    }
+  }, [profile]);
+
+  const usernameError = getUsernameError(displayUsername);
+  const canSave = Boolean(user && !usernameError);
+
+  const handleSubmit = async () => {
+    if (!user || usernameError) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const nextProfile = await saveProfile({
+        userId: user.id,
+        displayUsername,
+        isPublic,
+        avatarSeed,
+        avatarOptions,
+      });
+      setProfile(nextProfile);
+      notifications.show({
+        color: "green",
+        icon: <FiCheck />,
+        title: "Profile saved",
+        message: "Your human contender profile is ready.",
+      });
+      const nextPath = (location.state as { from?: string } | null)?.from ?? "/";
+      navigate(nextPath === "/onboarding" ? "/" : nextPath, { replace: true });
+    } catch (caught) {
+      notifications.show({
+        color: "red",
+        icon: <FiAlertTriangle />,
+        title: "Profile could not be saved",
+        message: caught instanceof Error ? caught.message : "Try again in a moment.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading || profileLoading) {
+    return (
+      <main className="dashboard-shell detail-page">
+        <Card className="model-hero">
+          <Text fw={800}>Loading profile</Text>
+        </Card>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="dashboard-shell detail-page">
+        <Card className="model-hero onboarding-card">
+          <Stack gap="md">
+            <Title order={1}>Create your contender</Title>
+            <Text className="model-description">Sign in with a social account to start your profile.</Text>
+            <Group>
+              <Button color="green" onClick={() => setSignInOpen(true)}>
+                Sign in
+              </Button>
+            </Group>
+          </Stack>
+        </Card>
+        <SignInModal opened={signInOpen} onClose={() => setSignInOpen(false)} />
+      </main>
+    );
+  }
+
+  return (
+    <main className="dashboard-shell detail-page">
+      <Card className="model-hero onboarding-card">
+        <Stack gap="lg">
+          <div>
+            <Text className="eyebrow">Human contender setup</Text>
+            <Title order={1}>Create your profile</Title>
+          </div>
+          <TextInput
+            label="Username"
+            value={displayUsername}
+            error={usernameError}
+            maxLength={24}
+            onChange={(event) => setDisplayUsername(event.currentTarget.value)}
+          />
+          <Switch
+            checked={isPublic}
+            onChange={(event) => setIsPublic(event.currentTarget.checked)}
+            label="Public profile and leaderboard placement"
+            color="green"
+          />
+          {!isPublic ? (
+            <Alert color="yellow" icon={<FiAlertTriangle />}>
+              Private profiles stay out of leaderboards and latest user predictions.
+            </Alert>
+          ) : null}
+          <AvatarEditor seed={avatarSeed} value={avatarOptions} onChange={setAvatarOptions} />
+          <Group justify="flex-end">
+            <Button color="green" disabled={!canSave} loading={saving} onClick={() => void handleSubmit()}>
+              Save profile
+            </Button>
+          </Group>
+        </Stack>
+      </Card>
+    </main>
+  );
+}
+
+function getUsernameError(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "Choose a username.";
+  }
+  if (!/^[A-Za-z0-9_-]{3,24}$/.test(trimmed)) {
+    return "Use 3-24 letters, numbers, underscores, or hyphens.";
+  }
+  return null;
+}
+
