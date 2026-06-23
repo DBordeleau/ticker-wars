@@ -254,6 +254,128 @@ class SupabaseDatabase:
 
             start += batch_size
 
+    def fetch_user_profiles(self, batch_size: int = 1000) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+
+        while True:
+            end = start + batch_size - 1
+            response = (
+                self._client.table("user_profiles")
+                .select("*")
+                .order("display_username")
+                .range(start, end)
+                .execute()
+            )
+            batch = response.data or []
+            rows.extend(batch)
+
+            if len(batch) < batch_size:
+                return rows
+
+            start += batch_size
+
+    def fetch_user_predictions(
+        self,
+        status: str | None = None,
+        batch_size: int = 1000,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+
+        while True:
+            end = start + batch_size - 1
+            query = (
+                self._client.table("user_predictions")
+                .select("*")
+                .order("ticker")
+                .order("target_date")
+            )
+            if status is not None:
+                query = query.eq("status", status)
+
+            response = query.range(start, end).execute()
+            batch = response.data or []
+            rows.extend(batch)
+
+            if len(batch) < batch_size:
+                return rows
+
+            start += batch_size
+
+    def upsert_user_prediction_scores(
+        self,
+        rows: list[dict[str, Any]],
+        batch_size: int = 500,
+    ) -> int:
+        if not rows:
+            return 0
+
+        table_columns = {
+            "prediction_id",
+            "user_id",
+            "ticker",
+            "prediction_date",
+            "target_date",
+            "prediction_horizon",
+            "actual_close",
+            "actual_return",
+            "absolute_error",
+            "squared_error",
+            "absolute_pct_error",
+            "predicted_direction",
+            "actual_direction",
+            "direction_correct",
+            "scored_at",
+        }
+        written = 0
+        for batch in _chunks(rows, batch_size):
+            cleaned_batch = [
+                {key: value for key, value in row.items() if key in table_columns}
+                for row in batch
+            ]
+            self._client.table("user_prediction_scores").upsert(
+                cleaned_batch,
+                on_conflict="prediction_id",
+            ).execute()
+            written += len(cleaned_batch)
+
+        return written
+
+    def fetch_user_prediction_scores(
+        self,
+        batch_size: int = 1000,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+
+        while True:
+            end = start + batch_size - 1
+            response = (
+                self._client.table("user_prediction_scores")
+                .select("*")
+                .order("scored_at")
+                .range(start, end)
+                .execute()
+            )
+            batch = response.data or []
+            rows.extend(batch)
+
+            if len(batch) < batch_size:
+                return rows
+
+            start += batch_size
+
+    def mark_user_predictions_scored(self, prediction_ids: list[str]) -> int:
+        if not prediction_ids:
+            return 0
+
+        self._client.table("user_predictions").update({"status": "scored"}).in_(
+            "prediction_id",
+            prediction_ids,
+        ).execute()
+        return len(prediction_ids)
+
     def replace_dashboard_table(
         self,
         table_name: str,

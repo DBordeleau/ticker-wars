@@ -19,7 +19,10 @@ from pipeline.dashboard.snapshot_export import export_dashboard_snapshots
 from pipeline.dates import parse_date
 from pipeline.db import SupabaseDatabase
 from pipeline.evaluation.metrics import calculate_model_metrics
-from pipeline.evaluation.scoring import score_matured_predictions
+from pipeline.evaluation.scoring import (
+    score_matured_predictions,
+    score_matured_user_predictions,
+)
 from pipeline.features.build_features import build_feature_rows
 from pipeline.ingestion.fundamentals import fetch_fundamentals
 from pipeline.ingestion.market_data import fetch_daily_prices
@@ -313,18 +316,25 @@ def run_score() -> int:
         return 0
 
     prediction_rows = database.fetch_predictions()
+    user_prediction_rows = database.fetch_user_predictions(status="pending")
     price_rows = database.fetch_prices()
-    if not prediction_rows or not price_rows:
-        LOGGER.warning("Prediction scoring skipped because predictions or prices are missing.")
+    if not price_rows:
+        LOGGER.warning("Prediction scoring skipped because prices are missing.")
         return 0
 
     score_rows = score_matured_predictions(prediction_rows, price_rows)
     written = database.upsert_prediction_scores(score_rows)
     metrics = calculate_model_metrics(score_rows)
+    user_score_rows = score_matured_user_predictions(user_prediction_rows, price_rows)
+    user_written = database.upsert_user_prediction_scores(user_score_rows)
+    database.mark_user_predictions_scored(
+        [str(row["prediction_id"]) for row in user_score_rows],
+    )
 
     LOGGER.info("Prediction scoring wrote %s scored predictions.", written)
+    LOGGER.info("User prediction scoring wrote %s scored predictions.", user_written)
     latest_scored_target_date = max(
-        (str(row["target_date"]) for row in score_rows),
+        (str(row["target_date"]) for row in score_rows + user_score_rows),
         default=None,
     )
     if latest_scored_target_date is not None:
@@ -407,6 +417,9 @@ def build_dashboard_tables_from_database(
         prediction_rows=database.fetch_predictions(),
         score_rows=database.fetch_prediction_scores(),
         price_rows=database.fetch_prices(),
+        user_prediction_rows=database.fetch_user_predictions(),
+        user_score_rows=database.fetch_user_prediction_scores(),
+        user_profile_rows=database.fetch_user_profiles(),
         settings=settings,
     )
 
