@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { fallbackDashboardData } from "./fallbackDashboardData";
+import type { AvatarOptions } from "../auth/types";
 
 export type LeaderboardRow = {
   generated_at?: string;
@@ -20,6 +21,23 @@ export type LeaderboardRow = {
   model_type?: string;
 };
 
+export type UserLeaderboardRow = {
+  generated_at?: string;
+  window: "7d" | "30d" | "90d" | "all";
+  evaluation_window?: "7d" | "30d" | "90d" | "all";
+  prediction_horizon: MetricHorizon;
+  user_id: string;
+  username: string;
+  avatar_style: "adventurer-neutral";
+  avatar_seed: string;
+  avatar_options: AvatarOptions;
+  mae: number | null;
+  directional_accuracy: number | null;
+  prediction_count: number;
+  scored_count?: number;
+  rank: number | null;
+};
+
 export type LatestPrediction = {
   generated_at?: string;
   prediction_id: string;
@@ -38,6 +56,23 @@ export type LatestPrediction = {
   winkler_score?: number | null;
   reasoning_summary?: string | null;
   model_metadata?: Record<string, unknown> | null;
+};
+
+export type LatestUserPrediction = {
+  generated_at?: string;
+  prediction_id: string;
+  user_id: string;
+  username: string;
+  avatar_style: "adventurer-neutral";
+  avatar_seed: string;
+  avatar_options: AvatarOptions;
+  prediction_date: string;
+  target_date: string;
+  prediction_horizon: MetricHorizon;
+  ticker: string;
+  reference_close: number;
+  predicted_return: number;
+  predicted_close: number;
 };
 
 export type TickerHistoryRow = {
@@ -93,8 +128,10 @@ export type MetricHorizon = "1w" | "1m" | "3m" | "1y" | "all";
 
 export type DashboardData = {
   leaderboard: LeaderboardRow[];
+  userLeaderboard: UserLeaderboardRow[];
   modelMetrics: ModelMetricRow[];
   latestPredictions: LatestPrediction[];
+  latestUserPredictions: LatestUserPrediction[];
   tickerHistory: TickerHistoryRow[];
   metadata: RunMetadata | null;
   hasSupabaseConfig: boolean;
@@ -138,6 +175,44 @@ export async function fetchLatestPredictions(): Promise<LatestPrediction[]> {
   }
 
   return (data ?? []).map(normalizeLatestPredictionRow).filter(isVisibleModelRow);
+}
+
+export async function fetchUserLeaderboard(): Promise<UserLeaderboardRow[]> {
+  if (!supabase) {
+    return fallbackDashboardData.userLeaderboard;
+  }
+
+  const { data, error } = await supabase
+    .from("dashboard_user_leaderboard")
+    .select("*")
+    .order("evaluation_window")
+    .order("prediction_horizon")
+    .order("rank", { nullsFirst: false })
+    .order("username");
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(normalizeUserLeaderboardRow);
+}
+
+export async function fetchLatestUserPredictions(): Promise<LatestUserPrediction[]> {
+  if (!supabase) {
+    return fallbackDashboardData.latestUserPredictions;
+  }
+
+  const { data, error } = await supabase
+    .from("dashboard_latest_user_predictions")
+    .select("*")
+    .order("ticker")
+    .order("username");
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(normalizeLatestUserPredictionRow);
 }
 
 export async function fetchTickerHistory(ticker: string): Promise<TickerHistoryRow[]> {
@@ -198,17 +273,28 @@ export async function fetchRunMetadata(): Promise<RunMetadata | null> {
 }
 
 export async function fetchDashboardData(): Promise<DashboardData> {
-  const [leaderboard, modelMetrics, latestPredictions, metadata] = await Promise.all([
+  const [
+    leaderboard,
+    userLeaderboard,
+    modelMetrics,
+    latestPredictions,
+    latestUserPredictions,
+    metadata,
+  ] = await Promise.all([
     fetchLeaderboard(),
+    fetchUserLeaderboard(),
     fetchModelMetrics(),
     fetchLatestPredictions(),
+    fetchLatestUserPredictions(),
     fetchRunMetadata(),
   ]);
 
   return {
     leaderboard,
+    userLeaderboard,
     modelMetrics,
     latestPredictions,
+    latestUserPredictions,
     tickerHistory: supabase ? [] : fallbackDashboardData.tickerHistory,
     metadata,
     hasSupabaseConfig: isSupabaseConfigured,
@@ -229,6 +315,34 @@ function normalizeLeaderboardRow(row: Partial<LeaderboardRow>): LeaderboardRow {
   } as LeaderboardRow;
 }
 
+function normalizeUserLeaderboardRow(row: Partial<UserLeaderboardRow>): UserLeaderboardRow {
+  const window = row.window ?? row.evaluation_window ?? "all";
+  const predictionCount = row.prediction_count ?? row.scored_count ?? 0;
+  return {
+    ...row,
+    window,
+    prediction_horizon: row.prediction_horizon ?? "1w",
+    user_id: row.user_id ?? "",
+    username: row.username ?? "",
+    avatar_style: "adventurer-neutral",
+    avatar_seed: row.avatar_seed ?? row.user_id ?? row.username ?? "",
+    avatar_options: row.avatar_options ?? {
+      eyebrowsVariant: "variant01",
+      eyesVariant: "variant01",
+      glassesVariant: "variant01",
+      glassesProbability: 0,
+      mouthVariant: "variant01",
+      backgroundColor: "f2d3b1",
+      scale: 1,
+      rotate: 0,
+    },
+    mae: row.mae ?? null,
+    directional_accuracy: row.directional_accuracy ?? null,
+    prediction_count: predictionCount,
+    rank: row.rank ?? null,
+  };
+}
+
 function normalizeLatestPredictionRow(row: Partial<LatestPrediction>): LatestPrediction {
   return {
     ...row,
@@ -239,6 +353,36 @@ function normalizeLatestPredictionRow(row: Partial<LatestPrediction>): LatestPre
     ticker: row.ticker ?? "",
     model_name: row.model_name ?? "",
     model_slug: row.model_slug ?? fallbackModelSlug(row.model_name),
+    reference_close: row.reference_close ?? 0,
+    predicted_return: row.predicted_return ?? 0,
+    predicted_close: row.predicted_close ?? 0,
+  };
+}
+
+function normalizeLatestUserPredictionRow(
+  row: Partial<LatestUserPrediction>,
+): LatestUserPrediction {
+  return {
+    ...row,
+    prediction_id: row.prediction_id ?? "",
+    user_id: row.user_id ?? "",
+    username: row.username ?? "",
+    avatar_style: "adventurer-neutral",
+    avatar_seed: row.avatar_seed ?? row.user_id ?? row.username ?? "",
+    avatar_options: row.avatar_options ?? {
+      eyebrowsVariant: "variant01",
+      eyesVariant: "variant01",
+      glassesVariant: "variant01",
+      glassesProbability: 0,
+      mouthVariant: "variant01",
+      backgroundColor: "f2d3b1",
+      scale: 1,
+      rotate: 0,
+    },
+    prediction_date: row.prediction_date ?? "",
+    target_date: row.target_date ?? "",
+    prediction_horizon: row.prediction_horizon ?? "1w",
+    ticker: row.ticker ?? "",
     reference_close: row.reference_close ?? 0,
     predicted_return: row.predicted_return ?? 0,
     predicted_close: row.predicted_close ?? 0,

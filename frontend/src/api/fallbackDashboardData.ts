@@ -1,4 +1,12 @@
-import type { DashboardData, LatestPrediction, LeaderboardRow, ModelMetricRow, TickerHistoryRow } from "./dashboardData";
+import type {
+  DashboardData,
+  LatestPrediction,
+  LatestUserPrediction,
+  LeaderboardRow,
+  ModelMetricRow,
+  TickerHistoryRow,
+  UserLeaderboardRow,
+} from "./dashboardData";
 
 const generatedAt = "2026-06-22T12:00:00.000Z";
 
@@ -136,6 +144,119 @@ const latestPredictions: LatestPrediction[] = [
   },
 ];
 
+const userLeaderboard: UserLeaderboardRow[] = [
+  {
+    generated_at: generatedAt,
+    window: "all",
+    evaluation_window: "all",
+    prediction_horizon: "all",
+    user_id: "fallback-user-1",
+    username: "AdaAlpha",
+    avatar_style: "adventurer-neutral",
+    avatar_seed: "ada-alpha",
+    avatar_options: {
+      eyebrowsVariant: "variant04",
+      eyesVariant: "variant10",
+      glassesVariant: "variant02",
+      glassesProbability: 100,
+      mouthVariant: "variant12",
+      backgroundColor: "f2d3b1",
+      scale: 1.1,
+      rotate: 0,
+    },
+    mae: 4.82,
+    directional_accuracy: 0.64,
+    prediction_count: 14,
+    scored_count: 14,
+    rank: 1,
+  },
+  {
+    generated_at: generatedAt,
+    window: "all",
+    evaluation_window: "all",
+    prediction_horizon: "all",
+    user_id: "fallback-user-2",
+    username: "GraceGain",
+    avatar_style: "adventurer-neutral",
+    avatar_seed: "grace-gain",
+    avatar_options: {
+      eyebrowsVariant: "variant09",
+      eyesVariant: "variant03",
+      glassesVariant: "variant01",
+      glassesProbability: 0,
+      mouthVariant: "variant20",
+      backgroundColor: "ecad80",
+      scale: 1,
+      rotate: -2,
+    },
+    mae: 5.35,
+    directional_accuracy: 0.57,
+    prediction_count: 12,
+    scored_count: 12,
+    rank: 2,
+  },
+  {
+    generated_at: generatedAt,
+    window: "all",
+    evaluation_window: "all",
+    prediction_horizon: "1w",
+    user_id: "fallback-user-1",
+    username: "AdaAlpha",
+    avatar_style: "adventurer-neutral",
+    avatar_seed: "ada-alpha",
+    avatar_options: {
+      eyebrowsVariant: "variant04",
+      eyesVariant: "variant10",
+      glassesVariant: "variant02",
+      glassesProbability: 100,
+      mouthVariant: "variant12",
+      backgroundColor: "f2d3b1",
+      scale: 1.1,
+      rotate: 0,
+    },
+    mae: 2.11,
+    directional_accuracy: 0.71,
+    prediction_count: 7,
+    scored_count: 7,
+    rank: 1,
+  },
+];
+
+const latestUserPredictions: LatestUserPrediction[] = [
+  {
+    generated_at: generatedAt,
+    prediction_id: "fallback-user-prediction-aapl",
+    user_id: "fallback-user-1",
+    username: "AdaAlpha",
+    avatar_style: "adventurer-neutral",
+    avatar_seed: "ada-alpha",
+    avatar_options: userLeaderboard[0].avatar_options,
+    prediction_date: "2026-06-22",
+    target_date: "2026-06-29",
+    prediction_horizon: "1w",
+    ticker: "AAPL",
+    reference_close: 198.42,
+    predicted_return: 0.023,
+    predicted_close: 202.98,
+  },
+  {
+    generated_at: generatedAt,
+    prediction_id: "fallback-user-prediction-nvda",
+    user_id: "fallback-user-2",
+    username: "GraceGain",
+    avatar_style: "adventurer-neutral",
+    avatar_seed: "grace-gain",
+    avatar_options: userLeaderboard[1].avatar_options,
+    prediction_date: "2026-06-22",
+    target_date: "2026-07-22",
+    prediction_horizon: "1m",
+    ticker: "NVDA",
+    reference_close: 144.31,
+    predicted_return: 0.034,
+    predicted_close: 149.22,
+  },
+];
+
 const tickerHistory: TickerHistoryRow[] = [
   {
     generated_at: generatedAt,
@@ -177,8 +298,10 @@ const modelMetrics: ModelMetricRow[] = leaderboard
 
 export const fallbackDashboardData: DashboardData = {
   leaderboard,
+  userLeaderboard,
   modelMetrics,
   latestPredictions,
+  latestUserPredictions,
   tickerHistory,
   metadata: {
     generated_at: generatedAt,
