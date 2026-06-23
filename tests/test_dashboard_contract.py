@@ -124,6 +124,65 @@ class DashboardContractTest(unittest.TestCase):
         self.assertEqual(history[0]["actual_close"], 101.0)
         self.assertIsNone(history[1]["actual_close"])
 
+    def test_user_dashboard_tables_exclude_private_users(self) -> None:
+        public_user_id = "11111111-1111-1111-1111-111111111111"
+        private_user_id = "22222222-2222-2222-2222-222222222222"
+        tables = build_dashboard_tables(
+            prediction_rows=[],
+            score_rows=[],
+            price_rows=[],
+            settings=Settings(),
+            user_prediction_rows=[
+                _user_prediction(public_user_id, "AAPL", predicted_close=101.0),
+                _user_prediction(private_user_id, "MSFT", predicted_close=199.0),
+            ],
+            user_score_rows=[
+                _user_score(public_user_id, absolute_error=1.0),
+                _user_score(private_user_id, absolute_error=0.5),
+            ],
+            user_profile_rows=[
+                _user_profile(public_user_id, "PublicTrader", is_public=True),
+                _user_profile(private_user_id, "PrivateTrader", is_public=False),
+            ],
+        )
+
+        leaderboard = tables["dashboard_user_leaderboard"]
+        latest_predictions = tables["dashboard_latest_user_predictions"]
+
+        self.assertTrue(leaderboard)
+        self.assertEqual({row["username"] for row in leaderboard}, {"PublicTrader"})
+        self.assertEqual(len(latest_predictions), 1)
+        self.assertEqual(latest_predictions[0]["username"], "PublicTrader")
+        self.assertEqual(latest_predictions[0]["avatar_style"], "adventurer-neutral")
+
+    def test_user_leaderboard_ranks_public_users_by_mae(self) -> None:
+        ada_id = "11111111-1111-1111-1111-111111111111"
+        grace_id = "22222222-2222-2222-2222-222222222222"
+        tables = build_dashboard_tables(
+            prediction_rows=[],
+            score_rows=[],
+            price_rows=[],
+            settings=Settings(),
+            user_prediction_rows=[],
+            user_score_rows=[
+                _user_score(ada_id, absolute_error=2.0),
+                _user_score(grace_id, absolute_error=1.0),
+            ],
+            user_profile_rows=[
+                _user_profile(ada_id, "Ada", is_public=True),
+                _user_profile(grace_id, "Grace", is_public=True),
+            ],
+        )
+
+        leaderboard = [
+            row
+            for row in tables["dashboard_user_leaderboard"]
+            if row["evaluation_window"] == "all" and row["prediction_horizon"] == "1w"
+        ]
+
+        self.assertEqual([row["username"] for row in leaderboard], ["Grace", "Ada"])
+        self.assertEqual([row["rank"] for row in leaderboard], [1, 2])
+
 
 def _prediction(
     ticker: str,
@@ -175,6 +234,53 @@ def _price(ticker: str, date: str, close: float) -> dict:
         "ticker": ticker,
         "date": date,
         "close": close,
+    }
+
+
+def _user_profile(user_id: str, username: str, *, is_public: bool) -> dict:
+    return {
+        "user_id": user_id,
+        "username": username.lower(),
+        "display_username": username,
+        "is_public": is_public,
+        "avatar_style": "adventurer-neutral",
+        "avatar_seed": f"{username}-seed",
+        "avatar_options": {"backgroundColor": "f2d3b1"},
+    }
+
+
+def _user_prediction(user_id: str, ticker: str, *, predicted_close: float) -> dict:
+    return {
+        "prediction_id": f"00000000-0000-0000-0000-{ticker.lower().ljust(12, '0')[:12]}",
+        "user_id": user_id,
+        "ticker": ticker,
+        "prediction_date": "2026-01-01",
+        "target_date": "2026-01-08",
+        "prediction_horizon": "1w",
+        "reference_close": 100.0,
+        "predicted_close": predicted_close,
+        "predicted_return": predicted_close / 100.0 - 1,
+        "status": "pending",
+    }
+
+
+def _user_score(user_id: str, *, absolute_error: float) -> dict:
+    return {
+        "prediction_id": f"{user_id}:score",
+        "user_id": user_id,
+        "ticker": "AAPL",
+        "prediction_date": "2026-01-01",
+        "target_date": "2026-01-08",
+        "prediction_horizon": "1w",
+        "actual_close": 101.0,
+        "actual_return": 0.01,
+        "absolute_error": absolute_error,
+        "squared_error": absolute_error**2,
+        "absolute_pct_error": absolute_error / 101.0,
+        "predicted_direction": 1,
+        "actual_direction": 1,
+        "direction_correct": 1,
+        "scored_at": "2026-01-08T12:00:00+00:00",
     }
 
 

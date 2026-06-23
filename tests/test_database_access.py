@@ -46,8 +46,20 @@ class FakeTable:
         self.operation.update(action="select", columns=columns)
         return self
 
+    def update(self, values: dict[str, Any]) -> FakeTable:
+        self.operation.update(action="update", values=values)
+        return self
+
     def order(self, column: str, desc: bool = False) -> FakeTable:
         self.operation.setdefault("order", []).append((column, desc))
+        return self
+
+    def eq(self, column: str, value: Any) -> FakeTable:
+        self.operation.setdefault("filters", []).append(("eq", column, value))
+        return self
+
+    def in_(self, column: str, values: list[Any]) -> FakeTable:
+        self.operation.setdefault("filters", []).append(("in", column, values))
         return self
 
     def range(self, start: int, end: int) -> FakeTable:
@@ -163,6 +175,61 @@ class DatabaseAccessTest(unittest.TestCase):
             ],
         )
         self.assertEqual(client.operations[0]["table"], "fundamentals")
+
+    def test_user_prediction_score_upsert_writes_only_known_score_columns(self) -> None:
+        database, client = _database_with_fake_client()
+        rows = [
+            {
+                "prediction_id": "11111111-1111-1111-1111-111111111111",
+                "user_id": "22222222-2222-2222-2222-222222222222",
+                "ticker": "AAPL",
+                "prediction_date": "2026-01-01",
+                "target_date": "2026-01-08",
+                "prediction_horizon": "1w",
+                "actual_close": 101.0,
+                "actual_return": 0.01,
+                "absolute_error": 1.0,
+                "squared_error": 1.0,
+                "absolute_pct_error": 0.0099,
+                "predicted_direction": 1,
+                "actual_direction": 1,
+                "direction_correct": 1,
+                "scored_at": "2026-01-08T12:00:00+00:00",
+                "transient_pipeline_field": "do not persist",
+            }
+        ]
+
+        written = database.upsert_user_prediction_scores(rows)
+
+        self.assertEqual(written, 1)
+        self.assertEqual(client.operations[0]["table"], "user_prediction_scores")
+        self.assertEqual(client.operations[0]["action"], "upsert")
+        self.assertEqual(client.operations[0]["on_conflict"], "prediction_id")
+        self.assertNotIn("transient_pipeline_field", client.operations[0]["rows"][0])
+
+    def test_fetch_user_predictions_can_filter_by_status(self) -> None:
+        database, client = _database_with_fake_client()
+        client.data["user_predictions"] = [{"prediction_id": "prediction-1"}]
+
+        rows = database.fetch_user_predictions(status="pending")
+
+        self.assertEqual(rows, [{"prediction_id": "prediction-1"}])
+        self.assertEqual(client.operations[0]["table"], "user_predictions")
+        self.assertIn(("eq", "status", "pending"), client.operations[0]["filters"])
+
+    def test_mark_user_predictions_scored_updates_matching_ids(self) -> None:
+        database, client = _database_with_fake_client()
+
+        written = database.mark_user_predictions_scored(["prediction-1", "prediction-2"])
+
+        self.assertEqual(written, 2)
+        self.assertEqual(client.operations[0]["table"], "user_predictions")
+        self.assertEqual(client.operations[0]["action"], "update")
+        self.assertEqual(client.operations[0]["values"], {"status": "scored"})
+        self.assertIn(
+            ("in", "prediction_id", ["prediction-1", "prediction-2"]),
+            client.operations[0]["filters"],
+        )
 
 
 def _database_with_fake_client() -> tuple[SupabaseDatabase, FakeSupabaseClient]:
