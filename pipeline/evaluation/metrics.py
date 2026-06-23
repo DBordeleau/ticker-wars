@@ -41,6 +41,22 @@ def calculate_model_metrics(score_rows: list[dict[str, Any]]) -> list[dict[str, 
     return metrics
 
 
+def calculate_user_metrics(score_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    metrics: list[dict[str, Any]] = []
+
+    for window in METRIC_WINDOWS:
+        window_rows = _filter_score_rows(score_rows, window)
+        user_groups = _group_by_horizon_and_user(window_rows)
+        window_metrics = [
+            _calculate_single_user_metrics(horizon, user_id, window, rows)
+            for (horizon, user_id), rows in user_groups.items()
+            if rows
+        ]
+        metrics.extend(_rank_user_window_metrics(window_metrics))
+
+    return metrics
+
+
 def _filter_score_rows(score_rows: list[dict[str, Any]], window: str) -> list[dict[str, Any]]:
     if not score_rows:
         return []
@@ -62,6 +78,17 @@ def _group_by_horizon_and_model(
         model_name = row["model_name"]
         grouped[(row.get("prediction_horizon", "1w"), model_name)].append(row)
         grouped[("all", model_name)].append(row)
+    return dict(grouped)
+
+
+def _group_by_horizon_and_user(
+    score_rows: list[dict[str, Any]],
+) -> dict[tuple[str, str], list[dict[str, Any]]]:
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in score_rows:
+        user_id = str(row["user_id"])
+        grouped[(row.get("prediction_horizon", "1w"), user_id)].append(row)
+        grouped[("all", user_id)].append(row)
     return dict(grouped)
 
 
@@ -89,6 +116,32 @@ def _calculate_single_model_metrics(
     }
 
 
+def _calculate_single_user_metrics(
+    horizon: str,
+    user_id: str,
+    window: str,
+    rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    absolute_errors = [float(row["absolute_error"]) for row in rows]
+    squared_errors = [float(row["squared_error"]) for row in rows]
+    absolute_pct_errors = [float(row["absolute_pct_error"]) for row in rows]
+    direction_correct = [int(row["direction_correct"]) for row in rows]
+    first_row = rows[0]
+
+    return {
+        "window": window,
+        "prediction_horizon": horizon,
+        "user_id": user_id,
+        "username": first_row.get("username", user_id),
+        "mae": sum(absolute_errors) / len(absolute_errors),
+        "rmse": math.sqrt(sum(squared_errors) / len(squared_errors)),
+        "mape": sum(absolute_pct_errors) / len(absolute_pct_errors),
+        "directional_accuracy": sum(direction_correct) / len(direction_correct),
+        "winkler_score": None,
+        "prediction_count": len(rows),
+    }
+
+
 def _rank_window_metrics(metrics: list[dict[str, Any]]) -> list[dict[str, Any]]:
     by_horizon: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in metrics:
@@ -97,6 +150,17 @@ def _rank_window_metrics(metrics: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ranked_metrics: list[dict[str, Any]] = []
     for horizon_metrics in by_horizon.values():
         ranked_metrics.extend(_rank_horizon_metrics(horizon_metrics))
+    return ranked_metrics
+
+
+def _rank_user_window_metrics(metrics: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_horizon: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in metrics:
+        by_horizon[row["prediction_horizon"]].append(row)
+
+    ranked_metrics: list[dict[str, Any]] = []
+    for horizon_metrics in by_horizon.values():
+        ranked_metrics.extend(_rank_user_horizon_metrics(horizon_metrics))
     return ranked_metrics
 
 
@@ -109,6 +173,22 @@ def _rank_horizon_metrics(metrics: list[dict[str, Any]]) -> list[dict[str, Any]]
             -row["directional_accuracy"],
             -row["prediction_count"],
             row["model_name"],
+        ),
+    )
+    for rank, row in enumerate(ranked, start=1):
+        row["rank"] = rank
+    return ranked
+
+
+def _rank_user_horizon_metrics(metrics: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    ranked = sorted(
+        metrics,
+        key=lambda row: (
+            row["mae"],
+            -row["directional_accuracy"],
+            -row["prediction_count"],
+            str(row["username"]).lower(),
+            str(row["user_id"]),
         ),
     )
     for rank, row in enumerate(ranked, start=1):

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import unittest
 
-from pipeline.evaluation.scoring import score_matured_predictions
+from pipeline.evaluation.scoring import (
+    score_matured_predictions,
+    score_matured_user_predictions,
+)
 from pipeline.forecasting.horizons import FORECAST_HORIZONS
 
 
@@ -89,6 +92,31 @@ class PredictionScoringTest(unittest.TestCase):
 
         self.assertEqual(len(scores), 4)
         self.assertEqual({score["prediction_horizon"] for score in scores}, set(FORECAST_HORIZONS))
+
+    def test_scores_matured_user_predictions(self) -> None:
+        prediction_rows = [
+            {
+                "prediction_id": "11111111-1111-1111-1111-111111111111",
+                "user_id": "22222222-2222-2222-2222-222222222222",
+                "ticker": "AAPL",
+                "prediction_date": "2026-01-01",
+                "target_date": "2026-01-02",
+                "prediction_horizon": "1w",
+                "predicted_return": 0.03,
+                "predicted_close": 103.0,
+                "reference_close": 100.0,
+            }
+        ]
+        price_rows = [{"ticker": "AAPL", "date": "2026-01-02", "close": 102.0}]
+
+        score = score_matured_user_predictions(prediction_rows, price_rows)[0]
+
+        self.assertEqual(score["prediction_id"], "11111111-1111-1111-1111-111111111111")
+        self.assertEqual(score["user_id"], "22222222-2222-2222-2222-222222222222")
+        self.assertAlmostEqual(score["actual_return"], 0.02)
+        self.assertEqual(score["absolute_error"], 1.0)
+        self.assertEqual(score["predicted_direction"], 1)
+        self.assertEqual(score["actual_direction"], 1)
 
 
 def _score_single(
