@@ -1195,6 +1195,32 @@ h2,
   font-size: clamp(0.78rem, 0.58vw, 0.9rem);
 }
 
+.user-prediction-popover {
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  background: rgba(8, 13, 11, 0.94);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.user-prediction-form {
+  min-width: 0;
+}
+
+.prediction-sentence {
+  display: grid;
+  grid-template-columns: auto minmax(118px, 1fr) minmax(160px, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.user-predictions-table .mantine-Table-th,
+.user-predictions-table .mantine-Table-td {
+  white-space: nowrap;
+}
+
 .model-metrics-table {
   width: 100%;
   min-width: 0;
@@ -1477,6 +1503,10 @@ h2,
 
   .avatar-preview-panel {
     position: static;
+  }
+
+  .prediction-sentence {
+    grid-template-columns: 1fr;
   }
 }
 
