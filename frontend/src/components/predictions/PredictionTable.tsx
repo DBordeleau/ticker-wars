@@ -13,6 +13,7 @@ import PredictionCardList from "./PredictionCardList";
 import PredictionFilters from "./PredictionFilters";
 import PredictionHorizonSelector from "./PredictionHorizonSelector";
 import PredictionValue from "./PredictionValue";
+import UserPredictionButton from "./UserPredictionButton";
 
 type SortKey = "ticker" | "model" | "horizon" | "close" | "target" | "prediction";
 
@@ -138,6 +139,7 @@ export default function PredictionTable({ rows, loading, collapsible = false }: 
                 >
                   Ticker
                 </SortableHeader>
+                <Table.Th>Predict</Table.Th>
                 <SortableHeader
                   active={sortKey === "model"}
                   direction={sortDirection}
@@ -191,6 +193,9 @@ export default function PredictionTable({ rows, loading, collapsible = false }: 
                     <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
                       {row.ticker}
                     </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <UserPredictionButton ticker={row.ticker} latestPredictions={rows} compact />
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs">

@@ -6,6 +6,7 @@ import {
   formatHorizon,
 } from "../../utils/format";
 import PredictionValue from "./PredictionValue";
+import UserPredictionButton from "./UserPredictionButton";
 
 type Props = {
   rows: LatestPrediction[];
@@ -46,6 +47,9 @@ export default function PredictionCardList({ rows }: Props) {
               Predicted on
             </Text>
             <Text size="sm">{formatDate(row.prediction_date)}</Text>
+          </Group>
+          <Group mt="sm" justify="flex-end">
+            <UserPredictionButton ticker={row.ticker} latestPredictions={rows} compact />
           </Group>
         </article>
       ))}
