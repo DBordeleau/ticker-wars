@@ -1,5 +1,5 @@
 import type { Provider } from "@supabase/supabase-js";
-import { supabase } from "../api/supabaseClient";
+import { siteUrl, supabase } from "../api/supabaseClient";
 import type { AuthProviderName, ProfileInput, UserProfile } from "./types";
 
 export async function signInWithProvider(provider: AuthProviderName) {
@@ -10,7 +10,7 @@ export async function signInWithProvider(provider: AuthProviderName) {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: provider as Provider,
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: `${siteUrl}/auth/callback`,
     },
   });
 
