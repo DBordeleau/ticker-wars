@@ -111,6 +111,7 @@ For local frontend Supabase reads, create `frontend/.env.local` with:
 ```text
 REACT_APP_SUPABASE_URL=...
 REACT_APP_SUPABASE_PUBLISHABLE_KEY=...
+REACT_APP_SITE_URL=https://tickerwars.vercel.app
 ```
 
 ## Pipeline Commands
