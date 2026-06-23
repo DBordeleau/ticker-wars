@@ -1,4 +1,4 @@
-import { Badge, Group, Progress, Skeleton, Table, Text } from "@mantine/core";
+import { Badge, Group, Progress, Skeleton, Table, Text, Tooltip } from "@mantine/core";
 import { motion } from "framer-motion";
 import { FiExternalLink } from "react-icons/fi";
 import { Link } from "react-router-dom";
@@ -26,6 +26,10 @@ export default function LeaderboardTable({
   const visibleRows = rows
     .filter((row) => row.window === window && row.prediction_horizon === horizon)
     .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+  const emptyMessage =
+    horizon === "1y"
+      ? "1Y rows need a full year to mature. Rankings will appear once those target closes arrive."
+      : "No scored predictions yet for this horizon. Leaderboard rows will appear after target closes arrive.";
 
   return (
     <SectionPanel
@@ -39,7 +43,7 @@ export default function LeaderboardTable({
         <Skeleton height={300} radius="sm" />
       ) : visibleRows.length === 0 ? (
         <Text c="dimmed" size="sm">
-          No scored predictions yet. Leaderboard rows will appear after target closes arrive.
+          {emptyMessage}
         </Text>
       ) : (
         <Table.ScrollContainer minWidth={780}>
@@ -48,10 +52,20 @@ export default function LeaderboardTable({
               <Table.Tr>
                 <Table.Th>Rank</Table.Th>
                 <Table.Th>Model</Table.Th>
-                <Table.Th>MAE</Table.Th>
-                <Table.Th>Directional</Table.Th>
-                <Table.Th>Winkler</Table.Th>
-                <Table.Th className="score-column">Scored</Table.Th>
+                <MetricHeader label="MAE" tooltip="Mean absolute error. Lower is better." />
+                <MetricHeader
+                  label="Directional"
+                  tooltip="How often the model correctly predicted whether price moved up or down."
+                />
+                <MetricHeader
+                  label="Winkler"
+                  tooltip="Interval score that rewards accurate, tighter prediction ranges. Lower is better."
+                />
+                <MetricHeader
+                  label="Scored"
+                  tooltip="Number of matured predictions included in this leaderboard row."
+                  className="score-column"
+                />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -119,5 +133,21 @@ export default function LeaderboardTable({
         </Table.ScrollContainer>
       )}
     </SectionPanel>
+  );
+}
+
+type MetricHeaderProps = {
+  label: string;
+  tooltip: string;
+  className?: string;
+};
+
+function MetricHeader({ label, tooltip, className }: MetricHeaderProps) {
+  return (
+    <Table.Th className={className}>
+      <Tooltip label={tooltip} openDelay={250}>
+        <span className="metric-header-tooltip">{label}</span>
+      </Tooltip>
+    </Table.Th>
   );
 }

@@ -21,19 +21,19 @@ export default function MetricStrip({ leaderboard, window, horizon, loading }: P
     .filter((row) => row.directional_accuracy != null)
     .sort((a, b) => (b.directional_accuracy ?? 0) - (a.directional_accuracy ?? 0))[0];
   const baseline = rows.find((row) => row.model_slug === "baseline");
-  const windowLabel = window.toUpperCase();
+  const horizonLabel = horizon === "all" ? "pooled horizons" : horizon.toUpperCase();
   const topModelDetail =
     bestByMae?.mae == null
-      ? "The top performing model is the model with the lowest mean absolute error during the selected time period."
-      : `Lowest mean absolute error during the selected time period: ${windowLabel} MAE ${formatMetric(bestByMae.mae)}.`;
+      ? "The top performing model is the model with the lowest mean absolute error for the selected horizon."
+      : `Lowest mean absolute error for ${horizonLabel}: ${formatMetric(bestByMae.mae)}.`;
   const directionalDetail =
     bestDirection?.directional_accuracy == null
-      ? "The directional leader is the model that most often predicted whether the next close moved up or down during the selected time period."
-      : `Highest price-direction hit rate during the selected time period: ${formatPercent(bestDirection.directional_accuracy)}.`;
+      ? "The directional leader is the model that most often predicted whether the target close moved up or down."
+      : `Highest price-direction hit rate for ${horizonLabel}: ${formatPercent(bestDirection.directional_accuracy)}.`;
   const baselineDetail =
     baseline?.rank == null
       ? "The baseline predicts no price change, giving every model a simple benchmark to beat."
-      : `The baseline predicts no price change and ranks #${baseline.rank} for the selected time period.`;
+      : `The baseline predicts no price change and ranks #${baseline.rank} for ${horizonLabel}.`;
 
   return (
     <section className="metric-strip" aria-label="Dashboard summary metrics">

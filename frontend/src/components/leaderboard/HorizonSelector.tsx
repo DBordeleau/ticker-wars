@@ -8,6 +8,11 @@ type Props = {
 
 const options: { label: string; value: MetricHorizon; description: string }[] = [
   {
+    label: "ALL",
+    value: "all",
+    description: "View the leaderboard with every prediction horizon pooled together.",
+  },
+  {
     label: "1W",
     value: "1w",
     description: "View the leaderboard for predictions made 1 week in advance.",
@@ -26,11 +31,6 @@ const options: { label: string; value: MetricHorizon; description: string }[] = 
     label: "1Y",
     value: "1y",
     description: "View the leaderboard for predictions made 1 year in advance.",
-  },
-  {
-    label: "ALL",
-    value: "all",
-    description: "View the leaderboard with every prediction horizon pooled together.",
   },
 ];
 
