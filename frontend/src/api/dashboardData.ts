@@ -1,14 +1,15 @@
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
+import { fallbackDashboardData } from "./fallbackDashboardData";
 
 export type LeaderboardRow = {
   generated_at?: string;
   window: "7d" | "30d" | "90d" | "all";
   evaluation_window?: "7d" | "30d" | "90d" | "all";
-  prediction_horizon?: MetricHorizon;
+  prediction_horizon: MetricHorizon;
   model_name: string;
   model_slug: string;
   mae: number | null;
-  rmse: number | null;
+  rmse?: number | null;
   mape?: number | null;
   directional_accuracy: number | null;
   prediction_count: number;
@@ -21,16 +22,20 @@ export type LeaderboardRow = {
 
 export type LatestPrediction = {
   generated_at?: string;
-  prediction_id?: string;
-  prediction_date?: string;
+  prediction_id: string;
+  prediction_date: string;
   target_date: string;
-  prediction_horizon?: string;
+  prediction_horizon: MetricHorizon;
   ticker: string;
   model_name: string;
   model_slug: string;
   reference_close: number;
   predicted_return: number;
   predicted_close: number;
+  predicted_close_lower?: number | null;
+  predicted_close_upper?: number | null;
+  interval_level?: number | null;
+  winkler_score?: number | null;
   reasoning_summary?: string | null;
   model_metadata?: Record<string, unknown> | null;
 };
@@ -39,16 +44,35 @@ export type TickerHistoryRow = {
   generated_at?: string;
   ticker: string;
   date: string;
-  prediction_date?: string;
-  target_date?: string;
-  prediction_horizon?: string;
+  prediction_id?: string;
+  prediction_date: string;
+  target_date: string;
+  prediction_horizon: MetricHorizon;
   actual_close: number | null;
   model_name: string;
   model_slug: string;
   predicted_close: number;
+  predicted_close_lower?: number | null;
+  predicted_close_upper?: number | null;
+  interval_level?: number | null;
   predicted_return: number;
   actual_return: number | null;
+  winkler_score?: number | null;
   reasoning_summary: string | null;
+};
+
+export type ModelMetricRow = {
+  generated_at?: string;
+  window: MetricWindow;
+  evaluation_window?: MetricWindow;
+  prediction_horizon: MetricHorizon;
+  model_name: string;
+  model_slug: string;
+  mae: number | null;
+  directional_accuracy: number | null;
+  winkler_score?: number | null;
+  prediction_count: number;
+  scored_count?: number;
 };
 
 export type RunMetadata = {
@@ -69,6 +93,7 @@ export type MetricHorizon = "1w" | "1m" | "3m" | "1y" | "all";
 
 export type DashboardData = {
   leaderboard: LeaderboardRow[];
+  modelMetrics: ModelMetricRow[];
   latestPredictions: LatestPrediction[];
   tickerHistory: TickerHistoryRow[];
   metadata: RunMetadata | null;
@@ -79,7 +104,7 @@ const hiddenModelSlugs = new Set(["ridge", "ridge-regression", "lasso"]);
 
 export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
   if (!supabase) {
-    return [];
+    return fallbackDashboardData.leaderboard;
   }
 
   const { data, error } = await supabase
@@ -99,7 +124,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
 
 export async function fetchLatestPredictions(): Promise<LatestPrediction[]> {
   if (!supabase) {
-    return [];
+    return fallbackDashboardData.latestPredictions;
   }
 
   const { data, error } = await supabase
@@ -112,12 +137,12 @@ export async function fetchLatestPredictions(): Promise<LatestPrediction[]> {
     throw error;
   }
 
-  return (data ?? []).filter(isVisibleModelRow);
+  return (data ?? []).map(normalizeLatestPredictionRow).filter(isVisibleModelRow);
 }
 
 export async function fetchTickerHistory(ticker: string): Promise<TickerHistoryRow[]> {
   if (!supabase) {
-    return [];
+    return fallbackDashboardData.tickerHistory.filter((row) => row.ticker === ticker);
   }
 
   const { data, error } = await supabase
@@ -134,9 +159,28 @@ export async function fetchTickerHistory(ticker: string): Promise<TickerHistoryR
   return (data ?? []).map(normalizeTickerHistoryRow).filter(isVisibleModelRow);
 }
 
+export async function fetchModelMetrics(): Promise<ModelMetricRow[]> {
+  if (!supabase) {
+    return fallbackDashboardData.modelMetrics;
+  }
+
+  const { data, error } = await supabase
+    .from("dashboard_model_metrics")
+    .select("*")
+    .order("evaluation_window")
+    .order("prediction_horizon")
+    .order("model_name");
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(normalizeModelMetricRow).filter(isVisibleModelRow);
+}
+
 export async function fetchRunMetadata(): Promise<RunMetadata | null> {
   if (!supabase) {
-    return null;
+    return fallbackDashboardData.metadata;
   }
 
   const { data, error } = await supabase
@@ -154,16 +198,18 @@ export async function fetchRunMetadata(): Promise<RunMetadata | null> {
 }
 
 export async function fetchDashboardData(): Promise<DashboardData> {
-  const [leaderboard, latestPredictions, metadata] = await Promise.all([
+  const [leaderboard, modelMetrics, latestPredictions, metadata] = await Promise.all([
     fetchLeaderboard(),
+    fetchModelMetrics(),
     fetchLatestPredictions(),
     fetchRunMetadata(),
   ]);
 
   return {
     leaderboard,
+    modelMetrics,
     latestPredictions,
-    tickerHistory: [],
+    tickerHistory: supabase ? [] : fallbackDashboardData.tickerHistory,
     metadata,
     hasSupabaseConfig: isSupabaseConfigured,
   };
@@ -183,11 +229,46 @@ function normalizeLeaderboardRow(row: Partial<LeaderboardRow>): LeaderboardRow {
   } as LeaderboardRow;
 }
 
+function normalizeLatestPredictionRow(row: Partial<LatestPrediction>): LatestPrediction {
+  return {
+    ...row,
+    prediction_id: row.prediction_id ?? "",
+    prediction_date: row.prediction_date ?? "",
+    target_date: row.target_date ?? "",
+    prediction_horizon: row.prediction_horizon ?? "1w",
+    ticker: row.ticker ?? "",
+    model_name: row.model_name ?? "",
+    model_slug: row.model_slug ?? fallbackModelSlug(row.model_name),
+    reference_close: row.reference_close ?? 0,
+    predicted_return: row.predicted_return ?? 0,
+    predicted_close: row.predicted_close ?? 0,
+  };
+}
+
 function normalizeTickerHistoryRow(row: Partial<TickerHistoryRow>): TickerHistoryRow {
   return {
     ...row,
+    prediction_date: row.prediction_date ?? "",
+    target_date: row.target_date ?? row.date ?? "",
+    prediction_horizon: row.prediction_horizon ?? "1w",
     date: row.date ?? row.target_date ?? "",
+    model_slug: row.model_slug ?? fallbackModelSlug(row.model_name),
   } as TickerHistoryRow;
+}
+
+function normalizeModelMetricRow(row: Partial<ModelMetricRow>): ModelMetricRow {
+  const window = row.window ?? row.evaluation_window ?? "all";
+  const predictionCount = row.prediction_count ?? row.scored_count ?? 0;
+  return {
+    ...row,
+    window,
+    prediction_horizon: row.prediction_horizon ?? "1w",
+    model_name: row.model_name ?? "",
+    model_slug: row.model_slug ?? fallbackModelSlug(row.model_name),
+    mae: row.mae ?? null,
+    directional_accuracy: row.directional_accuracy ?? null,
+    prediction_count: predictionCount,
+  };
 }
 
 function normalizeRunMetadata(row: Partial<RunMetadata>): RunMetadata {
@@ -212,4 +293,8 @@ function fallbackModelType(modelSlug?: string) {
     return "Time Series";
   }
   return "Classic ML";
+}
+
+function fallbackModelSlug(modelName?: string) {
+  return modelName?.toLowerCase().replace(/\s+/g, "-") ?? "";
 }
