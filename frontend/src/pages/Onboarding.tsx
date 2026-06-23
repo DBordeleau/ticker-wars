@@ -1,10 +1,10 @@
-import { Alert, Button, Card, Group, Stack, Switch, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Button, Card, Group, Loader, Stack, Switch, Text, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useEffect, useMemo, useState } from "react";
 import { FiAlertTriangle, FiCheck } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router-dom";
 import { avatarSeedFromUsername, defaultAvatarOptions, normalizeAvatarOptions } from "../auth/avatar";
-import { saveProfile } from "../auth/authApi";
+import { isUsernameAvailable, saveProfile } from "../auth/authApi";
 import { useAuth } from "../auth/AuthProvider";
 import type { AvatarOptions } from "../auth/types";
 import AvatarEditor from "../components/users/AvatarEditor";
@@ -18,12 +18,22 @@ export default function Onboarding() {
   const [avatarOptions, setAvatarOptions] = useState<AvatarOptions>(
     normalizeAvatarOptions(profile?.avatar_options ?? defaultAvatarOptions),
   );
+  const [usernameAvailability, setUsernameAvailability] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const [usernameCheckError, setUsernameCheckError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const userId = user?.id;
+  const usernameFormatError = getUsernameError(displayUsername);
+  const normalizedUsername = displayUsername.trim().toLowerCase();
+  const isExistingUsername = normalizedUsername === (profile?.username ?? "").toLowerCase();
+  const usernameError =
+    usernameFormatError ??
+    (usernameAvailability === "taken" ? "That username is already taken." : null) ??
+    usernameCheckError;
   const avatarSeed = useMemo(
-    () => profile?.avatar_seed ?? avatarSeedFromUsername(displayUsername || user?.id || "ticker-wars"),
-    [displayUsername, profile?.avatar_seed, user?.id],
+    () => profile?.avatar_seed ?? avatarSeedFromUsername(displayUsername || userId || "ticker-wars"),
+    [displayUsername, profile?.avatar_seed, userId],
   );
 
   useEffect(() => {
@@ -34,16 +44,59 @@ export default function Onboarding() {
     }
   }, [profile]);
 
-  const usernameError = getUsernameError(displayUsername);
-  const canSave = Boolean(user && !usernameError);
+  useEffect(() => {
+    if (!userId || usernameFormatError) {
+      setUsernameAvailability("idle");
+      setUsernameCheckError(null);
+      return;
+    }
+
+    if (isExistingUsername) {
+      setUsernameAvailability("available");
+      setUsernameCheckError(null);
+      return;
+    }
+
+    let isCurrent = true;
+    setUsernameAvailability("checking");
+    setUsernameCheckError(null);
+
+    const timeout = window.setTimeout(() => {
+      isUsernameAvailable(displayUsername, userId)
+        .then((available) => {
+          if (isCurrent) {
+            setUsernameAvailability(available ? "available" : "taken");
+          }
+        })
+        .catch(() => {
+          if (isCurrent) {
+            setUsernameAvailability("idle");
+            setUsernameCheckError("Could not verify username availability. Try again.");
+          }
+        });
+    }, 350);
+
+    return () => {
+      isCurrent = false;
+      window.clearTimeout(timeout);
+    };
+  }, [displayUsername, isExistingUsername, userId, usernameFormatError]);
+
+  const canSave = Boolean(user && !usernameError && usernameAvailability !== "checking");
 
   const handleSubmit = async () => {
-    if (!user || usernameError) {
+    if (!user || usernameFormatError) {
       return;
     }
 
     setSaving(true);
     try {
+      const available = isExistingUsername || (await isUsernameAvailable(displayUsername, user.id));
+      if (!available) {
+        setUsernameAvailability("taken");
+        return;
+      }
+
       const nextProfile = await saveProfile({
         userId: user.id,
         displayUsername,
@@ -106,20 +159,23 @@ export default function Onboarding() {
       <Card className="model-hero onboarding-card">
         <Stack gap="lg">
           <div>
-            <Text className="eyebrow">Human contender setup</Text>
             <Title order={1}>Create your profile</Title>
           </div>
           <TextInput
             label="Username"
             value={displayUsername}
             error={usernameError}
+            rightSection={usernameAvailability === "checking" ? <Loader size="xs" /> : null}
+            description={
+              usernameAvailability === "available" && !isExistingUsername ? "Username is available." : undefined
+            }
             maxLength={24}
             onChange={(event) => setDisplayUsername(event.currentTarget.value)}
           />
           <Switch
             checked={isPublic}
             onChange={(event) => setIsPublic(event.currentTarget.checked)}
-            label="Public profile and leaderboard placement"
+            label="I want my profile to be publicly visible and appear on the live leaderboard."
             color="green"
           />
           {!isPublic ? (

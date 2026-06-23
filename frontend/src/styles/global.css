@@ -1381,10 +1381,14 @@ h2,
 .avatar-preview-image {
   width: min(100%, 220px);
   aspect-ratio: 1;
-  border: 2px solid rgba(134, 239, 172, 0.56);
+  border: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.25);
+}
+
+.avatar-randomize-button {
+  width: min(100%, 220px);
 }
 
 .avatar-editor-title {
@@ -1436,6 +1440,10 @@ h2,
   overflow: hidden;
 }
 
+.avatar-variant-empty-frame {
+  background: rgba(255, 255, 255, 0.86);
+}
+
 .avatar-variant-thumbnail {
   width: 90%;
   height: 34px;
@@ -1448,12 +1456,35 @@ h2,
 }
 
 .avatar-color-swatch {
+  display: inline-grid;
+  place-items: center;
   width: 34px;
   height: 34px;
   border: 2px solid rgba(255, 255, 255, 0.32);
   border-radius: 999px;
+  color: #ffffff;
   cursor: pointer;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+}
+
+.avatar-color-swatch-custom {
+  position: relative;
+  overflow: hidden;
+}
+
+.avatar-color-swatch-custom::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.avatar-color-swatch-custom svg {
+  position: relative;
+  z-index: 1;
+  width: 15px;
+  height: 15px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
 
 .avatar-color-swatch-active {
@@ -1461,6 +1492,44 @@ h2,
   box-shadow:
     0 0 0 3px rgba(34, 197, 94, 0.22),
     inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.avatar-color-popover {
+  width: 180px;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(13, 18, 15, 0.98);
+}
+
+.avatar-native-color-picker {
+  display: grid;
+  gap: 8px;
+  color: #f4f7f5;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.avatar-native-color-picker input[type="color"] {
+  width: 100%;
+  height: 46px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.avatar-native-color-picker input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 4px;
+}
+
+.avatar-native-color-picker input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: 6px;
+}
+
+.avatar-native-color-picker input[type="color"]::-moz-color-swatch {
+  border: 0;
+  border-radius: 6px;
 }
 
 .auth-callback-panel {
