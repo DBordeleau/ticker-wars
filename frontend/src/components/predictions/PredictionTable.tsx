@@ -144,6 +144,7 @@ export default function PredictionTable({
           <Table highlightOnHover verticalSpacing="sm" className="prediction-table">
             <Table.Thead>
               <Table.Tr>
+                <Table.Th className="prediction-row-action-header" aria-label="Predict action" />
                 <SortableHeader
                   active={sortKey === "ticker"}
                   direction={sortDirection}
@@ -152,7 +153,6 @@ export default function PredictionTable({
                 >
                   Ticker
                 </SortableHeader>
-                <Table.Th>Predict</Table.Th>
                 <SortableHeader
                   active={sortKey === "model"}
                   direction={sortDirection}
@@ -202,13 +202,13 @@ export default function PredictionTable({
             <Table.Tbody>
               {displayedRows.map((row) => (
                 <Table.Tr key={row.prediction_id}>
+                  <Table.Td className="prediction-row-action-cell">
+                    <UserPredictionButton ticker={row.ticker} latestPredictions={rows} compact />
+                  </Table.Td>
                   <Table.Td>
                     <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
                       {row.ticker}
                     </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <UserPredictionButton ticker={row.ticker} latestPredictions={rows} compact />
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs">
