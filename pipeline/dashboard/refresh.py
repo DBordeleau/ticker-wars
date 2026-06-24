@@ -93,12 +93,16 @@ def _build_latest_predictions(
     if not prediction_rows:
         return []
 
-    latest_prediction_date = max(str(row["prediction_date"]) for row in prediction_rows)
-    latest_rows = [
-        row
-        for row in prediction_rows
-        if str(row["prediction_date"]) == latest_prediction_date
-    ]
+    latest_by_ticker_model_and_horizon: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for row in prediction_rows:
+        key = (
+            str(row["ticker"]),
+            str(row.get("model_slug") or _model_slug(row["model_name"])),
+            str(row["prediction_horizon"]),
+        )
+        current = latest_by_ticker_model_and_horizon.get(key)
+        if current is None or _latest_prediction_sort_key(row) > _latest_prediction_sort_key(current):
+            latest_by_ticker_model_and_horizon[key] = row
 
     return [
         {
@@ -119,7 +123,10 @@ def _build_latest_predictions(
             "reasoning_summary": row.get("reasoning_summary"),
             "model_metadata": row.get("model_metadata"),
         }
-        for row in sorted(latest_rows, key=lambda item: (item["ticker"], item["model_name"]))
+        for row in sorted(
+            latest_by_ticker_model_and_horizon.values(),
+            key=lambda item: (item["ticker"], item["model_name"], item["prediction_horizon"]),
+        )
     ]
 
 
@@ -366,6 +373,10 @@ def _build_run_metadata(
 
 def _known_horizons(scored_predictions: list[dict[str, Any]]) -> list[str]:
     return list(METRIC_HORIZONS)
+
+
+def _latest_prediction_sort_key(row: dict[str, Any]) -> tuple[str, str]:
+    return (str(row["prediction_date"]), str(row["target_date"]))
 
 
 def _public_profiles_by_user_id(

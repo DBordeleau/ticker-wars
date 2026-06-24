@@ -25,6 +25,25 @@ class DashboardContractTest(unittest.TestCase):
         self.assertEqual(latest[0]["target_date"], "2026-01-03")
         self.assertEqual(latest[0]["model_slug"], "baseline")
 
+    def test_latest_predictions_keep_latest_available_row_per_model(self) -> None:
+        tables = build_dashboard_tables(
+            prediction_rows=[
+                _prediction("AAPL", "2026-01-02", "Warren Buffbot", prediction_date="2026-01-01"),
+                _prediction("AAPL", "2026-01-03", "Linear Regression", prediction_date="2026-01-02"),
+            ],
+            score_rows=[],
+            price_rows=[_price("AAPL", "2026-01-02", 100.0)],
+            settings=Settings(),
+        )
+
+        latest_by_model = {
+            row["model_slug"]: row
+            for row in tables["dashboard_latest_predictions"]
+        }
+
+        self.assertEqual(set(latest_by_model), {"linear-regression", "warren-buffbot"})
+        self.assertEqual(latest_by_model["warren-buffbot"]["prediction_date"], "2026-01-01")
+
     def test_model_leaderboard_contains_each_metric_window(self) -> None:
         prediction = _prediction("AAPL", "2026-01-02", "Baseline")
         tables = build_dashboard_tables(
