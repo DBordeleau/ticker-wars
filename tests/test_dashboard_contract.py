@@ -157,6 +157,41 @@ class DashboardContractTest(unittest.TestCase):
         self.assertEqual(latest_predictions[0]["username"], "PublicTrader")
         self.assertEqual(latest_predictions[0]["avatar_style"], "adventurer-neutral")
 
+    def test_latest_user_predictions_use_latest_public_prediction_date(self) -> None:
+        public_user_id = "11111111-1111-1111-1111-111111111111"
+        private_user_id = "22222222-2222-2222-2222-222222222222"
+        tables = build_dashboard_tables(
+            prediction_rows=[],
+            score_rows=[],
+            price_rows=[],
+            settings=Settings(),
+            user_prediction_rows=[
+                _user_prediction(
+                    public_user_id,
+                    "AAPL",
+                    predicted_close=101.0,
+                    prediction_date="2026-01-01",
+                ),
+                _user_prediction(
+                    private_user_id,
+                    "MSFT",
+                    predicted_close=199.0,
+                    prediction_date="2026-01-02",
+                ),
+            ],
+            user_score_rows=[],
+            user_profile_rows=[
+                _user_profile(public_user_id, "PublicTrader", is_public=True),
+                _user_profile(private_user_id, "PrivateTrader", is_public=False),
+            ],
+        )
+
+        latest_predictions = tables["dashboard_latest_user_predictions"]
+
+        self.assertEqual(len(latest_predictions), 1)
+        self.assertEqual(latest_predictions[0]["username"], "PublicTrader")
+        self.assertEqual(latest_predictions[0]["prediction_date"], "2026-01-01")
+
     def test_user_leaderboard_ranks_public_users_by_mae(self) -> None:
         ada_id = "11111111-1111-1111-1111-111111111111"
         grace_id = "22222222-2222-2222-2222-222222222222"
@@ -290,12 +325,18 @@ def _user_profile(user_id: str, username: str, *, is_public: bool) -> dict:
     }
 
 
-def _user_prediction(user_id: str, ticker: str, *, predicted_close: float) -> dict:
+def _user_prediction(
+    user_id: str,
+    ticker: str,
+    *,
+    predicted_close: float,
+    prediction_date: str = "2026-01-01",
+) -> dict:
     return {
         "prediction_id": f"00000000-0000-0000-0000-{ticker.lower().ljust(12, '0')[:12]}",
         "user_id": user_id,
         "ticker": ticker,
-        "prediction_date": "2026-01-01",
+        "prediction_date": prediction_date,
         "target_date": "2026-01-08",
         "prediction_horizon": "1w",
         "reference_close": 100.0,
