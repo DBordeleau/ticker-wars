@@ -1,5 +1,6 @@
 import { Button, Drawer, Modal, Popover } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { FiTarget } from "react-icons/fi";
 import type { LatestPrediction } from "../../api/dashboardData";
@@ -53,19 +54,44 @@ export default function UserPredictionButton({
       onCancel={handlers.close}
     />
   );
+  const controlClassName = `spotlight-control-wrap predict-control-wrap${compact ? " predict-control-compact" : ""}`;
+  const buttonClassName = "spotlight-control-button predict-control-button";
+  const buttonLabel = existingPrediction ? "Edit" : "Predict";
+  const pressMotion = {
+    scale: 0.965,
+    y: 1,
+  };
+  const hoverMotion = {
+    scale: 1.018,
+    y: -1,
+  };
+  const pressTransition = {
+    type: "spring" as const,
+    stiffness: 520,
+    damping: 19,
+    mass: 0.42,
+  };
 
   return (
     <>
       {isMobile ? (
         <>
-          <Button
-            color="green"
-            variant={compact ? "subtle" : "filled"}
-            leftSection={<FiTarget />}
-            onClick={handleOpen}
+          <motion.div
+            className={controlClassName}
+            whileHover={hoverMotion}
+            whileTap={pressMotion}
+            transition={pressTransition}
           >
-            {existingPrediction ? "Edit" : compact ? "Predict" : "Predict"}
-          </Button>
+            <Button
+              className={buttonClassName}
+              color="green"
+              variant="subtle"
+              leftSection={<FiTarget />}
+              onClick={handleOpen}
+            >
+              {buttonLabel}
+            </Button>
+          </motion.div>
           <Drawer opened={opened} onClose={handlers.close} title={`${ticker} prediction`} position="bottom">
             {form}
           </Drawer>
@@ -83,22 +109,43 @@ export default function UserPredictionButton({
           withinPortal
         >
           <Popover.Target>
-            <Button
-              color="green"
-              variant={compact ? "subtle" : "filled"}
-              leftSection={<FiTarget />}
-              onClick={handleOpen}
+            <motion.div
+              className={controlClassName}
+              whileHover={hoverMotion}
+              whileTap={pressMotion}
+              transition={pressTransition}
             >
-              {existingPrediction ? "Edit" : compact ? "Predict" : "Predict"}
-            </Button>
+              <Button
+                className={buttonClassName}
+                color="green"
+                variant="subtle"
+                leftSection={<FiTarget />}
+                onClick={handleOpen}
+              >
+                {buttonLabel}
+              </Button>
+            </motion.div>
           </Popover.Target>
           <Popover.Dropdown className="user-prediction-popover">{form}</Popover.Dropdown>
         </Popover>
       ) : (
         <>
-          <Button color="green" variant="filled" leftSection={<FiTarget />} onClick={handleOpen}>
-            {existingPrediction ? "Edit" : "Predict"}
-          </Button>
+          <motion.div
+            className={controlClassName}
+            whileHover={hoverMotion}
+            whileTap={pressMotion}
+            transition={pressTransition}
+          >
+            <Button
+              className={buttonClassName}
+              color="green"
+              variant="subtle"
+              leftSection={<FiTarget />}
+              onClick={handleOpen}
+            >
+              {buttonLabel}
+            </Button>
+          </motion.div>
           <Modal
             opened={opened}
             onClose={handlers.close}
