@@ -896,6 +896,7 @@ h2,
 }
 
 .horizon-selector {
+  --horizon-selector-control-height: 38px;
   --sc-color: #041008;
   position: relative;
   z-index: 1;
@@ -905,7 +906,8 @@ h2,
 
 .horizon-selector .mantine-SegmentedControl-label {
   display: flex;
-  min-height: 38px;
+  height: var(--horizon-selector-control-height);
+  min-height: var(--horizon-selector-control-height);
   align-items: center;
   justify-content: center;
   padding: 0 16px;
@@ -947,6 +949,8 @@ h2,
 }
 
 .horizon-selector .mantine-SegmentedControl-indicator {
+  height: var(--horizon-selector-control-height) !important;
+  min-height: var(--horizon-selector-control-height);
   border: 1px solid rgba(74, 222, 128, 0.42);
   border-radius: 999px;
   background:
@@ -1982,7 +1986,11 @@ h2,
 .prediction-table .mantine-Table-tbody .mantine-Table-tr:hover
   .prediction-row-action-cell
   .predict-control-wrap::before {
-  animation: predict-control-row-shine 1.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-name: predict-control-row-shine;
+  animation-duration: 1.35s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-delay: 1.5s;
+  animation-fill-mode: both;
 }
 
 .prediction-table .mantine-Table-td:nth-child(4) {
