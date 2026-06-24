@@ -1,8 +1,8 @@
-import { Alert, Button, Group, Modal, Stack, Text } from "@mantine/core";
+import { Alert, Button, Modal, Stack, Text } from "@mantine/core";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { FaDiscord, FaGithub, FaGoogle } from "react-icons/fa";
-import { FiAlertTriangle } from "react-icons/fi";
+import { FiAlertTriangle, FiX } from "react-icons/fi";
 import { isSupabaseConfigured } from "../../api/supabaseClient";
 import { signInWithProvider } from "../../auth/authApi";
 import type { AuthProviderName } from "../../auth/types";
@@ -16,10 +16,11 @@ const providers: Array<{
   provider: AuthProviderName;
   label: string;
   icon: ReactNode;
+  className: string;
 }> = [
-  { provider: "google", label: "Continue with Google", icon: <FaGoogle /> },
-  { provider: "discord", label: "Continue with Discord", icon: <FaDiscord /> },
-  { provider: "github", label: "Continue with GitHub", icon: <FaGithub /> },
+  { provider: "google", label: "Continue with Google", icon: <FaGoogle />, className: "auth-provider-google" },
+  { provider: "discord", label: "Continue with Discord", icon: <FaDiscord />, className: "auth-provider-discord" },
+  { provider: "github", label: "Continue with GitHub", icon: <FaGithub />, className: "auth-provider-github" },
 ];
 
 export default function SignInModal({ opened, onClose }: Props) {
@@ -38,8 +39,22 @@ export default function SignInModal({ opened, onClose }: Props) {
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Sign in" centered className="auth-modal">
-      <Stack gap="md">
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      centered
+      className="auth-modal"
+      withCloseButton={false}
+      padding={0}
+      radius="sm"
+      overlayProps={{ backgroundOpacity: 0.5, blur: 8 }}
+      transitionProps={{ transition: "pop", duration: 180 }}
+    >
+      <button type="button" className="auth-modal-close" aria-label="Close sign in modal" onClick={onClose}>
+        <FiX />
+      </button>
+      <Stack gap="md" className="auth-modal-body">
+        <Text className="auth-modal-label">Sign in to make predictions and compete with others!</Text>
         {!isSupabaseConfigured ? (
           <Alert color="yellow" icon={<FiAlertTriangle />}>
             Supabase auth is not configured for this build.
@@ -50,16 +65,13 @@ export default function SignInModal({ opened, onClose }: Props) {
             {error}
           </Alert>
         ) : null}
-        <Text size="sm" className="secondary-text">
-          Join the human side of Ticker Wars with a social account.
-        </Text>
         <Stack gap="sm">
           {providers.map((item) => (
             <Button
               key={item.provider}
-              variant="light"
-              color="green"
+              variant="filled"
               leftSection={item.icon}
+              className={`auth-provider-button ${item.className}`}
               disabled={!isSupabaseConfigured}
               loading={loadingProvider === item.provider}
               onClick={() => void handleSignIn(item.provider)}
@@ -68,11 +80,6 @@ export default function SignInModal({ opened, onClose }: Props) {
             </Button>
           ))}
         </Stack>
-        <Group justify="center">
-          <Text size="xs" c="dimmed">
-            No email passwords. No magic links.
-          </Text>
-        </Group>
       </Stack>
     </Modal>
   );
