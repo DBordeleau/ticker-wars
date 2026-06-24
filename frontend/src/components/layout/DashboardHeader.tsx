@@ -1,11 +1,6 @@
-import UserControl from "../users/UserControl";
-
 export default function DashboardHeader() {
   return (
     <header className="dashboard-header hero-header">
-      <div className="dashboard-user-control-slot">
-        <UserControl />
-      </div>
       <p className="hero-eyebrow">Multi-Horizon Market Predictions</p>
       <h1 className="hero-title">
         <span className="hero-title-text">Ticker Wars</span>
