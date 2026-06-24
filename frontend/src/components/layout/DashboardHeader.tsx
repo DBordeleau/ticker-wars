@@ -9,6 +9,7 @@ export default function DashboardHeader() {
 
   return (
     <header className="dashboard-header hero-header">
+      <p className="hero-eyebrow">Competitive stock forecasting</p>
       <h1 className="hero-title">
         <span className="hero-title-text">Ticker </span><span className="accent">Wars</span>
       </h1>
@@ -29,7 +30,7 @@ export default function DashboardHeader() {
         </>
       ) : null}
       <p className="hero-subtitle">
-        A stock price prediction platform where users and machine learning models compete to predict the future prices.
+        A stock price prediction platform where users and machine learning models compete to predict future prices.
       </p>
     </header>
   );
