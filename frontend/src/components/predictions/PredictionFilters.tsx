@@ -7,6 +7,7 @@ type Props = {
   models: string[];
   onTickerQueryChange: (value: string) => void;
   onModelChange: (value: string | null) => void;
+  showTickerFilter?: boolean;
 };
 
 export default function PredictionFilters({
@@ -15,16 +16,19 @@ export default function PredictionFilters({
   models,
   onTickerQueryChange,
   onModelChange,
+  showTickerFilter = true,
 }: Props) {
   return (
     <Group gap="sm" className="prediction-filters">
-      <TextInput
-        leftSection={<FiSearch />}
-        placeholder="Search ticker"
-        value={tickerQuery}
-        onChange={(event) => onTickerQueryChange(event.currentTarget.value)}
-        aria-label="Search latest predictions by ticker"
-      />
+      {showTickerFilter ? (
+        <TextInput
+          leftSection={<FiSearch />}
+          placeholder="Search ticker"
+          value={tickerQuery}
+          onChange={(event) => onTickerQueryChange(event.currentTarget.value)}
+          aria-label="Search latest predictions by ticker"
+        />
+      ) : null}
       <Select
         placeholder="All models"
         data={models}

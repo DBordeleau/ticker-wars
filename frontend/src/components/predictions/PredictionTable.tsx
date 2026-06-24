@@ -7,9 +7,11 @@ import type { LatestPrediction, MetricHorizon } from "../../api/dashboardData";
 import type { DashboardView } from "../dashboard/DashboardViewToggle";
 import DashboardViewToggle from "../dashboard/DashboardViewToggle";
 import {
+  formatCurrency,
   formatDate,
   formatHorizon,
 } from "../../utils/format";
+import MagicHoverSurface from "../layout/MagicHoverSurface";
 import SectionPanel from "../layout/SectionPanel";
 import PredictionCardList from "./PredictionCardList";
 import PredictionFilters from "./PredictionFilters";
@@ -17,7 +19,7 @@ import PredictionHorizonSelector from "./PredictionHorizonSelector";
 import PredictionValue from "./PredictionValue";
 import UserPredictionButton from "./UserPredictionButton";
 
-type SortKey = "ticker" | "model" | "horizon" | "close" | "target" | "prediction";
+type SortKey = "ticker" | "model" | "horizon" | "reference" | "close" | "target" | "prediction";
 
 type Props = {
   rows: LatestPrediction[];
@@ -25,6 +27,8 @@ type Props = {
   collapsible?: boolean;
   view?: DashboardView;
   onViewChange?: (view: DashboardView) => void;
+  showTickerFilter?: boolean;
+  embedded?: boolean;
 };
 
 const predictionPreviewSize = 5;
@@ -36,6 +40,8 @@ export default function PredictionTable({
   collapsible = false,
   view = "models",
   onViewChange,
+  showTickerFilter = true,
+  embedded = false,
 }: Props) {
   const [tickerQuery, setTickerQuery] = useState("");
   const [model, setModel] = useState<string | null>(null);
@@ -43,7 +49,7 @@ export default function PredictionTable({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [isPaged, setIsPaged] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const [isOpen, setIsOpen] = useState(!collapsible);
+  const [isOpen, setIsOpen] = useState(true);
   const [horizon, setHorizon] = useState<MetricHorizon>("all");
 
   const predictionRows = useMemo(
@@ -67,6 +73,9 @@ export default function PredictionTable({
         const direction = sortDirection === "asc" ? 1 : -1;
         if (sortKey === "close") {
           return (a.predicted_return - b.predicted_return) * direction;
+        }
+        if (sortKey === "reference") {
+          return (a.reference_close - b.reference_close) * direction;
         }
         if (sortKey === "model") {
           return a.model_name.localeCompare(b.model_name) * direction;
@@ -123,6 +132,7 @@ export default function PredictionTable({
         models={modelOptions}
         onTickerQueryChange={setTickerQuery}
         onModelChange={setModel}
+        showTickerFilter={showTickerFilter}
       />
     </Group>
   );
@@ -140,7 +150,7 @@ export default function PredictionTable({
   ) : (
     <>
       <div className="desktop-table">
-        <Table.ScrollContainer minWidth={780}>
+        <Table.ScrollContainer minWidth={900}>
           <Table highlightOnHover verticalSpacing="sm" className="prediction-table">
             <Table.Thead>
               <Table.Tr>
@@ -169,6 +179,15 @@ export default function PredictionTable({
                   onClick={() => setSort("horizon")}
                 >
                   Horizon
+                </SortableHeader>
+                <SortableHeader
+                  active={sortKey === "reference"}
+                  direction={sortDirection}
+                  tooltip="The stock close used as the prediction's starting reference."
+                  className="prediction-table-center"
+                  onClick={() => setSort("reference")}
+                >
+                  Reference
                 </SortableHeader>
                 <SortableHeader
                   active={sortKey === "close"}
@@ -222,6 +241,7 @@ export default function PredictionTable({
                       {formatHorizon(row.prediction_horizon)}
                     </Badge>
                   </Table.Td>
+                  <Table.Td className="prediction-table-center">{formatCurrency(row.reference_close)}</Table.Td>
                   <Table.Td className="prediction-table-center">
                     <PredictionValue row={row} align="center" />
                   </Table.Td>
@@ -285,34 +305,46 @@ export default function PredictionTable({
     </>
   );
 
+  const panelContent = (
+    <div className={embedded ? "latest-predictions-embedded-content" : undefined}>
+      <Group className="collapsible-panel-topline" justify="space-between" align="flex-end" gap="md">
+        <Text className="secondary-text">Targeted closes across tickers, models, and prediction horizons.</Text>
+        {filters}
+      </Group>
+      {predictions}
+    </div>
+  );
+
+  if (embedded) {
+    return panelContent;
+  }
+
   if (collapsible) {
     return (
-      <section className="section-panel prediction-collapsible-panel">
-        <button
-          type="button"
-          className="collapsible-trigger"
-          aria-expanded={isOpen}
-          onClick={() => setIsOpen((current) => !current)}
-        >
-          <span className="section-title">Latest Predictions</span>
-          <FiChevronDown className="collapsible-chevron" />
-        </button>
-        <motion.div
-          initial={false}
-          animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
-          transition={{ type: "spring", stiffness: 180, damping: 25, mass: 0.85 }}
-          className="collapsible-motion"
-          style={{ pointerEvents: isOpen ? "auto" : "none" }}
-        >
-          <div className="collapsible-inner">
-            <Group className="collapsible-panel-topline" justify="space-between" align="flex-end" gap="md">
-              <Text className="secondary-text">Targeted closes across tickers, models, and prediction horizons.</Text>
-              {filters}
-            </Group>
-            {predictions}
-          </div>
-        </motion.div>
-      </section>
+      <MagicHoverSurface className="section-magic-surface">
+        <section className="section-panel prediction-collapsible-panel">
+          <button
+            type="button"
+            className="collapsible-trigger"
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((current) => !current)}
+          >
+            <span className="section-title">Latest Predictions</span>
+            <FiChevronDown className="collapsible-chevron" />
+          </button>
+          <motion.div
+            initial={false}
+            animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
+            transition={{ type: "spring", stiffness: 180, damping: 25, mass: 0.85 }}
+            className="collapsible-motion"
+            style={{ pointerEvents: isOpen ? "auto" : "none" }}
+          >
+            <div className="collapsible-inner">
+              {panelContent}
+            </div>
+          </motion.div>
+        </section>
+      </MagicHoverSurface>
     );
   }
 

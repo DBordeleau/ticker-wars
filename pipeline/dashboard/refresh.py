@@ -73,6 +73,11 @@ def build_dashboard_tables(
             user_profile_rows,
             generated_at,
         ),
+        "dashboard_user_ticker_leaderboard": _build_user_ticker_leaderboard(
+            user_score_rows,
+            user_profile_rows,
+            generated_at,
+        ),
         "dashboard_latest_user_predictions": _build_latest_user_predictions(
             user_prediction_rows,
             user_profile_rows,
@@ -263,6 +268,46 @@ def _build_latest_user_predictions(
         )
         if (profile := public_profiles.get(str(row["user_id"]))) is not None
     ]
+
+
+def _build_user_ticker_leaderboard(
+    user_score_rows: list[dict[str, Any]],
+    user_profile_rows: list[dict[str, Any]],
+    generated_at: str,
+) -> list[dict[str, Any]]:
+    public_profiles = _public_profiles_by_user_id(user_profile_rows)
+    public_score_rows = [
+        {**row, "username": public_profiles[str(row["user_id"])]["display_username"]}
+        for row in user_score_rows
+        if str(row.get("user_id")) in public_profiles
+    ]
+    tickers = sorted({str(row["ticker"]) for row in public_score_rows})
+    rows: list[dict[str, Any]] = []
+
+    for ticker in tickers:
+        ticker_score_rows = [row for row in public_score_rows if str(row["ticker"]) == ticker]
+        metric_rows = calculate_user_metrics(ticker_score_rows)
+        rows.extend(
+            {
+                "generated_at": generated_at,
+                "ticker": ticker,
+                "evaluation_window": row["window"],
+                "prediction_horizon": row["prediction_horizon"],
+                "user_id": row["user_id"],
+                "username": profile["display_username"],
+                "avatar_style": profile["avatar_style"],
+                "avatar_seed": profile["avatar_seed"],
+                "avatar_options": profile["avatar_options"],
+                "mae": row["mae"],
+                "directional_accuracy": row["directional_accuracy"],
+                "scored_count": row["prediction_count"],
+                "rank": row["rank"],
+            }
+            for row in metric_rows
+            if (profile := public_profiles.get(str(row["user_id"]))) is not None
+        )
+
+    return rows
 
 
 def _build_ticker_history(

@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import type { ComponentType, ReactNode } from "react";
+import { FiChevronDown } from "react-icons/fi";
 import type { MetricHorizon, MetricWindow } from "../api/dashboardData";
 import type { DashboardView } from "../components/dashboard/DashboardViewToggle";
 import TickerChart from "../components/charts/TickerChart";
@@ -6,6 +9,7 @@ import AnimatedSection from "../components/layout/AnimatedSection";
 import DashboardFooter from "../components/layout/DashboardFooter";
 import DashboardHeader from "../components/layout/DashboardHeader";
 import DashboardShell from "../components/layout/DashboardShell";
+import MagicHoverSurface from "../components/layout/MagicHoverSurface";
 import LeaderboardChart from "../components/leaderboard/LeaderboardChart";
 import LeaderboardTable from "../components/leaderboard/LeaderboardTable";
 import MetricStrip from "../components/metrics/MetricStrip";
@@ -13,12 +17,19 @@ import PredictionTable from "../components/predictions/PredictionTable";
 import UserPredictionTable from "../components/predictions/UserPredictionTable";
 import { useDashboardData } from "../hooks/useDashboardData";
 
+const MotionPresence = AnimatePresence as unknown as ComponentType<{
+  children: ReactNode;
+  initial?: boolean;
+  mode?: "sync" | "popLayout" | "wait";
+}>;
+
 export default function Dashboard() {
   const window: MetricWindow = "all";
   const [horizon, setHorizon] = useState<MetricHorizon>("all");
   const [leaderboardView, setLeaderboardView] = useState<DashboardView>("models");
   const [latestPredictionsView, setLatestPredictionsView] = useState<DashboardView>("models");
   const [latestUserHorizon, setLatestUserHorizon] = useState<MetricHorizon>("all");
+  const [latestPredictionsOpen, setLatestPredictionsOpen] = useState(true);
   const dashboard = useDashboardData();
 
   return (
@@ -78,24 +89,60 @@ export default function Dashboard() {
         </div>
       </div>
       <AnimatedSection delay={0.36}>
-        {latestPredictionsView === "models" ? (
-          <PredictionTable
-            rows={dashboard.latestPredictions}
-            loading={dashboard.loading}
-            collapsible
-            view={latestPredictionsView}
-            onViewChange={setLatestPredictionsView}
-          />
-        ) : (
-          <UserPredictionTable
-            rows={dashboard.latestUserPredictions}
-            loading={dashboard.loading}
-            view={latestPredictionsView}
-            onViewChange={setLatestPredictionsView}
-            horizon={latestUserHorizon}
-            onHorizonChange={setLatestUserHorizon}
-          />
-        )}
+        <MagicHoverSurface className="section-magic-surface">
+          <section className="section-panel prediction-collapsible-panel">
+            <button
+              type="button"
+              className="collapsible-trigger"
+              aria-expanded={latestPredictionsOpen}
+              onClick={() => setLatestPredictionsOpen((current) => !current)}
+            >
+              <span className="section-title">Latest Predictions</span>
+              <FiChevronDown className="collapsible-chevron" />
+            </button>
+            <motion.div
+              initial={false}
+              animate={{ height: latestPredictionsOpen ? "auto" : 0, opacity: latestPredictionsOpen ? 1 : 0 }}
+              transition={{ type: "spring", stiffness: 180, damping: 25, mass: 0.85 }}
+              className="collapsible-motion"
+              style={{ pointerEvents: latestPredictionsOpen ? "auto" : "none" }}
+            >
+              <div className="collapsible-inner latest-predictions-panel-body">
+                <MotionPresence mode="wait" initial={false}>
+                  <motion.div
+                    key={latestPredictionsView}
+                    layout
+                    className="latest-predictions-view-motion"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                  >
+                    {latestPredictionsView === "models" ? (
+                      <PredictionTable
+                        rows={dashboard.latestPredictions}
+                        loading={dashboard.loading}
+                        view={latestPredictionsView}
+                        onViewChange={setLatestPredictionsView}
+                        embedded
+                      />
+                    ) : (
+                      <UserPredictionTable
+                        rows={dashboard.latestUserPredictions}
+                        loading={dashboard.loading}
+                        view={latestPredictionsView}
+                        onViewChange={setLatestPredictionsView}
+                        horizon={latestUserHorizon}
+                        onHorizonChange={setLatestUserHorizon}
+                        embedded
+                      />
+                    )}
+                  </motion.div>
+                </MotionPresence>
+              </div>
+            </motion.div>
+          </section>
+        </MagicHoverSurface>
       </AnimatedSection>
       <AnimatedSection delay={0.42}>
         <DashboardFooter metadata={dashboard.metadata} loading={dashboard.loading} />

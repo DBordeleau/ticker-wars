@@ -41,14 +41,14 @@ export default function PredictionHorizonSelector({
   label = "Prediction horizon",
 }: Props) {
   return (
-    <div className="prediction-horizon-selector" aria-label={label}>
+    <div className="horizon-selector-wrap prediction-horizon-selector" aria-label={label}>
       <SegmentedControl
-        size="xs"
+        className="horizon-selector"
         data={options.map((option) => ({
           value: option.value,
           label: (
             <Tooltip label={option.description} openDelay={250}>
-              <span>{option.label}</span>
+              <span className="horizon-selector-label">{option.label}</span>
             </Tooltip>
           ),
         }))}

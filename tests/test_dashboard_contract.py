@@ -147,10 +147,12 @@ class DashboardContractTest(unittest.TestCase):
         )
 
         leaderboard = tables["dashboard_user_leaderboard"]
+        ticker_leaderboard = tables["dashboard_user_ticker_leaderboard"]
         latest_predictions = tables["dashboard_latest_user_predictions"]
 
         self.assertTrue(leaderboard)
         self.assertEqual({row["username"] for row in leaderboard}, {"PublicTrader"})
+        self.assertEqual({row["username"] for row in ticker_leaderboard}, {"PublicTrader"})
         self.assertEqual(len(latest_predictions), 1)
         self.assertEqual(latest_predictions[0]["username"], "PublicTrader")
         self.assertEqual(latest_predictions[0]["avatar_style"], "adventurer-neutral")
@@ -182,6 +184,45 @@ class DashboardContractTest(unittest.TestCase):
 
         self.assertEqual([row["username"] for row in leaderboard], ["Grace", "Ada"])
         self.assertEqual([row["rank"] for row in leaderboard], [1, 2])
+
+    def test_user_ticker_leaderboard_ranks_within_each_ticker(self) -> None:
+        ada_id = "11111111-1111-1111-1111-111111111111"
+        grace_id = "22222222-2222-2222-2222-222222222222"
+        tables = build_dashboard_tables(
+            prediction_rows=[],
+            score_rows=[],
+            price_rows=[],
+            settings=Settings(),
+            user_prediction_rows=[],
+            user_score_rows=[
+                _user_score(ada_id, absolute_error=4.0, ticker="AAPL"),
+                _user_score(grace_id, absolute_error=1.0, ticker="AAPL"),
+                _user_score(ada_id, absolute_error=1.0, ticker="MSFT"),
+                _user_score(grace_id, absolute_error=4.0, ticker="MSFT"),
+            ],
+            user_profile_rows=[
+                _user_profile(ada_id, "Ada", is_public=True),
+                _user_profile(grace_id, "Grace", is_public=True),
+            ],
+        )
+
+        aapl_rows = [
+            row
+            for row in tables["dashboard_user_ticker_leaderboard"]
+            if row["ticker"] == "AAPL"
+            and row["evaluation_window"] == "all"
+            and row["prediction_horizon"] == "1w"
+        ]
+        msft_rows = [
+            row
+            for row in tables["dashboard_user_ticker_leaderboard"]
+            if row["ticker"] == "MSFT"
+            and row["evaluation_window"] == "all"
+            and row["prediction_horizon"] == "1w"
+        ]
+
+        self.assertEqual([row["username"] for row in aapl_rows], ["Grace", "Ada"])
+        self.assertEqual([row["username"] for row in msft_rows], ["Ada", "Grace"])
 
 
 def _prediction(
@@ -264,11 +305,11 @@ def _user_prediction(user_id: str, ticker: str, *, predicted_close: float) -> di
     }
 
 
-def _user_score(user_id: str, *, absolute_error: float) -> dict:
+def _user_score(user_id: str, *, absolute_error: float, ticker: str = "AAPL") -> dict:
     return {
-        "prediction_id": f"{user_id}:score",
+        "prediction_id": f"{user_id}:{ticker}:score",
         "user_id": user_id,
-        "ticker": "AAPL",
+        "ticker": ticker,
         "prediction_date": "2026-01-01",
         "target_date": "2026-01-08",
         "prediction_horizon": "1w",

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import AnimatedSection from "../components/layout/AnimatedSection";
 import BackToDashboardButton from "../components/layout/BackToDashboardButton";
+import MagicHoverSurface from "../components/layout/MagicHoverSurface";
 import UserPredictionButton from "../components/predictions/UserPredictionButton";
 import SignInModal from "../components/users/SignInModal";
 import { useDashboardData } from "../hooks/useDashboardData";
@@ -29,20 +30,22 @@ export default function MyPredictions() {
         <BackToDashboardButton />
       </AnimatedSection>
       <AnimatedSection delay={0.08}>
-        <Card className="model-hero">
-          <Text className="eyebrow">Human predictions</Text>
-          <Title order={1}>My Predictions</Title>
-          <Text mt="sm" className="model-description">
-            Track your active and scored predictions across every horizon.
-          </Text>
-          {!user ? (
-            <Group mt="md">
-              <Button color="green" leftSection={<FiLogIn />} onClick={() => setSignInOpen(true)}>
-                Sign in
-              </Button>
-            </Group>
-          ) : null}
-        </Card>
+        <MagicHoverSurface className="section-magic-surface">
+          <Card className="model-hero">
+            <Text className="eyebrow">Human predictions</Text>
+            <Title order={1}>My Predictions</Title>
+            <Text mt="sm" className="model-description">
+              Track your active and scored predictions across every horizon.
+            </Text>
+            {!user ? (
+              <Group mt="md">
+                <Button color="green" leftSection={<FiLogIn />} onClick={() => setSignInOpen(true)}>
+                  Sign in
+                </Button>
+              </Group>
+            ) : null}
+          </Card>
+        </MagicHoverSurface>
       </AnimatedSection>
       {user ? (
         <AnimatedSection delay={0.16}>

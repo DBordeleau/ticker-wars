@@ -135,6 +135,7 @@ export default function UserPredictionForm({
         <Select
           aria-label="Prediction horizon"
           value={horizon}
+          comboboxProps={{ withinPortal: true, zIndex: 420 }}
           data={targets.map((target) => ({
             value: target.horizon,
             label: `${formatHorizon(target.horizon)} from today`,

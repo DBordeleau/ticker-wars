@@ -5,6 +5,7 @@ import WarrenBuffbotPanel from "../components/buffbot/WarrenBuffbotPanel";
 import AnimatedSection from "../components/layout/AnimatedSection";
 import BackToDashboardButton from "../components/layout/BackToDashboardButton";
 import DashboardFooter from "../components/layout/DashboardFooter";
+import MagicHoverSurface from "../components/layout/MagicHoverSurface";
 import SectionPanel from "../components/layout/SectionPanel";
 import PredictionTable from "../components/predictions/PredictionTable";
 import { useDashboardData } from "../hooks/useDashboardData";
@@ -43,23 +44,25 @@ export default function ModelDetail() {
       ) : null}
 
       <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.16 : 0.08}>
-        <Card className="model-hero">
-          {dashboard.loading ? (
-            <Skeleton height={160} radius="sm" />
-          ) : (
-            <>
-              <Group gap="xs" mb="sm">
-                <Badge color={modelTypeColor(info.type)}>{info.type}</Badge>
-              </Group>
-              <Title order={1} c="green">
-                {info.name}
-              </Title>
-              <Text mt="sm" className="model-description">
-                {info.description}
-              </Text>
-            </>
-          )}
-        </Card>
+        <MagicHoverSurface className="section-magic-surface">
+          <Card className="model-hero">
+            {dashboard.loading ? (
+              <Skeleton height={160} radius="sm" />
+            ) : (
+              <>
+                <Group gap="xs" mb="sm">
+                  <Badge color={modelTypeColor(info.type)}>{info.type}</Badge>
+                </Group>
+                <Title order={1} c="green">
+                  {info.name}
+                </Title>
+                <Text mt="sm" className="model-description">
+                  {info.description}
+                </Text>
+              </>
+            )}
+          </Card>
+        </MagicHoverSurface>
       </AnimatedSection>
 
       <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.24 : 0.16}>
@@ -76,22 +79,22 @@ export default function ModelDetail() {
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Horizon</Table.Th>
-                    <Table.Th>Rank</Table.Th>
-                    <Table.Th>MAE</Table.Th>
-                    <Table.Th>Directional</Table.Th>
-                    <Table.Th>Winkler</Table.Th>
-                    <Table.Th className="score-column">Scored</Table.Th>
+                    <Table.Th className="model-metrics-center">Rank</Table.Th>
+                    <Table.Th className="model-metrics-center">MAE</Table.Th>
+                    <Table.Th className="model-metrics-center">Directional</Table.Th>
+                    <Table.Th className="model-metrics-center">Winkler</Table.Th>
+                    <Table.Th className="model-metrics-center score-column">Scored</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {horizonMetricsForModel.map((row) => (
                     <Table.Tr key={row.prediction_horizon}>
                       <Table.Td>{formatHorizon(row.prediction_horizon)}</Table.Td>
-                      <Table.Td>{row.rank ? `#${row.rank}` : "Pending"}</Table.Td>
-                      <Table.Td>{formatMetric(row.mae)}</Table.Td>
-                      <Table.Td>{formatPercent(row.directional_accuracy)}</Table.Td>
-                      <Table.Td>{formatMetric(row.winkler_score)}</Table.Td>
-                      <Table.Td className="score-column">{row.prediction_count.toLocaleString()}</Table.Td>
+                      <Table.Td className="model-metrics-center">{row.rank ? `#${row.rank}` : "Pending"}</Table.Td>
+                      <Table.Td className="model-metrics-center">{formatMetric(row.mae)}</Table.Td>
+                      <Table.Td className="model-metrics-center">{formatPercent(row.directional_accuracy)}</Table.Td>
+                      <Table.Td className="model-metrics-center">{formatMetric(row.winkler_score)}</Table.Td>
+                      <Table.Td className="model-metrics-center score-column">{row.prediction_count.toLocaleString()}</Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>

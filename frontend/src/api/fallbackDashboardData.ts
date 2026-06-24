@@ -6,6 +6,7 @@ import type {
   ModelMetricRow,
   TickerHistoryRow,
   UserLeaderboardRow,
+  UserTickerLeaderboardRow,
 } from "./dashboardData";
 
 const generatedAt = "2026-06-22T12:00:00.000Z";
@@ -257,6 +258,39 @@ const latestUserPredictions: LatestUserPrediction[] = [
   },
 ];
 
+const userTickerLeaderboard: UserTickerLeaderboardRow[] = [
+  {
+    ...userLeaderboard[1],
+    ticker: "AAPL",
+    prediction_horizon: "all",
+    mae: 3.95,
+    directional_accuracy: 0.67,
+    prediction_count: 4,
+    scored_count: 4,
+    rank: 1,
+  },
+  {
+    ...userLeaderboard[0],
+    ticker: "AAPL",
+    prediction_horizon: "all",
+    mae: 4.24,
+    directional_accuracy: 0.6,
+    prediction_count: 5,
+    scored_count: 5,
+    rank: 2,
+  },
+  {
+    ...userLeaderboard[0],
+    ticker: "AAPL",
+    prediction_horizon: "1w",
+    mae: 2.11,
+    directional_accuracy: 0.71,
+    prediction_count: 2,
+    scored_count: 2,
+    rank: 1,
+  },
+];
+
 const tickerHistory: TickerHistoryRow[] = [
   {
     generated_at: generatedAt,
@@ -299,6 +333,7 @@ const modelMetrics: ModelMetricRow[] = leaderboard
 export const fallbackDashboardData: DashboardData = {
   leaderboard,
   userLeaderboard,
+  userTickerLeaderboard,
   modelMetrics,
   latestPredictions,
   latestUserPredictions,

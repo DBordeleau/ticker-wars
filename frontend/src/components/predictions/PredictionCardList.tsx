@@ -2,6 +2,7 @@ import { Badge, Group, Text } from "@mantine/core";
 import { Link } from "react-router-dom";
 import type { LatestPrediction } from "../../api/dashboardData";
 import {
+  formatCurrency,
   formatDate,
   formatHorizon,
 } from "../../utils/format";
@@ -31,6 +32,12 @@ export default function PredictionCardList({ rows }: Props) {
             </Badge>
           </Group>
           <Group mt="sm" justify="space-between">
+            <Text size="xs" c="dimmed">
+              Reference
+            </Text>
+            <Text size="sm" fw={800}>{formatCurrency(row.reference_close)}</Text>
+          </Group>
+          <Group mt={6} justify="space-between">
             <Text size="xs" c="dimmed">
               Predicted
             </Text>

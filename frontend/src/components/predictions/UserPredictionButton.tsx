@@ -1,4 +1,4 @@
-import { Button, Drawer, Popover } from "@mantine/core";
+import { Button, Drawer, Modal, Popover } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { FiTarget } from "react-icons/fi";
@@ -70,13 +70,17 @@ export default function UserPredictionButton({
             {form}
           </Drawer>
         </>
-      ) : (
+      ) : compact ? (
         <Popover
           opened={opened}
           onChange={(nextOpened) => (nextOpened ? handlers.open() : handlers.close())}
           position="bottom-end"
           withArrow
           shadow="xl"
+          trapFocus
+          closeOnEscape
+          closeOnClickOutside={false}
+          withinPortal
         >
           <Popover.Target>
             <Button
@@ -90,6 +94,22 @@ export default function UserPredictionButton({
           </Popover.Target>
           <Popover.Dropdown className="user-prediction-popover">{form}</Popover.Dropdown>
         </Popover>
+      ) : (
+        <>
+          <Button color="green" variant="filled" leftSection={<FiTarget />} onClick={handleOpen}>
+            {existingPrediction ? "Edit" : "Predict"}
+          </Button>
+          <Modal
+            opened={opened}
+            onClose={handlers.close}
+            title={`${ticker} prediction`}
+            centered
+            className="prediction-modal"
+            overlayProps={{ backgroundOpacity: 0.48, blur: 8 }}
+          >
+            {form}
+          </Modal>
+        </>
       )}
       <SignInModal opened={signInOpen} onClose={signInHandlers.close} />
     </>

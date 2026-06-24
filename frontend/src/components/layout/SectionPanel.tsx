@@ -1,5 +1,6 @@
 import { Card, Group, Text, Title } from "@mantine/core";
 import type { ReactNode } from "react";
+import MagicHoverSurface from "./MagicHoverSurface";
 
 type Props = {
   title: string;
@@ -10,22 +11,26 @@ type Props = {
 };
 
 export default function SectionPanel({ title, subtitle, action, children, className }: Props) {
+  const panelClassName = className ? `section-panel ${className}` : "section-panel";
+
   return (
-    <Card className={className ? `section-panel ${className}` : "section-panel"}>
-      <Group justify="space-between" align="flex-start" gap="md" mb="md">
-        <div>
-          <Title order={2} className="section-title">
-            {title}
-          </Title>
-          {subtitle ? (
-            <Text c="dimmed" size="sm" mt={4}>
-              {subtitle}
-            </Text>
-          ) : null}
-        </div>
-        {action}
-      </Group>
-      {children}
-    </Card>
+    <MagicHoverSurface className="section-magic-surface">
+      <Card className={panelClassName}>
+        <Group justify="space-between" align="flex-start" gap="md" mb="md">
+          <div>
+            <Title order={2} className="section-title">
+              {title}
+            </Title>
+            {subtitle ? (
+              <Text c="dimmed" size="sm" mt={4}>
+                {subtitle}
+              </Text>
+            ) : null}
+          </div>
+          {action}
+        </Group>
+        {children}
+      </Card>
+    </MagicHoverSurface>
   );
 }

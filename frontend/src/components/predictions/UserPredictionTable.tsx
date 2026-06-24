@@ -1,9 +1,13 @@
 import { Badge, Group, Skeleton, Table, Text } from "@mantine/core";
+import { motion } from "framer-motion";
+import { useState } from "react";
+import { FiChevronDown } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import type { LatestUserPrediction, MetricHorizon } from "../../api/dashboardData";
 import type { DashboardView } from "../dashboard/DashboardViewToggle";
 import DashboardViewToggle from "../dashboard/DashboardViewToggle";
 import { formatCurrency, formatDate, formatHorizon, formatSignedPercent } from "../../utils/format";
+import MagicHoverSurface from "../layout/MagicHoverSurface";
 import SectionPanel from "../layout/SectionPanel";
 import AvatarImage from "../users/AvatarImage";
 import PredictionHorizonSelector from "./PredictionHorizonSelector";
@@ -15,6 +19,10 @@ type Props = {
   onViewChange: (view: DashboardView) => void;
   horizon: MetricHorizon;
   onHorizonChange: (horizon: MetricHorizon) => void;
+  title?: string;
+  subtitle?: string;
+  collapsible?: boolean;
+  embedded?: boolean;
 };
 
 export default function UserPredictionTable({
@@ -24,7 +32,12 @@ export default function UserPredictionTable({
   onViewChange,
   horizon,
   onHorizonChange,
+  title = "Latest User Predictions",
+  subtitle = "Public user predictions. Private profiles are excluded.",
+  collapsible = false,
+  embedded = false,
 }: Props) {
+  const [isOpen, setIsOpen] = useState(true);
   const visibleRows = rows
     .filter((row) => (horizon === "all" ? true : row.prediction_horizon === horizon))
     .sort((a, b) => a.ticker.localeCompare(b.ticker) || a.username.localeCompare(b.username));
@@ -36,12 +49,8 @@ export default function UserPredictionTable({
     </Group>
   );
 
-  return (
-    <SectionPanel
-      title="Latest User Predictions"
-      subtitle="Public user predictions. Private profiles are excluded."
-      action={controls}
-    >
+  const predictions = (
+    <>
       {loading ? (
         <Skeleton height={300} radius="sm" />
       ) : visibleRows.length === 0 ? (
@@ -51,13 +60,14 @@ export default function UserPredictionTable({
       ) : (
         <>
           <div className="desktop-table">
-            <Table.ScrollContainer minWidth={780}>
+            <Table.ScrollContainer minWidth={860}>
               <Table highlightOnHover verticalSpacing="sm" className="prediction-table">
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Ticker</Table.Th>
                     <Table.Th>User</Table.Th>
                     <Table.Th className="prediction-table-center">Horizon</Table.Th>
+                    <Table.Th className="prediction-table-center">Reference</Table.Th>
                     <Table.Th className="prediction-table-center">Predicted</Table.Th>
                     <Table.Th className="prediction-table-center">Matures On</Table.Th>
                     <Table.Th className="prediction-table-center">Predicted On</Table.Th>
@@ -89,6 +99,7 @@ export default function UserPredictionTable({
                           {formatHorizon(row.prediction_horizon)}
                         </Badge>
                       </Table.Td>
+                      <Table.Td className="prediction-table-center">{formatCurrency(row.reference_close)}</Table.Td>
                       <Table.Td className="prediction-table-center">
                         <Text fw={850}>{formatCurrency(row.predicted_close)}</Text>
                         <Text size="xs" className={row.predicted_return >= 0 ? "prediction-return-up" : "prediction-return-down"}>
@@ -132,6 +143,12 @@ export default function UserPredictionTable({
                   </Group>
                   <Group mt="sm" justify="space-between">
                     <Text size="xs" c="dimmed">
+                      Reference
+                    </Text>
+                    <Text fw={800}>{formatCurrency(row.reference_close)}</Text>
+                  </Group>
+                  <Group mt={6} justify="space-between">
+                    <Text size="xs" c="dimmed">
                       Predicted
                     </Text>
                     <Text fw={850}>{formatCurrency(row.predicted_close)}</Text>
@@ -148,6 +165,59 @@ export default function UserPredictionTable({
           </div>
         </>
       )}
+    </>
+  );
+
+  const panelContent = (
+    <div className={embedded ? "latest-predictions-embedded-content" : undefined}>
+      <Group className="collapsible-panel-topline" justify="space-between" align="flex-end" gap="md">
+        <Text className="secondary-text">{subtitle}</Text>
+        {controls}
+      </Group>
+      {predictions}
+    </div>
+  );
+
+  if (embedded) {
+    return panelContent;
+  }
+
+  if (collapsible) {
+    return (
+      <MagicHoverSurface className="section-magic-surface">
+        <section className="section-panel prediction-collapsible-panel">
+          <button
+            type="button"
+            className="collapsible-trigger"
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((current) => !current)}
+          >
+            <span className="section-title">{title}</span>
+            <FiChevronDown className="collapsible-chevron" />
+          </button>
+          <motion.div
+            initial={false}
+            animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
+            transition={{ type: "spring", stiffness: 180, damping: 25, mass: 0.85 }}
+            className="collapsible-motion"
+            style={{ pointerEvents: isOpen ? "auto" : "none" }}
+          >
+            <div className="collapsible-inner">
+              {panelContent}
+            </div>
+          </motion.div>
+        </section>
+      </MagicHoverSurface>
+    );
+  }
+
+  return (
+    <SectionPanel
+      title={title}
+      subtitle={subtitle}
+      action={controls}
+    >
+      {predictions}
     </SectionPanel>
   );
 }

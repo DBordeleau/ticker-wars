@@ -38,6 +38,10 @@ export type UserLeaderboardRow = {
   rank: number | null;
 };
 
+export type UserTickerLeaderboardRow = UserLeaderboardRow & {
+  ticker: string;
+};
+
 export type LatestPrediction = {
   generated_at?: string;
   prediction_id: string;
@@ -129,6 +133,7 @@ export type MetricHorizon = "1w" | "1m" | "3m" | "1y" | "all";
 export type DashboardData = {
   leaderboard: LeaderboardRow[];
   userLeaderboard: UserLeaderboardRow[];
+  userTickerLeaderboard: UserTickerLeaderboardRow[];
   modelMetrics: ModelMetricRow[];
   latestPredictions: LatestPrediction[];
   latestUserPredictions: LatestUserPrediction[];
@@ -195,6 +200,30 @@ export async function fetchUserLeaderboard(): Promise<UserLeaderboardRow[]> {
   }
 
   return (data ?? []).map(normalizeUserLeaderboardRow);
+}
+
+export async function fetchUserTickerLeaderboard(): Promise<UserTickerLeaderboardRow[]> {
+  if (!supabase) {
+    return fallbackDashboardData.userTickerLeaderboard;
+  }
+
+  const { data, error } = await supabase
+    .from("dashboard_user_ticker_leaderboard")
+    .select("*")
+    .order("ticker")
+    .order("evaluation_window")
+    .order("prediction_horizon")
+    .order("rank", { nullsFirst: false })
+    .order("username");
+
+  if (error) {
+    if (error.code === "42P01" || error.message.includes("dashboard_user_ticker_leaderboard")) {
+      return [];
+    }
+    throw error;
+  }
+
+  return (data ?? []).map(normalizeUserTickerLeaderboardRow);
 }
 
 export async function fetchLatestUserPredictions(): Promise<LatestUserPrediction[]> {
@@ -276,6 +305,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
   const [
     leaderboard,
     userLeaderboard,
+    userTickerLeaderboard,
     modelMetrics,
     latestPredictions,
     latestUserPredictions,
@@ -283,6 +313,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
   ] = await Promise.all([
     fetchLeaderboard(),
     fetchUserLeaderboard(),
+    fetchUserTickerLeaderboard(),
     fetchModelMetrics(),
     fetchLatestPredictions(),
     fetchLatestUserPredictions(),
@@ -292,6 +323,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
   return {
     leaderboard,
     userLeaderboard,
+    userTickerLeaderboard,
     modelMetrics,
     latestPredictions,
     latestUserPredictions,
@@ -313,6 +345,15 @@ function normalizeLeaderboardRow(row: Partial<LeaderboardRow>): LeaderboardRow {
     mape: row.mape ?? null,
     model_type: row.model_type ?? fallbackModelType(row.model_slug),
   } as LeaderboardRow;
+}
+
+function normalizeUserTickerLeaderboardRow(
+  row: Partial<UserTickerLeaderboardRow>,
+): UserTickerLeaderboardRow {
+  return {
+    ...normalizeUserLeaderboardRow(row),
+    ticker: row.ticker ?? "",
+  };
 }
 
 function normalizeUserLeaderboardRow(row: Partial<UserLeaderboardRow>): UserLeaderboardRow {

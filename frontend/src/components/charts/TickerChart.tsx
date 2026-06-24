@@ -22,6 +22,7 @@ type Props = {
   selectedTicker: string | null;
   onTickerChange: (ticker: string | null) => void;
   loading: boolean;
+  showTickerSelect?: boolean;
 };
 
 const lineColors = ["#22c55e", "#60a5fa", "#f59e0b", "#a78bfa", "#ef4444", "#14b8a6"];
@@ -60,6 +61,7 @@ export default function TickerChart({
   selectedTicker,
   onTickerChange,
   loading,
+  showTickerSelect = true,
 }: Props) {
   const tickers = useMemo(
     () => Array.from(new Set(predictions.map((row) => row.ticker))).sort(),
@@ -143,8 +145,12 @@ export default function TickerChart({
   return (
     <SectionPanel
       title="Actual vs Predicted"
-      subtitle="Select a ticker and compare model prediction lines against actual closes."
-      action={
+      subtitle={
+        showTickerSelect
+          ? "Select a ticker and compare model prediction lines against actual closes."
+          : "Compare model prediction lines against actual closes for this ticker."
+      }
+      action={showTickerSelect ? (
         <Select
           data={tickers}
           value={selectedTicker}
@@ -153,7 +159,7 @@ export default function TickerChart({
           searchable
           aria-label="Select ticker for chart"
         />
-      }
+      ) : undefined}
       className="chart-panel"
     >
       {loading ? (
