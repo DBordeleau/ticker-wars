@@ -112,6 +112,14 @@ export default function PredictionTable({
     : visibleRows.slice(0, predictionPreviewSize);
   const shownStart = visibleRows.length === 0 ? 0 : pageStart + 1;
   const shownEnd = isPaged ? Math.min(pageStart + predictionPageSize, visibleRows.length) : displayedRows.length;
+  const hoverMotion = { scale: 1.014, y: -1 };
+  const pressMotion = { scale: 0.972, y: 1 };
+  const pressTransition = {
+    type: "spring" as const,
+    stiffness: 500,
+    damping: 20,
+    mass: 0.46,
+  };
 
   const setSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -270,41 +278,65 @@ export default function PredictionTable({
       </div>
       {!isPaged && visibleRows.length > predictionPreviewSize ? (
         <Group justify="center">
-          <Button
-            variant="light"
-            color="green"
-            onClick={() => {
-              setIsPaged(true);
-              setCurrentPage(0);
-            }}
+          <motion.div
+            className="spotlight-control-wrap prediction-action-control load-more-control"
+            whileHover={hoverMotion}
+            whileTap={pressMotion}
+            transition={pressTransition}
           >
-            Load more predictions
-          </Button>
+            <Button
+              className="spotlight-control-button prediction-action-button"
+              variant="subtle"
+              color="green"
+              onClick={() => {
+                setIsPaged(true);
+                setCurrentPage(0);
+              }}
+            >
+              Load more predictions
+            </Button>
+          </motion.div>
           <Text size="sm" className="secondary-text">
             Showing {displayedRows.length} of {visibleRows.length}
           </Text>
         </Group>
       ) : isPaged && visibleRows.length > predictionPageSize ? (
         <Group justify="center" gap="sm" className="prediction-pagination">
-          <Button
-            variant="light"
-            color="green"
-            disabled={currentPage === 0}
-            onClick={() => setCurrentPage((page) => Math.max(0, page - 1))}
+          <motion.div
+            className="spotlight-control-wrap prediction-action-control pagination-control"
+            whileHover={currentPage === 0 ? undefined : hoverMotion}
+            whileTap={currentPage === 0 ? undefined : pressMotion}
+            transition={pressTransition}
           >
-            Previous
-          </Button>
+            <Button
+              className="spotlight-control-button prediction-action-button"
+              variant="subtle"
+              color="green"
+              disabled={currentPage === 0}
+              onClick={() => setCurrentPage((page) => Math.max(0, page - 1))}
+            >
+              Previous
+            </Button>
+          </motion.div>
           <Text size="sm" className="secondary-text">
             Page {currentPage + 1} of {pageCount}
           </Text>
-          <Button
-            variant="light"
-            color="green"
-            disabled={currentPage >= pageCount - 1}
-            onClick={() => setCurrentPage((page) => Math.min(pageCount - 1, page + 1))}
+          <motion.div
+            className="spotlight-control-wrap prediction-action-control pagination-control"
+            whileHover={currentPage >= pageCount - 1 ? undefined : hoverMotion}
+            whileTap={currentPage >= pageCount - 1 ? undefined : pressMotion}
+            transition={pressTransition}
           >
-            Next
-          </Button>
+            <Button
+              className="spotlight-control-button prediction-action-button"
+              variant="subtle"
+              color="green"
+              disabled={currentPage >= pageCount - 1}
+              onClick={() => setCurrentPage((page) => Math.min(pageCount - 1, page + 1))}
+            >
+              Next
+            </Button>
+          </motion.div>
           <Text size="sm" className="secondary-text prediction-pagination-count">
             Showing {shownStart}-{shownEnd} of {visibleRows.length}
           </Text>
