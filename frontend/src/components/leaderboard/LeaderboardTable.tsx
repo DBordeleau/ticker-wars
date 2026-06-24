@@ -68,9 +68,13 @@ export default function LeaderboardTable({
           <Table verticalSpacing="md" className="leaderboard-table">
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Rank</Table.Th>
+                <Table.Th className="leaderboard-table-center">Rank</Table.Th>
                 <Table.Th>{view === "models" ? "Model" : "User"}</Table.Th>
-                <MetricHeader label="MAE" tooltip="Mean absolute error. Lower is better." />
+                <MetricHeader
+                  label="MAE"
+                  tooltip="Mean absolute error. Lower is better."
+                  className="leaderboard-table-center"
+                />
                 <MetricHeader
                   label="Directional"
                   tooltip={
@@ -78,22 +82,25 @@ export default function LeaderboardTable({
                       ? "How often the model correctly predicted whether price moved up or down."
                       : "How often the user correctly predicted whether price moved up or down."
                   }
+                  className="leaderboard-table-center"
                 />
                 {view === "models" ? (
                   <MetricHeader
                     label="Winkler"
                     tooltip="Interval score that rewards accurate, tighter prediction ranges. Lower is better."
+                    className="leaderboard-table-center"
                   />
                 ) : (
                   <MetricHeader
                     label="Winkler"
                     tooltip="User predictions are point estimates in this MVP."
+                    className="leaderboard-table-center"
                   />
                 )}
                 <MetricHeader
                   label="Scored"
                   tooltip="Number of matured predictions included in this leaderboard row."
-                  className="score-column"
+                  className="leaderboard-table-center score-column"
                 />
               </Table.Tr>
             </Table.Thead>
@@ -109,7 +116,7 @@ export default function LeaderboardTable({
                     transition={{ duration: 0.2, delay: index * 0.025 }}
                     className={`leaderboard-row ${isModelRow && row.model_slug === "baseline" ? "baseline-row" : ""}`}
                   >
-                    <Table.Td>
+                    <Table.Td className="leaderboard-table-center">
                       <Text fw={800}>{row.rank ? `#${row.rank}` : "Pending"}</Text>
                     </Table.Td>
                     <Table.Td>
@@ -129,9 +136,9 @@ export default function LeaderboardTable({
                         </Group>
                       )}
                     </Table.Td>
-                    <Table.Td>{formatMetric(row.mae)}</Table.Td>
-                    <Table.Td>
-                      <Group gap="xs" wrap="nowrap">
+                    <Table.Td className="leaderboard-table-center">{formatMetric(row.mae)}</Table.Td>
+                    <Table.Td className="leaderboard-table-center">
+                      <Group gap="xs" wrap="nowrap" justify="center">
                         <Progress.Root className="direction-progress" size="lg">
                           <Progress.Section
                             value={
@@ -153,8 +160,10 @@ export default function LeaderboardTable({
                         <Text size="sm">{formatPercent(row.directional_accuracy)}</Text>
                       </Group>
                     </Table.Td>
-                    <Table.Td>{isModelRow ? formatMetric(row.winkler_score) : "-"}</Table.Td>
-                    <Table.Td className="score-column">
+                    <Table.Td className="leaderboard-table-center">
+                      {isModelRow ? formatMetric(row.winkler_score) : "-"}
+                    </Table.Td>
+                    <Table.Td className="leaderboard-table-center score-column">
                       {row.prediction_count.toLocaleString()}
                     </Table.Td>
                   </motion.tr>
