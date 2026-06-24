@@ -25,7 +25,8 @@ export default function UserControl() {
 
   if (!user) {
     return (
-      <>
+      <motion.div className="user-control" style={{ x: driftX, y: driftY }}>
+        <div className="user-control-float">
         <Button
           className="user-sign-in-button"
           variant="outline"
@@ -36,8 +37,9 @@ export default function UserControl() {
         >
           Sign in
         </Button>
+        </div>
         <SignInModal opened={signInOpen} onClose={() => setSignInOpen(false)} />
-      </>
+      </motion.div>
     );
   }
 
@@ -48,18 +50,20 @@ export default function UserControl() {
 
   return (
     <motion.div className="user-control" style={{ x: driftX, y: driftY }}>
-      <Tooltip label={profile ? profile.display_username : "Complete profile"}>
-        <button
-          type="button"
-          className="user-avatar-button"
-          aria-label="Open user menu"
-          aria-expanded={menuOpen}
-          disabled={profileLoading}
-          onClick={() => setMenuOpen((current) => !current)}
-        >
-          {profile ? <AvatarImage profile={profile} size={56} /> : <FiUser />}
-        </button>
-      </Tooltip>
+      <div className="user-control-float">
+        <Tooltip label={profile ? profile.display_username : "Complete profile"}>
+          <button
+            type="button"
+            className="user-avatar-button"
+            aria-label="Open user menu"
+            aria-expanded={menuOpen}
+            disabled={profileLoading}
+            onClick={() => setMenuOpen((current) => !current)}
+          >
+            {profile ? <AvatarImage profile={profile} size={56} /> : <FiUser />}
+          </button>
+        </Tooltip>
+      </div>
       <AnimatePresence>
         {menuOpen ? (
           <motion.div
