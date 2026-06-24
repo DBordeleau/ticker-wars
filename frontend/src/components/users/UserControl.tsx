@@ -59,13 +59,13 @@ export default function UserControl() {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.92 }}
         >
-          <RadialItem icon={<FiTarget />} label="Make prediction" angle={-150} onClick={() => go("/")} />
-          <RadialItem icon={<FiList />} label="My predictions" angle={-105} onClick={() => go("/me/predictions")} />
-          <RadialItem icon={<FiEdit3 />} label="Edit profile" angle={-60} onClick={() => go("/me/profile")} />
+          <RadialItem icon={<FiTarget />} label="Make prediction" angle={-175} onClick={() => go("/")} />
+          <RadialItem icon={<FiList />} label="My predictions" angle={-145} onClick={() => go("/me/predictions")} />
+          <RadialItem icon={<FiEdit3 />} label="Edit profile" angle={-115} onClick={() => go("/me/profile")} />
           <RadialItem
             icon={<FiLogOut />}
             label="Log out"
-            angle={-15}
+            angle={-85}
             onClick={() => {
               setMenuOpen(false);
               void signOut();
