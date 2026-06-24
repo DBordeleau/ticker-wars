@@ -232,22 +232,15 @@ textarea {
 }
 
 .hero-title-text {
-  display: inline-block;
-  padding-bottom: 0.12em;
-  background-image: linear-gradient(100deg,
-      #4ade80 0%,
-      #2dd4bf 26%,
-      #22d3ee 44%,
-      #a3e635 68%,
-      #4ade80 100%);
-  background-size: 280% 100%;
-  background-position: 0% 50%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 6px 34px rgba(45, 212, 191, 0.28));
-  animation: hero-gradient-pan 27s ease-in-out infinite;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: #EAFBF3;
+}
+
+.hero-title .accent {
+  color: #2FD673;
+  text-shadow: 0 0 46px rgba(47, 214, 115, 0.35);
 }
 
 .hero-competition-cta {
@@ -1185,7 +1178,7 @@ h2,
   background: rgba(255, 255, 255, 0.08);
 }
 
-.model-toggle > * {
+.model-toggle>* {
   position: relative;
   z-index: 1;
 }
@@ -1849,6 +1842,7 @@ h2,
 }
 
 @keyframes user-control-idle {
+
   0%,
   100% {
     transform: translate3d(0, 0, 0) rotate(0deg);
@@ -1864,6 +1858,7 @@ h2,
 }
 
 @keyframes user-control-ring {
+
   0%,
   100% {
     opacity: 0.46;

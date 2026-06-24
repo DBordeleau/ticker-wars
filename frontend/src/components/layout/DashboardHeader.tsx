@@ -11,7 +11,7 @@ export default function DashboardHeader() {
     <header className="dashboard-header hero-header">
       <p className="hero-eyebrow">Multi-Horizon Market Predictions</p>
       <h1 className="hero-title">
-        <span className="hero-title-text">Ticker Wars</span>
+        <span className="hero-title-text">Ticker </span><span className="accent">Wars</span>
       </h1>
       {!user ? (
         <>
@@ -30,7 +30,7 @@ export default function DashboardHeader() {
         </>
       ) : null}
       <p className="hero-subtitle">
-        A live leaderboard for machine-learning models competing across 1W, 1M, 3M, and 1Y market predictions.
+        A stock price prediction platform where users and machine learning models compete to predict the future prices.
       </p>
     </header>
   );
