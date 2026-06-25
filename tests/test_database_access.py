@@ -176,6 +176,27 @@ class DatabaseAccessTest(unittest.TestCase):
         )
         self.assertEqual(client.operations[0]["table"], "fundamentals")
 
+    def test_ticker_asset_cache_round_trip_methods_use_ticker_assets(self) -> None:
+        database, client = _database_with_fake_client()
+        rows = [
+            {
+                "ticker": "AAPL",
+                "logo_data_url": "data:image/png;base64,abc",
+                "logo_source": "hunter",
+            }
+        ]
+
+        written = database.upsert_ticker_assets(rows)
+        client.data["ticker_assets"] = rows
+        fetched = database.fetch_ticker_assets()
+
+        self.assertEqual(written, 1)
+        self.assertEqual(fetched, rows)
+        self.assertEqual(client.operations[0]["table"], "ticker_assets")
+        self.assertEqual(client.operations[0]["action"], "upsert")
+        self.assertEqual(client.operations[0]["on_conflict"], "ticker")
+        self.assertEqual(client.operations[1]["table"], "ticker_assets")
+
     def test_user_prediction_score_upsert_writes_only_known_score_columns(self) -> None:
         database, client = _database_with_fake_client()
         rows = [

@@ -1,5 +1,9 @@
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
-import { fallbackDashboardData } from "./fallbackDashboardData";
+import {
+  fallbackDashboardData,
+  fallbackTickerCloseSnapshots,
+  fallbackTickerProfiles,
+} from "./fallbackDashboardData";
 import type { AvatarOptions } from "../auth/types";
 
 export type LeaderboardRow = {
@@ -100,6 +104,32 @@ export type TickerHistoryRow = {
   reasoning_summary: string | null;
 };
 
+export type TickerProfile = {
+  ticker: string;
+  company_name: string | null;
+  logo_data_url: string | null;
+  sector: string | null;
+  industry: string | null;
+  business_summary: string | null;
+  as_of_date?: string | null;
+  source?: string | null;
+};
+
+export type TickerCloseSnapshot = {
+  ticker: string;
+  date: string;
+  close: number;
+  previous_date: string | null;
+  previous_close: number | null;
+  change: number | null;
+  change_percent: number | null;
+};
+
+export type TickerAsset = {
+  ticker: string;
+  logo_data_url: string | null;
+};
+
 export type ModelMetricRow = {
   generated_at?: string;
   window: MetricWindow;
@@ -137,12 +167,15 @@ export type DashboardData = {
   modelMetrics: ModelMetricRow[];
   latestPredictions: LatestPrediction[];
   latestUserPredictions: LatestUserPrediction[];
+  tickerAssets: TickerAsset[];
   tickerHistory: TickerHistoryRow[];
   metadata: RunMetadata | null;
   hasSupabaseConfig: boolean;
 };
 
 const hiddenModelSlugs = new Set(["ridge", "ridge-regression", "lasso"]);
+const dashboardPageSize = 1000;
+const dashboardRecentPredictionLimit = 2500;
 
 export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
   if (!supabase) {
@@ -169,17 +202,38 @@ export async function fetchLatestPredictions(): Promise<LatestPrediction[]> {
     return fallbackDashboardData.latestPredictions;
   }
 
-  const { data, error } = await supabase
-    .from("dashboard_latest_predictions")
-    .select("*")
-    .order("ticker")
-    .order("model_name");
+  const rows: Partial<LatestPrediction>[] = [];
+  let start = 0;
 
-  if (error) {
-    throw error;
+  while (rows.length < dashboardRecentPredictionLimit) {
+    const end = Math.min(
+      start + dashboardPageSize - 1,
+      dashboardRecentPredictionLimit - 1,
+    );
+    const { data, error } = await supabase
+      .from("dashboard_latest_predictions")
+      .select("*")
+      .order("prediction_date", { ascending: false })
+      .order("target_date", { ascending: false })
+      .order("ticker")
+      .order("model_slug")
+      .order("prediction_horizon")
+      .range(start, end);
+
+    if (error) {
+      throw error;
+    }
+
+    const batch = data ?? [];
+    rows.push(...batch);
+
+    if (batch.length < dashboardPageSize) {
+      break;
+    }
+    start += dashboardPageSize;
   }
 
-  return (data ?? []).map(normalizeLatestPredictionRow).filter(isVisibleModelRow);
+  return rows.map(normalizeLatestPredictionRow).filter(isVisibleModelRow);
 }
 
 export async function fetchUserLeaderboard(): Promise<UserLeaderboardRow[]> {
@@ -231,17 +285,37 @@ export async function fetchLatestUserPredictions(): Promise<LatestUserPrediction
     return fallbackDashboardData.latestUserPredictions;
   }
 
-  const { data, error } = await supabase
-    .from("dashboard_latest_user_predictions")
-    .select("*")
-    .order("ticker")
-    .order("username");
+  const rows: Partial<LatestUserPrediction>[] = [];
+  let start = 0;
 
-  if (error) {
-    throw error;
+  while (rows.length < dashboardRecentPredictionLimit) {
+    const end = Math.min(
+      start + dashboardPageSize - 1,
+      dashboardRecentPredictionLimit - 1,
+    );
+    const { data, error } = await supabase
+      .from("dashboard_latest_user_predictions")
+      .select("*")
+      .order("prediction_date", { ascending: false })
+      .order("target_date", { ascending: false })
+      .order("ticker")
+      .order("username")
+      .range(start, end);
+
+    if (error) {
+      throw error;
+    }
+
+    const batch = data ?? [];
+    rows.push(...batch);
+
+    if (batch.length < dashboardPageSize) {
+      break;
+    }
+    start += dashboardPageSize;
   }
 
-  return (data ?? []).map(normalizeLatestUserPredictionRow);
+  return rows.map(normalizeLatestUserPredictionRow);
 }
 
 export async function fetchTickerHistory(ticker: string): Promise<TickerHistoryRow[]> {
@@ -261,6 +335,91 @@ export async function fetchTickerHistory(ticker: string): Promise<TickerHistoryR
   }
 
   return (data ?? []).map(normalizeTickerHistoryRow).filter(isVisibleModelRow);
+}
+
+export async function fetchTickerProfile(ticker: string): Promise<TickerProfile | null> {
+  const normalizedTicker = ticker.trim().toUpperCase();
+  if (!normalizedTicker) {
+    return null;
+  }
+
+  if (!supabase) {
+    return fallbackTickerProfiles[normalizedTicker] ?? null;
+  }
+
+  const { data, error } = await supabase
+    .from("fundamentals")
+    .select("ticker,as_of_date,sector,industry,source,raw_json")
+    .eq("ticker", normalizedTicker)
+    .order("as_of_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === "42P01" || error.message.includes("fundamentals")) {
+      return null;
+    }
+    throw error;
+  }
+
+  const { data: assetData, error: assetError } = await supabase
+    .from("ticker_assets")
+    .select("ticker,logo_data_url")
+    .eq("ticker", normalizedTicker)
+    .maybeSingle();
+
+  if (assetError && assetError.code !== "42P01" && !assetError.message.includes("ticker_assets")) {
+    throw assetError;
+  }
+
+  return data ? normalizeTickerProfileRow(data, assetData ?? null) : null;
+}
+
+export async function fetchTickerAssets(): Promise<TickerAsset[]> {
+  if (!supabase) {
+    return fallbackDashboardData.tickerAssets;
+  }
+
+  const { data, error } = await supabase
+    .from("ticker_assets")
+    .select("ticker,logo_data_url")
+    .order("ticker");
+
+  if (error) {
+    if (error.code === "42P01" || error.message.includes("ticker_assets")) {
+      return [];
+    }
+    throw error;
+  }
+
+  return (data ?? []).map(normalizeTickerAssetRow);
+}
+
+export async function fetchTickerCloseSnapshot(ticker: string): Promise<TickerCloseSnapshot | null> {
+  const normalizedTicker = ticker.trim().toUpperCase();
+  if (!normalizedTicker) {
+    return null;
+  }
+
+  if (!supabase) {
+    return fallbackTickerCloseSnapshots[normalizedTicker] ?? null;
+  }
+
+  const { data, error } = await supabase
+    .from("prices")
+    .select("ticker,date,close")
+    .eq("ticker", normalizedTicker)
+    .order("date", { ascending: false })
+    .limit(2);
+
+  if (error) {
+    if (error.code === "42P01" || error.message.includes("prices")) {
+      return null;
+    }
+    throw error;
+  }
+
+  return normalizeTickerCloseSnapshot(data ?? []);
 }
 
 export async function fetchModelMetrics(): Promise<ModelMetricRow[]> {
@@ -309,6 +468,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     modelMetrics,
     latestPredictions,
     latestUserPredictions,
+    tickerAssets,
     metadata,
   ] = await Promise.all([
     fetchLeaderboard(),
@@ -317,6 +477,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     fetchModelMetrics(),
     fetchLatestPredictions(),
     fetchLatestUserPredictions(),
+    fetchTickerAssets(),
     fetchRunMetadata(),
   ]);
 
@@ -327,6 +488,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     modelMetrics,
     latestPredictions,
     latestUserPredictions,
+    tickerAssets,
     tickerHistory: supabase ? [] : fallbackDashboardData.tickerHistory,
     metadata,
     hasSupabaseConfig: isSupabaseConfigured,
@@ -441,6 +603,61 @@ function normalizeTickerHistoryRow(row: Partial<TickerHistoryRow>): TickerHistor
   } as TickerHistoryRow;
 }
 
+function normalizeTickerAssetRow(row: Partial<TickerAsset>): TickerAsset {
+  return {
+    ticker: cleanString(row.ticker) ?? "",
+    logo_data_url: cleanDataUrl(row.logo_data_url),
+  };
+}
+
+function normalizeTickerProfileRow(
+  row: Record<string, unknown>,
+  assetRow: Record<string, unknown> | null = null,
+): TickerProfile {
+  const raw = isRecord(row.raw_json) ? row.raw_json : {};
+  return {
+    ticker: cleanString(row.ticker) ?? "",
+    company_name:
+      cleanString(raw.longName) ??
+      cleanString(raw.shortName) ??
+      cleanString(raw.displayName) ??
+      null,
+    logo_data_url: cleanDataUrl(assetRow?.logo_data_url),
+    sector: cleanString(row.sector) ?? cleanString(raw.sector) ?? null,
+    industry: cleanString(row.industry) ?? cleanString(raw.industry) ?? null,
+    business_summary: cleanString(raw.longBusinessSummary) ?? null,
+    as_of_date: cleanString(row.as_of_date),
+    source: cleanString(row.source),
+  };
+}
+
+function normalizeTickerCloseSnapshot(rows: Record<string, unknown>[]): TickerCloseSnapshot | null {
+  const latest = rows[0];
+  if (!latest) {
+    return null;
+  }
+
+  const close = cleanNumber(latest.close);
+  if (close == null) {
+    return null;
+  }
+
+  const previous = rows[1];
+  const previousClose = previous ? cleanNumber(previous.close) : null;
+  const change = previousClose == null ? null : close - previousClose;
+  const changePercent = previousClose == null || previousClose === 0 ? null : close / previousClose - 1;
+
+  return {
+    ticker: cleanString(latest.ticker) ?? "",
+    date: cleanString(latest.date) ?? "",
+    close,
+    previous_date: previous ? cleanString(previous.date) : null,
+    previous_close: previousClose,
+    change,
+    change_percent: changePercent,
+  };
+}
+
 function normalizeModelMetricRow(row: Partial<ModelMetricRow>): ModelMetricRow {
   const window = row.window ?? row.evaluation_window ?? "all";
   const predictionCount = row.prediction_count ?? row.scored_count ?? 0;
@@ -478,6 +695,33 @@ function fallbackModelType(modelSlug?: string) {
     return "Time Series";
   }
   return "Classic ML";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function cleanString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const text = value.trim();
+  return text || null;
+}
+
+function cleanDataUrl(value: unknown): string | null {
+  const text = cleanString(value);
+  if (!text) {
+    return null;
+  }
+  return /^data:image\/[a-z0-9.+-]+;base64,/i.test(text) ? text : null;
+}
+
+function cleanNumber(value: unknown): number | null {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return null;
+  }
+  return value;
 }
 
 function fallbackModelSlug(modelName?: string) {

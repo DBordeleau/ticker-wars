@@ -29,6 +29,10 @@ class CliSmokeTest(unittest.TestCase):
         with patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=None):
             self.assertEqual(main(["ingest-fundamentals"]), 0)
 
+    def test_ingest_logos_runs_without_supabase(self) -> None:
+        with patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=None):
+            self.assertEqual(main(["ingest-logos"]), 0)
+
     def test_predict_horizons_command_runs_prediction_step(self) -> None:
         with patch("pipeline.cli.run_predict_horizons", return_value=0) as run_predict:
             self.assertEqual(main(["predict-horizons"]), 0)
@@ -75,6 +79,7 @@ class CliSmokeTest(unittest.TestCase):
             patch("pipeline.cli.load_settings", return_value=Settings(start_date="2020-01-01")),
             patch("pipeline.cli.run_backfill", side_effect=record("backfill")),
             patch("pipeline.cli.run_ingest_fundamentals", side_effect=record("fundamentals")),
+            patch("pipeline.cli.run_ingest_logos", side_effect=record("logos")),
             patch("pipeline.cli.run_build_features", side_effect=record("features")),
             patch("pipeline.cli.run_score", side_effect=record("score")),
             patch("pipeline.cli.run_predict_horizons", side_effect=record("predict")),
@@ -85,7 +90,7 @@ class CliSmokeTest(unittest.TestCase):
 
         self.assertEqual(
             calls,
-            ["backfill", "fundamentals", "features", "score", "predict", "refresh", "export"],
+            ["backfill", "fundamentals", "logos", "features", "score", "predict", "refresh", "export"],
         )
 
 

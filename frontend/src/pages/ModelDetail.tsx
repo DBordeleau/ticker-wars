@@ -1,4 +1,5 @@
 import { Badge, Card, Group, Skeleton, Table, Text, Title } from "@mantine/core";
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import type { MetricHorizon } from "../api/dashboardData";
 import WarrenBuffbotPanel from "../components/buffbot/WarrenBuffbotPanel";
@@ -23,6 +24,13 @@ const horizonOrder: Record<MetricHorizon, number> = {
 export default function ModelDetail() {
   const { modelSlug = "" } = useParams();
   const dashboard = useDashboardData();
+  const tickerLogos = useMemo(
+    () =>
+      Object.fromEntries(
+        dashboard.tickerAssets.map((asset) => [asset.ticker, asset.logo_data_url]),
+      ),
+    [dashboard.tickerAssets],
+  );
   const latestForModel = dashboard.latestPredictions.filter((row) => row.model_slug === modelSlug);
   const horizonMetricsForModel = dashboard.leaderboard
     .filter((row) => row.model_slug === modelSlug && row.window === "all")
@@ -109,6 +117,7 @@ export default function ModelDetail() {
           rows={latestForModel}
           loading={dashboard.loading}
           onPredictionSaved={() => void dashboard.refetch()}
+          tickerLogos={tickerLogos}
         />
       </AnimatedSection>
 

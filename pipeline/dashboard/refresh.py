@@ -18,6 +18,8 @@ from pipeline.models.registry import (
     MODEL_TYPES,
 )
 
+DASHBOARD_RECENT_PREDICTION_LIMIT = 2500
+
 
 @dataclass(frozen=True)
 class DashboardRefreshResult:
@@ -93,17 +95,6 @@ def _build_latest_predictions(
     if not prediction_rows:
         return []
 
-    latest_by_ticker_model_and_horizon: dict[tuple[str, str, str], dict[str, Any]] = {}
-    for row in prediction_rows:
-        key = (
-            str(row["ticker"]),
-            str(row.get("model_slug") or _model_slug(row["model_name"])),
-            str(row["prediction_horizon"]),
-        )
-        current = latest_by_ticker_model_and_horizon.get(key)
-        if current is None or _latest_prediction_sort_key(row) > _latest_prediction_sort_key(current):
-            latest_by_ticker_model_and_horizon[key] = row
-
     return [
         {
             "generated_at": generated_at,
@@ -124,9 +115,10 @@ def _build_latest_predictions(
             "model_metadata": row.get("model_metadata"),
         }
         for row in sorted(
-            latest_by_ticker_model_and_horizon.values(),
-            key=lambda item: (item["ticker"], item["model_name"], item["prediction_horizon"]),
-        )
+            prediction_rows,
+            key=_recent_prediction_sort_key,
+            reverse=True,
+        )[:DASHBOARD_RECENT_PREDICTION_LIMIT]
     ]
 
 
@@ -242,13 +234,6 @@ def _build_latest_user_predictions(
     if not public_prediction_rows:
         return []
 
-    latest_prediction_date = max(str(row["prediction_date"]) for row in public_prediction_rows)
-    latest_rows = [
-        row
-        for row in public_prediction_rows
-        if str(row["prediction_date"]) == latest_prediction_date
-    ]
-
     return [
         {
             "generated_at": generated_at,
@@ -267,12 +252,10 @@ def _build_latest_user_predictions(
             "predicted_close": row["predicted_close"],
         }
         for row in sorted(
-            latest_rows,
-            key=lambda item: (
-                item["ticker"],
-                public_profiles[str(item["user_id"])]["display_username"].lower(),
-            ),
-        )
+            public_prediction_rows,
+            key=_recent_user_prediction_sort_key,
+            reverse=True,
+        )[:DASHBOARD_RECENT_PREDICTION_LIMIT]
         if (profile := public_profiles.get(str(row["user_id"]))) is not None
     ]
 
@@ -375,8 +358,23 @@ def _known_horizons(scored_predictions: list[dict[str, Any]]) -> list[str]:
     return list(METRIC_HORIZONS)
 
 
-def _latest_prediction_sort_key(row: dict[str, Any]) -> tuple[str, str]:
-    return (str(row["prediction_date"]), str(row["target_date"]))
+def _recent_prediction_sort_key(row: dict[str, Any]) -> tuple[str, str, str, str, str]:
+    return (
+        str(row["prediction_date"]),
+        str(row["target_date"]),
+        str(row["ticker"]),
+        str(row.get("model_slug") or _model_slug(row["model_name"])),
+        str(row["prediction_horizon"]),
+    )
+
+
+def _recent_user_prediction_sort_key(row: dict[str, Any]) -> tuple[str, str, str, str]:
+    return (
+        str(row["prediction_date"]),
+        str(row["target_date"]),
+        str(row["ticker"]),
+        str(row["user_id"]),
+    )
 
 
 def _public_profiles_by_user_id(

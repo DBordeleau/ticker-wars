@@ -7,6 +7,7 @@ import {
   formatDate,
   formatHorizon,
 } from "../../utils/format";
+import TickerLogoMark from "../tickers/TickerLogoMark";
 import PredictionValue from "./PredictionValue";
 import UserPredictionButton from "./UserPredictionButton";
 
@@ -14,12 +15,14 @@ type Props = {
   rows: LatestPrediction[];
   latestPredictions?: LatestPrediction[];
   onPredictionSaved?: (prediction: UserPrediction) => void;
+  tickerLogos?: Record<string, string | null>;
 };
 
 export default function PredictionCardList({
   rows,
   latestPredictions = rows,
   onPredictionSaved,
+  tickerLogos = {},
 }: Props) {
   return (
     <div className="prediction-card-list">
@@ -27,9 +30,12 @@ export default function PredictionCardList({
         <article className="prediction-card" key={row.prediction_id}>
           <Group justify="space-between" align="flex-start" wrap="nowrap">
             <div className="prediction-card-copy">
-              <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
-                {row.ticker}
-              </Text>
+              <Group gap="xs" wrap="nowrap" className="ticker-card-heading">
+                <TickerLogoMark ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} />
+                <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
+                  {row.ticker}
+                </Text>
+              </Group>
               <Text component={Link} to={`/models/${row.model_slug}`} size="sm" c="dimmed" className="plain-link prediction-card-model">
                 {row.model_name}
               </Text>
