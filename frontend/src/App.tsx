@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthProvider";
 import AuthOnboardingRedirect from "./auth/AuthOnboardingRedirect";
 import AuroraBackground from "./components/layout/AuroraBackground";
+import ScrollManager from "./components/layout/ScrollManager";
 import UserControl from "./components/users/UserControl";
 import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/Dashboard";
@@ -20,6 +21,7 @@ export default function App() {
       <AuroraBackground />
       <AuthProvider>
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+          <ScrollManager />
           <AuthOnboardingRedirect />
           <UserControl />
           <Routes>
