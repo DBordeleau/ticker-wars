@@ -19,6 +19,7 @@ import PredictionFilters from "./PredictionFilters";
 import PredictionHorizonSelector from "./PredictionHorizonSelector";
 import PredictionValue from "./PredictionValue";
 import UserPredictionButton from "./UserPredictionButton";
+import TickerLogoMark from "../tickers/TickerLogoMark";
 
 type SortKey = "ticker" | "model" | "horizon" | "reference" | "close" | "target" | "prediction";
 
@@ -31,6 +32,7 @@ type Props = {
   showTickerFilter?: boolean;
   embedded?: boolean;
   onPredictionSaved?: (prediction: UserPrediction) => void;
+  tickerLogos?: Record<string, string | null>;
 };
 
 const predictionPreviewSize = 5;
@@ -45,10 +47,11 @@ export default function PredictionTable({
   showTickerFilter = true,
   embedded = false,
   onPredictionSaved,
+  tickerLogos = {},
 }: Props) {
   const [tickerQuery, setTickerQuery] = useState("");
   const [model, setModel] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("target");
+  const [sortKey, setSortKey] = useState<SortKey>("prediction");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [isPaged, setIsPaged] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
@@ -241,9 +244,12 @@ export default function PredictionTable({
                     />
                   </Table.Td>
                   <Table.Td>
-                    <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
-                      {row.ticker}
-                    </Text>
+                    <Group gap="xs" wrap="nowrap" className="ticker-cell-link">
+                      <TickerLogoMark ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} />
+                      <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
+                        {row.ticker}
+                      </Text>
+                    </Group>
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs">
@@ -274,6 +280,7 @@ export default function PredictionTable({
           rows={displayedRows}
           latestPredictions={rows}
           onPredictionSaved={onPredictionSaved}
+          tickerLogos={tickerLogos}
         />
       </div>
       {!isPaged && visibleRows.length > predictionPreviewSize ? (
