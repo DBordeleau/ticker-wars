@@ -25,6 +25,7 @@ from pipeline.evaluation.scoring import (
 )
 from pipeline.features.build_features import build_feature_rows
 from pipeline.ingestion.fundamentals import fetch_fundamentals
+from pipeline.ingestion.logos import fetch_ticker_logos
 from pipeline.ingestion.market_data import fetch_daily_prices
 from pipeline.models.chronos_model import generate_chronos_predictions
 from pipeline.models.timesfm_model import generate_timesfm_predictions
@@ -66,6 +67,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="Refresh fundamentals even when cached rows are still fresh.",
+    )
+    logos = subparsers.add_parser(
+        "ingest-logos",
+        help="Fetch and cache ticker logos from Hunter using yfinance website domains.",
+    )
+    logos.add_argument(
+        "--force",
+        action="store_true",
+        help="Refresh logos even when cached rows already exist.",
     )
 
     subparsers.add_parser("run-daily", help="Run the daily pipeline.")
@@ -125,6 +135,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "ingest-fundamentals":
         return run_ingest_fundamentals(force=args.force)
 
+    if args.command == "ingest-logos":
+        return run_ingest_logos(force=args.force)
+
     if args.command == "predict-horizons":
         if used_deprecated_train_predict:
             return run_train_predict_alias()
@@ -157,6 +170,9 @@ def main(argv: list[str] | None = None) -> int:
         fundamentals_status = run_ingest_fundamentals()
         if fundamentals_status != 0:
             return fundamentals_status
+        logos_status = run_ingest_logos()
+        if logos_status != 0:
+            return logos_status
         feature_status = run_build_features()
         if feature_status != 0:
             return feature_status
@@ -221,6 +237,39 @@ def run_ingest_fundamentals(force: bool = False) -> int:
     if result.failed_tickers:
         LOGGER.warning(
             "Fundamentals ingestion failed for %s tickers: %s",
+            len(result.failed_tickers),
+            result.failed_tickers,
+        )
+
+    return 0
+
+
+def run_ingest_logos(force: bool = False) -> int:
+    settings = load_settings()
+    database = SupabaseDatabase.from_settings(settings)
+    if database is None:
+        LOGGER.info("Logo ingestion skipped because Supabase credentials are not configured.")
+        return 0
+
+    fundamental_rows = database.fetch_latest_fundamentals()
+    if not fundamental_rows:
+        LOGGER.warning("Logo ingestion skipped because fundamentals are not available.")
+        return 0
+
+    existing_rows = database.fetch_ticker_assets()
+    result = fetch_ticker_logos(
+        fundamental_rows=fundamental_rows,
+        existing_rows=existing_rows,
+        force=force,
+    )
+    written = database.upsert_ticker_assets(result.rows)
+
+    LOGGER.info("Logo ingestion wrote %s cached ticker assets.", written)
+    if result.skipped_tickers:
+        LOGGER.info("Logo ingestion used cached rows for %s tickers.", len(result.skipped_tickers))
+    if result.failed_tickers:
+        LOGGER.warning(
+            "Logo ingestion failed for %s tickers: %s",
             len(result.failed_tickers),
             result.failed_tickers,
         )
