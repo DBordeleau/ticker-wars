@@ -8,7 +8,7 @@ from pipeline.evaluation.metrics import METRIC_WINDOWS
 
 
 class DashboardContractTest(unittest.TestCase):
-    def test_latest_predictions_use_latest_target_date(self) -> None:
+    def test_latest_predictions_include_recent_rows_across_prediction_dates(self) -> None:
         tables = build_dashboard_tables(
             prediction_rows=[
                 _prediction("AAPL", "2026-01-02", "Baseline", prediction_date="2026-01-01"),
@@ -21,8 +21,9 @@ class DashboardContractTest(unittest.TestCase):
 
         latest = tables["dashboard_latest_predictions"]
 
-        self.assertEqual(len(latest), 1)
+        self.assertEqual(len(latest), 2)
         self.assertEqual(latest[0]["target_date"], "2026-01-03")
+        self.assertEqual(latest[1]["target_date"], "2026-01-02")
         self.assertEqual(latest[0]["model_slug"], "baseline")
 
     def test_latest_predictions_keep_latest_available_row_per_model(self) -> None:
@@ -176,7 +177,7 @@ class DashboardContractTest(unittest.TestCase):
         self.assertEqual(latest_predictions[0]["username"], "PublicTrader")
         self.assertEqual(latest_predictions[0]["avatar_style"], "adventurer-neutral")
 
-    def test_latest_user_predictions_use_latest_public_prediction_date(self) -> None:
+    def test_latest_user_predictions_include_recent_public_prediction_dates(self) -> None:
         public_user_id = "11111111-1111-1111-1111-111111111111"
         private_user_id = "22222222-2222-2222-2222-222222222222"
         tables = build_dashboard_tables(
@@ -192,10 +193,16 @@ class DashboardContractTest(unittest.TestCase):
                     prediction_date="2026-01-01",
                 ),
                 _user_prediction(
-                    private_user_id,
-                    "MSFT",
+                    public_user_id,
+                    "GOOGL",
                     predicted_close=199.0,
                     prediction_date="2026-01-02",
+                ),
+                _user_prediction(
+                    private_user_id,
+                    "MSFT",
+                    predicted_close=299.0,
+                    prediction_date="2026-01-03",
                 ),
             ],
             user_score_rows=[],
@@ -207,9 +214,12 @@ class DashboardContractTest(unittest.TestCase):
 
         latest_predictions = tables["dashboard_latest_user_predictions"]
 
-        self.assertEqual(len(latest_predictions), 1)
-        self.assertEqual(latest_predictions[0]["username"], "PublicTrader")
-        self.assertEqual(latest_predictions[0]["prediction_date"], "2026-01-01")
+        self.assertEqual(len(latest_predictions), 2)
+        self.assertEqual({row["username"] for row in latest_predictions}, {"PublicTrader"})
+        self.assertEqual(
+            [row["prediction_date"] for row in latest_predictions],
+            ["2026-01-02", "2026-01-01"],
+        )
 
     def test_user_leaderboard_ranks_public_users_by_mae(self) -> None:
         ada_id = "11111111-1111-1111-1111-111111111111"

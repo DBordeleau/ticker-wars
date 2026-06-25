@@ -10,6 +10,7 @@ import { formatCurrency, formatDate, formatHorizon, formatSignedPercent } from "
 import MagicHoverSurface from "../layout/MagicHoverSurface";
 import SectionPanel from "../layout/SectionPanel";
 import AvatarImage from "../users/AvatarImage";
+import TickerLogoMark from "../tickers/TickerLogoMark";
 import PredictionHorizonSelector from "./PredictionHorizonSelector";
 
 type Props = {
@@ -23,6 +24,7 @@ type Props = {
   subtitle?: string;
   collapsible?: boolean;
   embedded?: boolean;
+  tickerLogos?: Record<string, string | null>;
 };
 
 export default function UserPredictionTable({
@@ -36,11 +38,18 @@ export default function UserPredictionTable({
   subtitle = "Public user predictions. Private profiles are excluded.",
   collapsible = false,
   embedded = false,
+  tickerLogos = {},
 }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const visibleRows = rows
     .filter((row) => (horizon === "all" ? true : row.prediction_horizon === horizon))
-    .sort((a, b) => a.ticker.localeCompare(b.ticker) || a.username.localeCompare(b.username));
+    .sort(
+      (a, b) =>
+        b.prediction_date.localeCompare(a.prediction_date) ||
+        b.target_date.localeCompare(a.target_date) ||
+        a.ticker.localeCompare(b.ticker) ||
+        a.username.localeCompare(b.username),
+    );
 
   const controls = (
     <Group className="prediction-controls" justify="flex-end" gap="sm">
@@ -77,9 +86,12 @@ export default function UserPredictionTable({
                   {visibleRows.map((row) => (
                     <Table.Tr key={row.prediction_id}>
                       <Table.Td>
-                        <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
-                          {row.ticker}
-                        </Text>
+                        <Group gap="xs" wrap="nowrap" className="ticker-cell-link">
+                          <TickerLogoMark ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} />
+                          <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
+                            {row.ticker}
+                          </Text>
+                        </Group>
                       </Table.Td>
                       <Table.Td>
                         <Group gap="xs" wrap="nowrap">
@@ -120,9 +132,12 @@ export default function UserPredictionTable({
                 <article className="prediction-card" key={row.prediction_id}>
                   <Group justify="space-between" align="flex-start" wrap="nowrap">
                     <div className="prediction-card-copy">
-                      <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
-                        {row.ticker}
-                      </Text>
+                      <Group gap="xs" wrap="nowrap" className="ticker-card-heading">
+                        <TickerLogoMark ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} />
+                        <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
+                          {row.ticker}
+                        </Text>
+                      </Group>
                       <Group gap="xs">
                         <AvatarImage
                           profile={{

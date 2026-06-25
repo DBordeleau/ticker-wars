@@ -4,7 +4,9 @@ import type {
   LatestUserPrediction,
   LeaderboardRow,
   ModelMetricRow,
+  TickerCloseSnapshot,
   TickerHistoryRow,
+  TickerProfile,
   UserLeaderboardRow,
   UserTickerLeaderboardRow,
 } from "./dashboardData";
@@ -314,6 +316,57 @@ const tickerHistory: TickerHistoryRow[] = [
   },
 ];
 
+export const fallbackTickerProfiles: Record<string, TickerProfile> = {
+  AAPL: {
+    ticker: "AAPL",
+    company_name: "Apple Inc.",
+    logo_data_url: null,
+    sector: "Technology",
+    industry: "Consumer Electronics",
+    business_summary:
+      "Apple designs consumer electronics, software, and services including iPhone, Mac, iPad, Apple Watch, and digital subscription offerings. Its ecosystem blends hardware, operating systems, apps, cloud services, and retail support.",
+    as_of_date: "2026-06-22",
+    source: "fallback",
+  },
+  NVDA: {
+    ticker: "NVDA",
+    company_name: "NVIDIA Corporation",
+    logo_data_url: null,
+    sector: "Technology",
+    industry: "Semiconductors",
+    business_summary:
+      "NVIDIA builds graphics processors, accelerated computing platforms, and AI infrastructure for gaming, data centers, professional visualization, and automotive markets.",
+    as_of_date: "2026-06-22",
+    source: "fallback",
+  },
+};
+
+export const fallbackTickerCloseSnapshots: Record<string, TickerCloseSnapshot> = {
+  AAPL: {
+    ticker: "AAPL",
+    date: "2026-06-22",
+    close: 198.42,
+    previous_date: "2026-06-21",
+    previous_close: 196.46,
+    change: 1.96,
+    change_percent: 0.009976585564491497,
+  },
+  NVDA: {
+    ticker: "NVDA",
+    date: "2026-06-22",
+    close: 144.31,
+    previous_date: "2026-06-21",
+    previous_close: 145.02,
+    change: -0.71,
+    change_percent: -0.004895876430837109,
+  },
+};
+
+const tickerAssets = Object.values(fallbackTickerProfiles).map((profile) => ({
+  ticker: profile.ticker,
+  logo_data_url: profile.logo_data_url,
+}));
+
 const modelMetrics: ModelMetricRow[] = leaderboard
   .filter((row) => row.rank != null)
   .map((row) => ({
@@ -337,6 +390,7 @@ export const fallbackDashboardData: DashboardData = {
   modelMetrics,
   latestPredictions,
   latestUserPredictions,
+  tickerAssets,
   tickerHistory,
   metadata: {
     generated_at: generatedAt,

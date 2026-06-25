@@ -152,6 +152,41 @@ class SupabaseDatabase:
 
             start += batch_size
 
+    def upsert_ticker_assets(self, rows: list[dict[str, Any]], batch_size: int = 100) -> int:
+        if not rows:
+            return 0
+
+        written = 0
+        for batch in _chunks(rows, batch_size):
+            self._client.table("ticker_assets").upsert(
+                batch,
+                on_conflict="ticker",
+            ).execute()
+            written += len(batch)
+
+        return written
+
+    def fetch_ticker_assets(self, batch_size: int = 1000) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+
+        while True:
+            end = start + batch_size - 1
+            response = (
+                self._client.table("ticker_assets")
+                .select("*")
+                .order("ticker")
+                .range(start, end)
+                .execute()
+            )
+            batch = response.data or []
+            rows.extend(batch)
+
+            if len(batch) < batch_size:
+                return rows
+
+            start += batch_size
+
     def upsert_predictions(self, rows: list[dict[str, Any]], batch_size: int = 500) -> int:
         if not rows:
             return 0

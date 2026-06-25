@@ -23,6 +23,7 @@ const emptyData: DashboardData = {
   modelMetrics: [],
   latestPredictions: [],
   latestUserPredictions: [],
+  tickerAssets: [],
   tickerHistory: [],
   metadata: null,
   hasSupabaseConfig: isSupabaseConfigured,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
 import { FiChevronDown } from "react-icons/fi";
@@ -31,6 +31,13 @@ export default function Dashboard() {
   const [latestUserHorizon, setLatestUserHorizon] = useState<MetricHorizon>("all");
   const [latestPredictionsOpen, setLatestPredictionsOpen] = useState(true);
   const dashboard = useDashboardData();
+  const tickerLogos = useMemo(
+    () =>
+      Object.fromEntries(
+        dashboard.tickerAssets.map((asset) => [asset.ticker, asset.logo_data_url]),
+      ),
+    [dashboard.tickerAssets],
+  );
 
   return (
     <DashboardShell
@@ -125,6 +132,7 @@ export default function Dashboard() {
                         view={latestPredictionsView}
                         onViewChange={setLatestPredictionsView}
                         onPredictionSaved={() => void dashboard.refetch()}
+                        tickerLogos={tickerLogos}
                         embedded
                       />
                     ) : (
@@ -135,6 +143,7 @@ export default function Dashboard() {
                         onViewChange={setLatestPredictionsView}
                         horizon={latestUserHorizon}
                         onHorizonChange={setLatestUserHorizon}
+                        tickerLogos={tickerLogos}
                         embedded
                       />
                     )}
