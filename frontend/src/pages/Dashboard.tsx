@@ -118,7 +118,6 @@ export default function Dashboard() {
                 <MotionPresence mode="wait" initial={false}>
                   <motion.div
                     key={latestPredictionsView}
-                    layout
                     className="latest-predictions-view-motion"
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
