@@ -25,21 +25,23 @@ export default function UserControl() {
 
   if (!user) {
     return (
-      <motion.div className="user-control" style={{ x: driftX, y: driftY }}>
-        <div className="user-control-float">
-        <Button
-          className="user-sign-in-button"
-          variant="outline"
-          color="green"
-          leftSection={<FiLogIn />}
-          loading={loading}
-          onClick={() => setSignInOpen(true)}
-        >
-          Sign in
-        </Button>
-        </div>
+      <div className="user-control">
+        <motion.div className="user-control-drift" style={{ x: driftX, y: driftY }}>
+          <div className="user-control-float">
+            <Button
+              className="user-sign-in-button"
+              variant="outline"
+              color="green"
+              leftSection={<FiLogIn />}
+              loading={loading}
+              onClick={() => setSignInOpen(true)}
+            >
+              Sign in
+            </Button>
+          </div>
+        </motion.div>
         <SignInModal opened={signInOpen} onClose={() => setSignInOpen(false)} />
-      </motion.div>
+      </div>
     );
   }
 
@@ -49,21 +51,29 @@ export default function UserControl() {
   };
 
   return (
-    <motion.div className="user-control" style={{ x: driftX, y: driftY }}>
-      <div className="user-control-float">
-        <Tooltip label={profile ? profile.display_username : "Complete profile"}>
-          <button
-            type="button"
-            className="user-avatar-button"
-            aria-label="Open user menu"
-            aria-expanded={menuOpen}
-            disabled={profileLoading}
-            onClick={() => setMenuOpen((current) => !current)}
-          >
-            {profile ? <AvatarImage profile={profile} size={56} /> : <FiUser />}
-          </button>
-        </Tooltip>
-      </div>
+    <div className="user-control">
+      <motion.div className="user-control-drift" style={{ x: driftX, y: driftY }}>
+        <div className="user-control-float">
+          <Tooltip label={profile ? profile.display_username : "Complete profile"}>
+            <button
+              type="button"
+              className="user-avatar-button"
+              aria-label="Open user menu"
+              aria-expanded={menuOpen}
+              disabled={profileLoading}
+              onClick={() => setMenuOpen((current) => !current)}
+            >
+              <span className="user-avatar-frame">
+                {profile ? (
+                  <AvatarImage profile={profile} size={60} className="user-avatar-portrait" />
+                ) : (
+                  <FiUser className="user-avatar-placeholder" />
+                )}
+              </span>
+            </button>
+          </Tooltip>
+        </div>
+      </motion.div>
       <AnimatePresence>
         {menuOpen ? (
           <motion.div
@@ -118,7 +128,7 @@ export default function UserControl() {
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
 
