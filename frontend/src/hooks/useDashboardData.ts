@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { type DashboardData, type TickerHistoryRow } from "../api/dashboardData";
 import {
-  fetchDashboardData,
-  fetchTickerHistory,
-  type DashboardData,
-  type TickerHistoryRow,
-} from "../api/dashboardData";
+  ensureDashboard,
+  getDashboardState,
+  refreshDashboard,
+  subscribeDashboard,
+} from "../api/dashboardStore";
+import { loadTickerHistory } from "../api/tickerCache";
 import { isSupabaseConfigured } from "../api/supabaseClient";
 
 type DashboardState = DashboardData & {
@@ -30,53 +32,52 @@ const emptyData: DashboardData = {
 };
 
 export function useDashboardData(): DashboardState {
-  const [data, setData] = useState<DashboardData>(emptyData);
-  const [loading, setLoading] = useState(true);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Shared payload from the session-level store (fetched once, reused across
+  // every page). Ticker selection and ticker history remain per-instance UI
+  // state, but the history request is served from the shared ticker cache.
+  const store = useSyncExternalStore(subscribeDashboard, getDashboardState);
+  const data = store.data ?? emptyData;
+
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
-
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const nextData = await fetchDashboardData();
-      const tickers = Array.from(new Set(nextData.latestPredictions.map((row) => row.ticker))).sort();
-
-      setSelectedTicker((currentTicker) =>
-        currentTicker && tickers.includes(currentTicker) ? currentTicker : tickers[0] ?? null,
-      );
-      setData((current) => ({ ...nextData, tickerHistory: current.tickerHistory }));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to load dashboard data.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [tickerHistory, setTickerHistory] = useState<TickerHistoryRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
-    void refetch();
-  }, [refetch]);
+    void ensureDashboard();
+  }, []);
+
+  const refetch = useCallback(async () => {
+    await refreshDashboard();
+  }, []);
+
+  // Default the selected ticker once predictions are available, preserving the
+  // current selection if it is still present.
+  const { latestPredictions } = data;
+  useEffect(() => {
+    const tickers = Array.from(new Set(latestPredictions.map((row) => row.ticker))).sort();
+    setSelectedTicker((current) =>
+      current && tickers.includes(current) ? current : tickers[0] ?? null,
+    );
+  }, [latestPredictions]);
 
   useEffect(() => {
     if (!selectedTicker || !data.hasSupabaseConfig) {
+      setTickerHistory([]);
       return;
     }
 
     let isCurrentRequest = true;
     setHistoryLoading(true);
-    setData((current) => ({ ...current, tickerHistory: [] }));
 
-    fetchTickerHistory(selectedTicker)
-      .then((tickerHistory: TickerHistoryRow[]) => {
+    loadTickerHistory(selectedTicker)
+      .then((history) => {
         if (isCurrentRequest) {
-          setData((current) => ({ ...current, tickerHistory }));
+          setTickerHistory(history);
         }
       })
-      .catch((caught) => {
+      .catch(() => {
         if (isCurrentRequest) {
-          setError(caught instanceof Error ? caught.message : "Unable to load ticker history.");
+          setTickerHistory([]);
         }
       })
       .finally(() => {
@@ -93,13 +94,14 @@ export function useDashboardData(): DashboardState {
   return useMemo(
     () => ({
       ...data,
-      loading,
+      tickerHistory,
+      loading: store.loading,
       historyLoading,
-      error,
+      error: store.error,
       selectedTicker,
       setSelectedTicker,
       refetch,
     }),
-    [data, error, historyLoading, loading, refetch, selectedTicker],
+    [data, tickerHistory, store.loading, store.error, historyLoading, selectedTicker, refetch],
   );
 }

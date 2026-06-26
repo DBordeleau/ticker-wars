@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchTickerCloseSnapshot, type TickerCloseSnapshot } from "../api/dashboardData";
+import type { TickerCloseSnapshot } from "../api/dashboardData";
+import { loadTickerCloseSnapshot } from "../api/tickerCache";
 
 type TickerCloseSnapshotState = {
   data: TickerCloseSnapshot | null;
@@ -25,7 +26,7 @@ export function useTickerCloseSnapshot(ticker: string): TickerCloseSnapshotState
     setLoading(true);
     setError(null);
 
-    fetchTickerCloseSnapshot(normalizedTicker)
+    loadTickerCloseSnapshot(normalizedTicker)
       .then((snapshot) => {
         if (isCurrentRequest) {
           setData(snapshot);

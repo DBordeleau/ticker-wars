@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchTickerProfile, type TickerProfile } from "../api/dashboardData";
+import type { TickerProfile } from "../api/dashboardData";
+import { loadTickerProfile } from "../api/tickerCache";
 
 type TickerProfileState = {
   data: TickerProfile | null;
@@ -25,7 +26,7 @@ export function useTickerProfile(ticker: string): TickerProfileState {
     setLoading(true);
     setError(null);
 
-    fetchTickerProfile(normalizedTicker)
+    loadTickerProfile(normalizedTicker)
       .then((profile) => {
         if (isCurrentRequest) {
           setData(profile);
