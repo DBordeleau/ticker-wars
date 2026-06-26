@@ -1,5 +1,8 @@
 import { Badge, Card, Group, Skeleton, Table, Text, Title } from "@mantine/core";
+import { AnimatePresence, motion } from "framer-motion";
+import type { ComponentType, ReactNode } from "react";
 import { useMemo } from "react";
+import { FiArrowUpRight } from "react-icons/fi";
 import { useParams } from "react-router-dom";
 import type { MetricHorizon } from "../api/dashboardData";
 import WarrenBuffbotPanel from "../components/buffbot/WarrenBuffbotPanel";
@@ -19,6 +22,30 @@ const horizonOrder: Record<MetricHorizon, number> = {
   "1m": 2,
   "3m": 3,
   "1y": 4,
+};
+
+const MotionPresence = AnimatePresence as unknown as ComponentType<{
+  children: ReactNode;
+  initial?: boolean;
+  mode?: "sync" | "popLayout" | "wait";
+}>;
+
+const heroContainerVariants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.05 },
+  },
+  exit: { opacity: 0, y: -12, transition: { duration: 0.16, ease: "easeIn" } },
+};
+
+const heroItemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 200, damping: 22, mass: 0.7 },
+  },
 };
 
 export default function ModelDetail() {
@@ -54,21 +81,61 @@ export default function ModelDetail() {
       <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.16 : 0.08}>
         <MagicHoverSurface className="section-magic-surface">
           <Card className="model-hero">
-            {dashboard.loading ? (
-              <Skeleton height={160} radius="sm" />
-            ) : (
-              <>
-                <Group gap="xs" mb="sm">
-                  <Badge color={modelTypeColor(info.type)}>{info.type}</Badge>
-                </Group>
-                <Title order={1} c="green">
-                  {info.name}
-                </Title>
-                <Text mt="sm" className="model-description">
-                  {info.description}
-                </Text>
-              </>
-            )}
+            <MotionPresence mode="wait">
+              {dashboard.loading ? (
+                <motion.div
+                  key="model-hero-loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  <Skeleton height={26} width="34%" radius="sm" mb="md" />
+                  <Skeleton height={40} width="58%" radius="sm" mb="md" />
+                  <Skeleton height={88} radius="sm" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={`model-hero-${info.slug}`}
+                  className="model-hero-content"
+                  variants={heroContainerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <motion.div variants={heroItemVariants}>
+                    <Group gap="xs" mb="sm">
+                      <Badge color={modelTypeColor(info.type)}>{info.type}</Badge>
+                    </Group>
+                  </motion.div>
+                  <motion.div variants={heroItemVariants}>
+                    <Title order={1} c="green">
+                      {info.name}
+                    </Title>
+                  </motion.div>
+                  <motion.div variants={heroItemVariants}>
+                    <Text mt="sm" className="model-description">
+                      {info.description}
+                    </Text>
+                  </motion.div>
+                  {info.learnMore ? (
+                    <motion.div variants={heroItemVariants}>
+                      <div className="spotlight-control-wrap model-learn-more-wrap">
+                        <a
+                          className="spotlight-control-button model-learn-more"
+                          href={info.learnMore}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <span className="model-learn-more-label">Learn more</span>
+                          <FiArrowUpRight className="model-learn-more-icon" aria-hidden />
+                        </a>
+                      </div>
+                    </motion.div>
+                  ) : null}
+                </motion.div>
+              )}
+            </MotionPresence>
           </Card>
         </MagicHoverSurface>
       </AnimatedSection>

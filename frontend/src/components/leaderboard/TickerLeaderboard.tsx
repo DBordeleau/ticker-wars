@@ -9,6 +9,7 @@ import type {
 } from "../../api/dashboardData";
 import { formatMetric, formatPercent } from "../../utils/format";
 import { getModelInfo, modelTypeColor } from "../../utils/models";
+import EntityHoverCard from "../cards/EntityHoverCard";
 import type { DashboardView } from "../dashboard/DashboardViewToggle";
 import DashboardViewToggle from "../dashboard/DashboardViewToggle";
 import SectionPanel from "../layout/SectionPanel";
@@ -101,10 +102,12 @@ function TickerLeaderboardTable({ rows }: { rows: ModelTickerRow[] }) {
                 </Table.Td>
                 <Table.Td>
                   <Group gap="xs">
-                    <Text component={Link} to={`/models/${row.model_slug}`} fw={800} className="leaderboard-model-link">
-                      <span>{row.model_name}</span>
-                      <FiExternalLink aria-hidden />
-                    </Text>
+                    <EntityHoverCard kind="model" slug={row.model_slug} name={row.model_name}>
+                      <Text component={Link} to={`/models/${row.model_slug}`} fw={800} className="leaderboard-model-link">
+                        <span>{row.model_name}</span>
+                        <FiExternalLink aria-hidden />
+                      </Text>
+                    </EntityHoverCard>
                     <Badge color={modelTypeColor(modelType)}>{modelType}</Badge>
                   </Group>
                 </Table.Td>

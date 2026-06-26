@@ -14,6 +14,7 @@ import {
 } from "../../utils/format";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
 import SectionPanel from "../layout/SectionPanel";
+import EntityHoverCard from "../cards/EntityHoverCard";
 import PredictionCardList from "./PredictionCardList";
 import PredictionFilters from "./PredictionFilters";
 import PredictionHorizonSelector from "./PredictionHorizonSelector";
@@ -244,18 +245,22 @@ export default function PredictionTable({
                     />
                   </Table.Td>
                   <Table.Td>
-                    <Group gap="xs" wrap="nowrap" className="ticker-cell-link">
-                      <TickerLogoMark ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} />
-                      <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
-                        {row.ticker}
-                      </Text>
-                    </Group>
+                    <EntityHoverCard kind="ticker" ticker={row.ticker} logoUrl={tickerLogos[row.ticker]}>
+                      <Group gap="xs" wrap="nowrap" className="ticker-cell-link">
+                        <TickerLogoMark ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} />
+                        <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
+                          {row.ticker}
+                        </Text>
+                      </Group>
+                    </EntityHoverCard>
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs">
-                      <Text component={Link} to={`/models/${row.model_slug}`} className="plain-link">
-                        {row.model_name}
-                      </Text>
+                      <EntityHoverCard kind="model" slug={row.model_slug} name={row.model_name}>
+                        <Text component={Link} to={`/models/${row.model_slug}`} className="plain-link">
+                          {row.model_name}
+                        </Text>
+                      </EntityHoverCard>
                     </Group>
                   </Table.Td>
                   <Table.Td className="prediction-table-center">
