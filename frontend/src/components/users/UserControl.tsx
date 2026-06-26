@@ -1,20 +1,18 @@
-import { Button, Tooltip } from "@mantine/core";
+import { Tooltip } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { AnimatePresence as FramerAnimatePresence, motion, useScroll, useSpring, useTransform } from "framer-motion";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { FiEdit3, FiList, FiLogIn, FiLogOut, FiTarget, FiUser } from "react-icons/fi";
+import { FiEdit3, FiList, FiLogOut, FiTarget, FiUser } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "../../auth/authApi";
 import { useAuth } from "../../auth/AuthProvider";
 import AvatarImage from "./AvatarImage";
-import SignInModal from "./SignInModal";
 
 const AnimatePresence = FramerAnimatePresence as unknown as (props: { children: ReactNode }) => JSX.Element;
 
 export default function UserControl() {
-  const { user, profile, loading, profileLoading } = useAuth();
-  const [signInOpen, setSignInOpen] = useState(false);
+  const { user, profile, profileLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const compactMenu = useMediaQuery("(max-width: 520px)") ?? false;
@@ -23,26 +21,10 @@ export default function UserControl() {
   const driftX = useTransform(driftSource, (value) => Math.sin(value / 220) * 7);
   const driftY = useTransform(driftSource, (value) => Math.cos(value / 180) * 8);
 
+  // Guests no longer get a floating sign-in button; sign-in is reached via the
+  // landing CTA and the predict buttons. The control is signed-in users only.
   if (!user) {
-    return (
-      <div className="user-control">
-        <motion.div className="user-control-drift" style={{ x: driftX, y: driftY }}>
-          <div className="user-control-float">
-            <Button
-              className="user-sign-in-button"
-              variant="outline"
-              color="green"
-              leftSection={<FiLogIn />}
-              loading={loading}
-              onClick={() => setSignInOpen(true)}
-            >
-              Sign in
-            </Button>
-          </div>
-        </motion.div>
-        <SignInModal opened={signInOpen} onClose={() => setSignInOpen(false)} />
-      </div>
-    );
+    return null;
   }
 
   const go = (path: string) => {
@@ -123,7 +105,7 @@ export default function UserControl() {
               label="Make prediction"
               x={compactMenu ? 0 : -36}
               y={compactMenu ? -232 : -205}
-              onClick={() => go("/")}
+              onClick={() => go("/dashboard")}
             />
           </motion.div>
         ) : null}

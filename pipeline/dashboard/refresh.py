@@ -66,6 +66,7 @@ def build_dashboard_tables(
                 prediction_rows=prediction_rows,
                 score_rows=score_rows,
                 price_rows=price_rows,
+                user_prediction_rows=user_prediction_rows,
                 generated_at=generated_at,
                 settings=settings,
             )
@@ -333,6 +334,7 @@ def _build_run_metadata(
     prediction_rows: list[dict[str, Any]],
     score_rows: list[dict[str, Any]],
     price_rows: list[dict[str, Any]],
+    user_prediction_rows: list[dict[str, Any]],
     generated_at: str,
     settings: Settings,
 ) -> dict[str, Any]:
@@ -348,6 +350,7 @@ def _build_run_metadata(
         "ticker_count": len(prediction_tickers or price_tickers),
         "model_count": len({row["model_name"] for row in prediction_rows}),
         "prediction_count": len(prediction_rows),
+        "user_prediction_count": len(user_prediction_rows),
         "scored_count": len(score_rows),
         "data_source": settings.market_data_source,
         "last_pipeline_status": "success",

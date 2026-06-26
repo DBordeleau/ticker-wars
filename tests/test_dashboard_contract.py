@@ -288,6 +288,39 @@ class DashboardContractTest(unittest.TestCase):
         self.assertEqual([row["username"] for row in aapl_rows], ["Grace", "Ada"])
         self.assertEqual([row["username"] for row in msft_rows], ["Ada", "Grace"])
 
+    def test_run_metadata_counts_model_and_user_predictions(self) -> None:
+        user_id = "11111111-1111-1111-1111-111111111111"
+        tables = build_dashboard_tables(
+            prediction_rows=[
+                _prediction("AAPL", "2026-01-02", "Baseline"),
+                _prediction("MSFT", "2026-01-02", "Linear Regression"),
+            ],
+            score_rows=[],
+            price_rows=[_price("AAPL", "2026-01-02", 101.0)],
+            settings=Settings(),
+            user_prediction_rows=[
+                _user_prediction(user_id, "AAPL", predicted_close=101.0),
+                _user_prediction(user_id, "MSFT", predicted_close=199.0),
+                _user_prediction(user_id, "NVDA", predicted_close=305.0),
+            ],
+            user_profile_rows=[_user_profile(user_id, "PublicTrader", is_public=True)],
+        )
+
+        metadata = tables["dashboard_run_metadata"]
+        self.assertEqual(len(metadata), 1)
+        self.assertEqual(metadata[0]["prediction_count"], 2)
+        self.assertEqual(metadata[0]["user_prediction_count"], 3)
+
+    def test_run_metadata_user_prediction_count_defaults_to_zero(self) -> None:
+        tables = build_dashboard_tables(
+            prediction_rows=[_prediction("AAPL", "2026-01-02", "Baseline")],
+            score_rows=[],
+            price_rows=[_price("AAPL", "2026-01-02", 101.0)],
+            settings=Settings(),
+        )
+
+        self.assertEqual(tables["dashboard_run_metadata"][0]["user_prediction_count"], 0)
+
 
 def _prediction(
     ticker: str,

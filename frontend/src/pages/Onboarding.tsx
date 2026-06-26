@@ -111,8 +111,8 @@ export default function Onboarding() {
         title: "Profile saved",
         message: "Profile saved.",
       });
-      const nextPath = (location.state as { from?: string } | null)?.from ?? "/";
-      navigate(nextPath === "/onboarding" ? "/" : nextPath, { replace: true });
+      const nextPath = (location.state as { from?: string } | null)?.from ?? "/dashboard";
+      navigate(nextPath === "/onboarding" ? "/dashboard" : nextPath, { replace: true });
     } catch (caught) {
       notifications.show({
         color: "red",

@@ -14,7 +14,7 @@ export default function BackToDashboardButton() {
     if (canGoBack) {
       navigate(-1); // POP -> ScrollManager restores the saved dashboard offset
     } else {
-      navigate("/"); // PUSH -> opens dashboard at the top
+      navigate("/dashboard"); // deep link / hard refresh: open the dashboard at the top
     }
   };
 

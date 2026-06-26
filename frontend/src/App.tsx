@@ -3,11 +3,14 @@ import { Notifications } from "@mantine/notifications";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthProvider";
 import AuthOnboardingRedirect from "./auth/AuthOnboardingRedirect";
+import RedirectIfAuthed from "./auth/RedirectIfAuthed";
+import RequireAuth from "./auth/RequireAuth";
 import AuroraBackground from "./components/layout/AuroraBackground";
 import ScrollManager from "./components/layout/ScrollManager";
 import UserControl from "./components/users/UserControl";
 import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/Dashboard";
+import Landing from "./pages/Landing";
 import ModelDetail from "./pages/ModelDetail";
 import MyPredictions from "./pages/MyPredictions";
 import Onboarding from "./pages/Onboarding";
@@ -25,11 +28,40 @@ export default function App() {
           <AuthOnboardingRedirect />
           <UserControl />
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route
+              path="/"
+              element={
+                <RedirectIfAuthed>
+                  <Landing />
+                </RedirectIfAuthed>
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <RequireAuth>
+                  <Dashboard />
+                </RequireAuth>
+              }
+            />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/me/profile" element={<Onboarding />} />
-            <Route path="/me/predictions" element={<MyPredictions />} />
+            <Route
+              path="/me/profile"
+              element={
+                <RequireAuth>
+                  <Onboarding />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/me/predictions"
+              element={
+                <RequireAuth>
+                  <MyPredictions />
+                </RequireAuth>
+              }
+            />
             <Route path="/models/:modelSlug" element={<ModelDetail />} />
             <Route path="/tickers/:ticker" element={<TickerDetail />} />
           </Routes>

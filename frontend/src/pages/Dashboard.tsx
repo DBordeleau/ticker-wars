@@ -7,10 +7,9 @@ import type { DashboardView } from "../components/dashboard/DashboardViewToggle"
 import TickerChart from "../components/charts/TickerChart";
 import AnimatedSection from "../components/layout/AnimatedSection";
 import DashboardFooter from "../components/layout/DashboardFooter";
-import DashboardHeader from "../components/layout/DashboardHeader";
+import DashboardTopBar from "../components/layout/DashboardTopBar";
 import DashboardShell from "../components/layout/DashboardShell";
 import MagicHoverSurface from "../components/layout/MagicHoverSurface";
-import LeaderboardChart from "../components/leaderboard/LeaderboardChart";
 import LeaderboardTable from "../components/leaderboard/LeaderboardTable";
 import MetricStrip from "../components/metrics/MetricStrip";
 import PredictionTable from "../components/predictions/PredictionTable";
@@ -46,7 +45,7 @@ export default function Dashboard() {
       onRetry={dashboard.refetch}
     >
       <AnimatedSection delay={0}>
-        <DashboardHeader />
+        <DashboardTopBar />
       </AnimatedSection>
       <AnimatedSection delay={0.08}>
         <MetricStrip
@@ -70,31 +69,15 @@ export default function Dashboard() {
           loading={dashboard.loading}
         />
       </AnimatedSection>
-      <div className="dashboard-grid">
-        <div className="dashboard-primary">
-          <AnimatedSection delay={0.24}>
-            <TickerChart
-              history={dashboard.tickerHistory}
-              predictions={dashboard.latestPredictions}
-              selectedTicker={dashboard.selectedTicker}
-              onTickerChange={dashboard.setSelectedTicker}
-              loading={dashboard.historyLoading || dashboard.loading}
-            />
-          </AnimatedSection>
-        </div>
-        <div className="dashboard-secondary">
-          <AnimatedSection delay={0.3}>
-            <LeaderboardChart
-              rows={dashboard.leaderboard}
-              userRows={dashboard.userLeaderboard}
-              view={leaderboardView}
-              window={window}
-              horizon={horizon}
-              loading={dashboard.loading}
-            />
-          </AnimatedSection>
-        </div>
-      </div>
+      <AnimatedSection delay={0.24}>
+        <TickerChart
+          history={dashboard.tickerHistory}
+          predictions={dashboard.latestPredictions}
+          selectedTicker={dashboard.selectedTicker}
+          onTickerChange={dashboard.setSelectedTicker}
+          loading={dashboard.historyLoading || dashboard.loading}
+        />
+      </AnimatedSection>
       <AnimatedSection delay={0.36}>
         <MagicHoverSurface className="section-magic-surface">
           <section className="section-panel prediction-collapsible-panel">

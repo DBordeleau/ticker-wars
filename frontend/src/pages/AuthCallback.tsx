@@ -60,9 +60,9 @@ export default function AuthCallback() {
       return;
     }
 
-    navigate(profile ? "/" : "/onboarding", {
+    navigate(profile ? "/dashboard" : "/onboarding", {
       replace: true,
-      state: profile ? undefined : { from: "/" },
+      state: profile ? undefined : { from: "/dashboard" },
     });
   }, [callbackProcessed, loading, navigate, profile, profileLoading, user]);
 

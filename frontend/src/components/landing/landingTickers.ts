@@ -1,0 +1,15 @@
+export const LANDING_TICKERS = [
+  "AAPL",
+  "NVDA",
+  "NFLX",
+  "COST",
+  "BAC",
+  "JNJ",
+  "PG",
+  "MSFT",
+  "META",
+  "AMZN",
+  "WMT",
+  "V",
+  "MA",
+];

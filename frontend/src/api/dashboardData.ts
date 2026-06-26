@@ -152,6 +152,7 @@ export type RunMetadata = {
   ticker_count: number;
   model_count: number;
   prediction_count?: number;
+  user_prediction_count?: number;
   scored_count?: number;
   data_source: string;
   last_pipeline_status: string;
