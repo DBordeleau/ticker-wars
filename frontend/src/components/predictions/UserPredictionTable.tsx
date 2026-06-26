@@ -9,6 +9,7 @@ import DashboardViewToggle from "../dashboard/DashboardViewToggle";
 import { formatCurrency, formatDate, formatHorizon, formatSignedPercent } from "../../utils/format";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
 import SectionPanel from "../layout/SectionPanel";
+import EntityHoverCard from "../cards/EntityHoverCard";
 import AvatarImage from "../users/AvatarImage";
 import TickerLogoMark from "../tickers/TickerLogoMark";
 import PredictionHorizonSelector from "./PredictionHorizonSelector";
@@ -86,12 +87,14 @@ export default function UserPredictionTable({
                   {visibleRows.map((row) => (
                     <Table.Tr key={row.prediction_id}>
                       <Table.Td>
-                        <Group gap="xs" wrap="nowrap" className="ticker-cell-link">
-                          <TickerLogoMark ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} />
-                          <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
-                            {row.ticker}
-                          </Text>
-                        </Group>
+                        <EntityHoverCard kind="ticker" ticker={row.ticker} logoUrl={tickerLogos[row.ticker]}>
+                          <Group gap="xs" wrap="nowrap" className="ticker-cell-link">
+                            <TickerLogoMark ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} />
+                            <Text component={Link} to={`/tickers/${row.ticker}`} fw={800} className="plain-link">
+                              {row.ticker}
+                            </Text>
+                          </Group>
+                        </EntityHoverCard>
                       </Table.Td>
                       <Table.Td>
                         <Group gap="xs" wrap="nowrap">
