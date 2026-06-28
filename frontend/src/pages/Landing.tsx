@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useDashboardData } from "../hooks/useDashboardData";
 import CompeteCtaButton from "../components/landing/CompeteCtaButton";
 import FloatingCompeteCTA from "../components/landing/FloatingCompeteCTA";
+import FloatingHeroTitle from "../components/landing/FloatingHeroTitle";
 import LandingFaq from "../components/landing/LandingFaq";
 import LandingHero from "../components/landing/LandingHero";
 import LandingLeaderboard from "../components/landing/LandingLeaderboard";
@@ -21,6 +22,7 @@ export default function Landing() {
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
+  const titleAnchorRef = useRef<HTMLHeadingElement>(null);
 
   const enableMorph = useMediaQuery("(min-width: 768px) and (hover: hover)") ?? false;
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)") ?? false;
@@ -47,6 +49,8 @@ export default function Landing() {
         <div className="landing-section-inner landing-hero-inner">
           <LandingHero
             ctaAnchorRef={anchorRef}
+            titleAnchorRef={titleAnchorRef}
+            hideTitle={morph}
             inlineCta={morph ? undefined : <CompeteCtaButton onClick={openSignIn} />}
             statusStrip={
               <StatusStrip
@@ -62,7 +66,7 @@ export default function Landing() {
         <ScrollCue />
       </section>
 
-      <SectionShell cue>
+      <SectionShell cue >
         <LandingLeaderboard
           modelRows={dashboard.leaderboard}
           userRows={dashboard.userLeaderboard}
@@ -73,8 +77,8 @@ export default function Landing() {
       <SectionShell cue>
         <div className="landing-sphere-block">
           <div className="landing-section-copy">
-            <Text className="landing-section-eyebrow">13 of the market&apos;s most-watched names</Text>
-            <Text className="landing-section-title">Predict the names you already know</Text>
+            <Text className="landing-section-eyebrow">50 of the market&apos;s most-watched assets</Text>
+            <Text className="landing-section-title">Make predictions on the market's most speculative and valuable securities</Text>
             <Text className="landing-section-lead">
               Pick a ticker and put your read on the board against every model.
             </Text>
@@ -88,7 +92,10 @@ export default function Landing() {
       </SectionShell>
 
       {morph ? (
-        <FloatingCompeteCTA anchorRef={anchorRef} scrollerRef={scrollerRef} onClick={openSignIn} />
+        <>
+          <FloatingHeroTitle anchorRef={titleAnchorRef} scrollerRef={scrollerRef} />
+          <FloatingCompeteCTA anchorRef={anchorRef} scrollerRef={scrollerRef} onClick={openSignIn} />
+        </>
       ) : null}
       <SignInModal opened={signInOpen} onClose={() => setSignInOpen(false)} />
     </div>
