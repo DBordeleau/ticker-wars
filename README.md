@@ -13,6 +13,8 @@ This is not financial advice, a trading strategy, or a production prediction sys
 - Per-ticker actual vs predicted charts with optional interval bands.
 - Latest prediction confidence intervals and maturity dates.
 - Model detail pages, ticker detail pages, and a clearly labeled Warren Buffbot toy LLM page.
+- An all-ticker browse page (`/tickers`) for quickly making your own predictions on any asset. Each ticker shows its trailing price move for the selected horizon alongside the model and user consensus, with ticker search and sorting (alphabetical, model consensus, user consensus, or price).
+- A personal prediction history page that separates active predictions still awaiting maturity from settled predictions scored against the realized close.
 
 ## Architecture
 
@@ -22,7 +24,7 @@ Scheduled / manual pipeline run
         v
 Python pipeline
         |
-        +-- Fetch OHLCV data with yfinance
+        +-- Fetch missing/recent OHLCV bars with yfinance
         +-- Fetch/cache yfinance fundamentals when available
         +-- Build horizon-aware features
         +-- Score matured predictions
@@ -120,8 +122,10 @@ REACT_APP_SITE_URL=https://tickerwars.vercel.app
 python -m pipeline.cli --help
 python -m pipeline.cli backfill --start 2020-01-01
 python -m pipeline.cli ingest-prices --start 2020-01-01
+python -m pipeline.cli ingest-latest-prices
 python -m pipeline.cli ingest-fundamentals
 python -m pipeline.cli build-features
+python -m pipeline.cli build-features --full-refresh
 python -m pipeline.cli predict-horizons
 python -m pipeline.cli score
 python -m pipeline.cli refresh-dashboard
@@ -130,7 +134,11 @@ python -m pipeline.cli export-snapshots
 python -m pipeline.cli run-daily
 ```
 
-`run-daily` performs the normal end-to-end flow: ingest prices, ingest fundamentals, build features, score matured predictions, generate predictions, refresh dashboard tables, and export snapshots.
+`backfill` / `ingest-prices` perform an explicit historical repair/load from the requested start date. `ingest-latest-prices` checks the latest stored price date per ticker and fetches only the missing/recent bars, re-fetching the most recent stored bar so late provider corrections can be upserted.
+
+`build-features` builds features from the available price table, then upserts only new/recent feature rows by default. The recent window is long enough to refresh rows whose 1Y targets may have just matured. Use `build-features --full-refresh` after historical repairs or feature-contract changes.
+
+`run-daily` performs the normal end-to-end flow: incrementally ingest latest prices, incrementally upsert recent feature rows, ingest fundamentals, score matured predictions, generate predictions, refresh dashboard tables, and export snapshots.
 
 The command writes `data_exports/runtime_benchmark.json` with cold/warm timings, prediction counts, approximate Python allocation/RSS data, Hugging Face cache size when available, and an automation recommendation.
 
