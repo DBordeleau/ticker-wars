@@ -83,6 +83,23 @@ class SupabaseDatabase:
 
             start += batch_size
 
+    def fetch_latest_price_dates(self, tickers: tuple[str, ...]) -> dict[str, str]:
+        latest_dates: dict[str, str] = {}
+        for ticker in tickers:
+            response = (
+                self._client.table("prices")
+                .select("ticker,date")
+                .eq("ticker", ticker)
+                .order("date", desc=True)
+                .limit(1)
+                .execute()
+            )
+            rows = response.data or []
+            if rows and rows[0].get("date") is not None:
+                latest_dates[ticker] = str(rows[0]["date"])
+
+        return latest_dates
+
     def upsert_features(self, rows: list[dict[str, Any]], batch_size: int = 500) -> int:
         if not rows:
             return 0
@@ -115,6 +132,23 @@ class SupabaseDatabase:
                 return rows
 
             start += batch_size
+
+    def fetch_latest_feature_dates(self, tickers: tuple[str, ...]) -> dict[str, str]:
+        latest_dates: dict[str, str] = {}
+        for ticker in tickers:
+            response = (
+                self._client.table("features")
+                .select("ticker,date")
+                .eq("ticker", ticker)
+                .order("date", desc=True)
+                .limit(1)
+                .execute()
+            )
+            rows = response.data or []
+            if rows and rows[0].get("date") is not None:
+                latest_dates[ticker] = str(rows[0]["date"])
+
+        return latest_dates
 
     def upsert_fundamentals(self, rows: list[dict[str, Any]], batch_size: int = 500) -> int:
         if not rows:

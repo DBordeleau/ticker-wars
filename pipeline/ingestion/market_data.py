@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import math
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
@@ -19,6 +19,7 @@ SOURCE_NAME = "yfinance"
 class MarketDataResult:
     rows: list[dict[str, Any]]
     failed_tickers: list[str]
+    skipped_tickers: list[str] = field(default_factory=list)
 
 
 def fetch_daily_prices(
@@ -41,6 +42,58 @@ def fetch_daily_prices(
             LOGGER.warning("No price rows fetched for %s", ticker)
 
     return MarketDataResult(rows=rows, failed_tickers=failed_tickers)
+
+
+def fetch_incremental_daily_prices(
+    start_date: str,
+    latest_dates: dict[str, str],
+    tickers: tuple[str, ...] = MVP_TICKERS,
+    end_date: str | None = None,
+    max_attempts: int = 3,
+) -> MarketDataResult:
+    base_start = _parse_date(start_date)
+    rows: list[dict[str, Any]] = []
+    failed_tickers: list[str] = []
+    skipped_tickers: list[str] = []
+
+    LOGGER.info("Fetching incremental daily prices for %s tickers.", len(tickers))
+    for ticker in tickers:
+        latest_date = _parse_optional_date(latest_dates.get(ticker))
+        ticker_start = max(base_start, latest_date) if latest_date else base_start
+
+        if end_date is not None and ticker_start >= _parse_date(end_date):
+            skipped_tickers.append(ticker)
+            LOGGER.info(
+                "Skipping %s price fetch; latest stored date %s is at or beyond end date %s.",
+                ticker,
+                ticker_start.isoformat(),
+                end_date,
+            )
+            continue
+
+        ticker_rows = _fetch_ticker_with_retries(
+            ticker,
+            ticker_start.isoformat(),
+            end_date,
+            max_attempts,
+        )
+        if ticker_rows:
+            rows.extend(ticker_rows)
+            LOGGER.info(
+                "Fetched %s incremental rows for %s from %s.",
+                len(ticker_rows),
+                ticker,
+                ticker_start.isoformat(),
+            )
+        else:
+            failed_tickers.append(ticker)
+            LOGGER.warning("No incremental price rows fetched for %s", ticker)
+
+    return MarketDataResult(
+        rows=rows,
+        failed_tickers=failed_tickers,
+        skipped_tickers=skipped_tickers,
+    )
 
 
 def _fetch_ticker_with_retries(
@@ -154,3 +207,18 @@ def _clean_int(value: object) -> int | None:
     if number is None:
         return None
     return int(number)
+
+
+def _parse_date(value: str) -> date:
+    return date.fromisoformat(value)
+
+
+def _parse_optional_date(value: object) -> date | None:
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value
+    try:
+        return date.fromisoformat(str(value))
+    except ValueError:
+        return None

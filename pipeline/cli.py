@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from datetime import timedelta
 from typing import Any
 
 from pipeline.benchmarking.runtime import (
@@ -23,10 +24,11 @@ from pipeline.evaluation.scoring import (
     score_matured_predictions,
     score_matured_user_predictions,
 )
-from pipeline.features.build_features import build_feature_rows
+from pipeline.features.build_features import MARKET_TICKERS, build_feature_rows
 from pipeline.ingestion.fundamentals import fetch_fundamentals
 from pipeline.ingestion.logos import fetch_ticker_logos
-from pipeline.ingestion.market_data import fetch_daily_prices
+from pipeline.ingestion.market_data import fetch_daily_prices, fetch_incremental_daily_prices
+from pipeline.ingestion.ticker_universe import MVP_TICKERS
 from pipeline.models.chronos_model import generate_chronos_predictions
 from pipeline.models.timesfm_model import generate_timesfm_predictions
 from pipeline.models.training import train_and_predict
@@ -58,6 +60,10 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional end date in YYYY-MM-DD format.",
     )
+    subparsers.add_parser(
+        "ingest-latest-prices",
+        help="Fetch only missing/recent OHLCV bars since the latest stored price dates.",
+    )
 
     fundamentals = subparsers.add_parser(
         "ingest-fundamentals",
@@ -79,7 +85,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers.add_parser("run-daily", help="Run the daily pipeline.")
-    subparsers.add_parser("build-features", help="Build and upsert feature rows from prices.")
+    build_features = subparsers.add_parser(
+        "build-features",
+        help="Build and upsert feature rows from prices.",
+    )
+    build_features.add_argument(
+        "--full-refresh",
+        action="store_true",
+        help="Upsert every feature row instead of only the recent refresh window.",
+    )
     subparsers.add_parser(
         "predict-horizons",
         help="Train enabled models and upsert horizon-aware predictions.",
@@ -129,8 +143,11 @@ def main(argv: list[str] | None = None) -> int:
         start = args.start or load_settings().start_date
         return run_backfill(start, args.end)
 
+    if args.command == "ingest-latest-prices":
+        return run_ingest_latest_prices()
+
     if args.command == "build-features":
-        return run_build_features()
+        return run_build_features(full_refresh=args.full_refresh)
 
     if args.command == "ingest-fundamentals":
         return run_ingest_fundamentals(force=args.force)
@@ -163,10 +180,9 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if args.command == "run-daily":
-        settings = load_settings()
-        backfill_status = run_backfill(settings.start_date)
-        if backfill_status != 0:
-            return backfill_status
+        price_status = run_ingest_latest_prices()
+        if price_status != 0:
+            return price_status
         fundamentals_status = run_ingest_fundamentals()
         if fundamentals_status != 0:
             return fundamentals_status
@@ -208,6 +224,40 @@ def run_backfill(start_date: str, end_date: str | None = None) -> int:
     if result.failed_tickers:
         LOGGER.warning(
             "Backfill skipped %s tickers: %s",
+            len(result.failed_tickers),
+            result.failed_tickers,
+        )
+
+    return 0
+
+
+def run_ingest_latest_prices() -> int:
+    settings = load_settings()
+    database = SupabaseDatabase.from_settings(settings)
+    if database is None:
+        LOGGER.info(
+            "Latest price ingestion skipped because Supabase credentials are not configured."
+        )
+        return 0
+
+    tickers = _daily_price_tickers()
+    latest_dates = database.fetch_latest_price_dates(tickers)
+    result = fetch_incremental_daily_prices(
+        start_date=settings.start_date,
+        latest_dates=latest_dates,
+        tickers=tickers,
+    )
+    written = database.upsert_prices(result.rows)
+
+    LOGGER.info("Latest price ingestion wrote %s price rows.", written)
+    if result.skipped_tickers:
+        LOGGER.info(
+            "Latest price ingestion skipped %s tickers already current for the requested window.",
+            len(result.skipped_tickers),
+        )
+    if result.failed_tickers:
+        LOGGER.warning(
+            "Latest price ingestion failed for %s tickers: %s",
             len(result.failed_tickers),
             result.failed_tickers,
         )
@@ -277,7 +327,7 @@ def run_ingest_logos(force: bool = False) -> int:
     return 0
 
 
-def run_build_features() -> int:
+def run_build_features(full_refresh: bool = False) -> int:
     settings = load_settings()
     database = SupabaseDatabase.from_settings(settings)
     if database is None:
@@ -300,8 +350,19 @@ def run_build_features() -> int:
             return 0
 
     feature_rows = build_feature_rows(price_rows)
+    total_feature_rows = len(feature_rows)
+    if not full_refresh:
+        latest_feature_dates = database.fetch_latest_feature_dates(_daily_prediction_tickers())
+        feature_rows = _feature_rows_for_incremental_upsert(feature_rows, latest_feature_dates)
     written = database.upsert_features(feature_rows)
-    LOGGER.info("Feature generation wrote %s feature rows.", written)
+    if full_refresh:
+        LOGGER.info("Feature generation wrote %s feature rows.", written)
+    else:
+        LOGGER.info(
+            "Feature generation wrote %s recent feature rows out of %s built rows.",
+            written,
+            total_feature_rows,
+        )
     return 0
 
 
@@ -471,6 +532,34 @@ def build_dashboard_tables_from_database(
         user_profile_rows=database.fetch_user_profiles(),
         settings=settings,
     )
+
+
+def _daily_price_tickers() -> tuple[str, ...]:
+    return tuple(dict.fromkeys((*MVP_TICKERS, *MARKET_TICKERS)))
+
+
+def _daily_prediction_tickers() -> tuple[str, ...]:
+    return MVP_TICKERS
+
+
+def _feature_rows_for_incremental_upsert(
+    feature_rows: list[dict[str, Any]],
+    latest_feature_dates: dict[str, str],
+    lookback_days: int = 430,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for row in feature_rows:
+        ticker = str(row.get("ticker", ""))
+        latest_feature_date = latest_feature_dates.get(ticker)
+        if latest_feature_date is None:
+            rows.append(row)
+            continue
+
+        refresh_start = parse_date(latest_feature_date) - timedelta(days=lookback_days)
+        if parse_date(str(row["date"])) >= refresh_start:
+            rows.append(row)
+
+    return rows
 
 
 if __name__ == "__main__":

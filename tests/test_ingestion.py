@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pandas as pd
 
 from pipeline.ingestion.fundamentals import _build_fundamentals_row, fetch_fundamentals
-from pipeline.ingestion.market_data import _frame_to_price_rows
+from pipeline.ingestion.market_data import _frame_to_price_rows, fetch_incremental_daily_prices
 
 
 class MarketDataIngestionTest(unittest.TestCase):
@@ -49,6 +49,34 @@ class MarketDataIngestionTest(unittest.TestCase):
 
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["date"], "2024-01-02")
+
+    def test_incremental_prices_start_from_latest_stored_date(self) -> None:
+        fetched: list[tuple[str, str]] = []
+
+        def fake_fetch(
+            ticker: str,
+            start_date: str,
+            _end_date: str | None,
+            _max_attempts: int,
+        ) -> list[dict[str, object]]:
+            fetched.append((ticker, start_date))
+            return [{"ticker": ticker, "date": start_date}]
+
+        with patch("pipeline.ingestion.market_data._fetch_ticker_with_retries", fake_fetch):
+            result = fetch_incremental_daily_prices(
+                start_date="2020-01-01",
+                latest_dates={"AAPL": "2026-06-26"},
+                tickers=("AAPL", "GME"),
+            )
+
+        self.assertEqual(fetched, [("AAPL", "2026-06-26"), ("GME", "2020-01-01")])
+        self.assertEqual(
+            result.rows,
+            [
+                {"ticker": "AAPL", "date": "2026-06-26"},
+                {"ticker": "GME", "date": "2020-01-01"},
+            ],
+        )
 
 
 class FakeTickerData:

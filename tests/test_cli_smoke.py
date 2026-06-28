@@ -5,7 +5,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from unittest.mock import patch
 
-from pipeline.cli import main
+from pipeline.cli import _feature_rows_for_incremental_upsert, main
 from pipeline.config import Settings
 
 
@@ -48,6 +48,16 @@ class CliSmokeTest(unittest.TestCase):
             self.assertEqual(main(["ingest-prices", "--start", "2020-01-01"]), 0)
         run_backfill.assert_called_once_with("2020-01-01", None)
 
+    def test_ingest_latest_prices_runs_incremental_price_step(self) -> None:
+        with patch("pipeline.cli.run_ingest_latest_prices", return_value=0) as run_prices:
+            self.assertEqual(main(["ingest-latest-prices"]), 0)
+        run_prices.assert_called_once_with()
+
+    def test_build_features_full_refresh_flag_is_forwarded(self) -> None:
+        with patch("pipeline.cli.run_build_features", return_value=0) as run_features:
+            self.assertEqual(main(["build-features", "--full-refresh"]), 0)
+        run_features.assert_called_once_with(full_refresh=True)
+
     def test_export_snapshots_alias_runs_snapshot_export(self) -> None:
         with patch("pipeline.cli.run_export_snapshot", return_value=0) as run_export:
             self.assertEqual(main(["export-snapshots"]), 0)
@@ -77,7 +87,7 @@ class CliSmokeTest(unittest.TestCase):
 
         with (
             patch("pipeline.cli.load_settings", return_value=Settings(start_date="2020-01-01")),
-            patch("pipeline.cli.run_backfill", side_effect=record("backfill")),
+            patch("pipeline.cli.run_ingest_latest_prices", side_effect=record("prices")),
             patch("pipeline.cli.run_ingest_fundamentals", side_effect=record("fundamentals")),
             patch("pipeline.cli.run_ingest_logos", side_effect=record("logos")),
             patch("pipeline.cli.run_build_features", side_effect=record("features")),
@@ -90,7 +100,39 @@ class CliSmokeTest(unittest.TestCase):
 
         self.assertEqual(
             calls,
-            ["backfill", "fundamentals", "logos", "features", "score", "predict", "refresh", "export"],
+            [
+                "prices",
+                "fundamentals",
+                "logos",
+                "features",
+                "score",
+                "predict",
+                "refresh",
+                "export",
+            ],
+        )
+
+    def test_incremental_feature_filter_keeps_new_and_long_horizon_refresh_rows(self) -> None:
+        feature_rows = [
+            {"ticker": "AAPL", "date": "2024-01-01"},
+            {"ticker": "AAPL", "date": "2025-01-01"},
+            {"ticker": "AAPL", "date": "2026-01-02"},
+            {"ticker": "GME", "date": "2024-01-01"},
+        ]
+
+        rows = _feature_rows_for_incremental_upsert(
+            feature_rows,
+            latest_feature_dates={"AAPL": "2026-01-02"},
+            lookback_days=430,
+        )
+
+        self.assertEqual(
+            rows,
+            [
+                {"ticker": "AAPL", "date": "2025-01-01"},
+                {"ticker": "AAPL", "date": "2026-01-02"},
+                {"ticker": "GME", "date": "2024-01-01"},
+            ],
         )
 
 

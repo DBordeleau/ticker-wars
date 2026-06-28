@@ -68,12 +68,25 @@ class FakeTable:
         self.operation["range"] = (start, end)
         return self
 
+    def limit(self, count: int) -> FakeTable:
+        self.range_start = 0
+        self.range_end = count - 1
+        self.operation["limit"] = count
+        return self
+
     def execute(self) -> FakeResponse:
         self.client.operations.append(dict(self.operation))
         if self.operation.get("action") != "select":
             return FakeResponse()
 
         rows = self.client.data.get(self.name, [])
+        for filter_type, column, value in self.operation.get("filters", []):
+            if filter_type == "eq":
+                rows = [row for row in rows if row.get(column) == value]
+            if filter_type == "in":
+                rows = [row for row in rows if row.get(column) in value]
+        for column, desc in reversed(self.operation.get("order", [])):
+            rows = sorted(rows, key=lambda row: row.get(column), reverse=desc)
         return FakeResponse(rows[self.range_start : self.range_end + 1])
 
 
@@ -176,6 +189,40 @@ class DatabaseAccessTest(unittest.TestCase):
         )
         self.assertEqual(client.operations[0]["table"], "fundamentals")
 
+    def test_fetch_latest_price_dates_reads_one_recent_row_per_ticker(self) -> None:
+        database, client = _database_with_fake_client()
+        client.data["prices"] = [
+            {"ticker": "AAPL", "date": "2026-01-03"},
+            {"ticker": "AAPL", "date": "2026-01-02"},
+            {"ticker": "MSFT", "date": "2026-01-04"},
+        ]
+
+        rows = database.fetch_latest_price_dates(("AAPL", "MSFT", "GME"))
+
+        self.assertEqual(rows, {"AAPL": "2026-01-03", "MSFT": "2026-01-04"})
+        self.assertEqual([operation["table"] for operation in client.operations], ["prices"] * 3)
+        self.assertEqual(client.operations[0]["columns"], "ticker,date")
+        self.assertIn(("eq", "ticker", "AAPL"), client.operations[0]["filters"])
+        self.assertEqual(client.operations[0]["order"], [("date", True)])
+        self.assertEqual(client.operations[0]["limit"], 1)
+
+    def test_fetch_latest_feature_dates_reads_one_recent_row_per_ticker(self) -> None:
+        database, client = _database_with_fake_client()
+        client.data["features"] = [
+            {"ticker": "AAPL", "date": "2026-01-03"},
+            {"ticker": "AAPL", "date": "2026-01-02"},
+            {"ticker": "MSFT", "date": "2026-01-04"},
+        ]
+
+        rows = database.fetch_latest_feature_dates(("AAPL", "MSFT", "GME"))
+
+        self.assertEqual(rows, {"AAPL": "2026-01-03", "MSFT": "2026-01-04"})
+        self.assertEqual([operation["table"] for operation in client.operations], ["features"] * 3)
+        self.assertEqual(client.operations[0]["columns"], "ticker,date")
+        self.assertIn(("eq", "ticker", "AAPL"), client.operations[0]["filters"])
+        self.assertEqual(client.operations[0]["order"], [("date", True)])
+        self.assertEqual(client.operations[0]["limit"], 1)
+
     def test_ticker_asset_cache_round_trip_methods_use_ticker_assets(self) -> None:
         database, client = _database_with_fake_client()
         rows = [
@@ -230,11 +277,13 @@ class DatabaseAccessTest(unittest.TestCase):
 
     def test_fetch_user_predictions_can_filter_by_status(self) -> None:
         database, client = _database_with_fake_client()
-        client.data["user_predictions"] = [{"prediction_id": "prediction-1"}]
+        client.data["user_predictions"] = [
+            {"prediction_id": "prediction-1", "status": "pending"}
+        ]
 
         rows = database.fetch_user_predictions(status="pending")
 
-        self.assertEqual(rows, [{"prediction_id": "prediction-1"}])
+        self.assertEqual(rows, [{"prediction_id": "prediction-1", "status": "pending"}])
         self.assertEqual(client.operations[0]["table"], "user_predictions")
         self.assertIn(("eq", "status", "pending"), client.operations[0]["filters"])
 
