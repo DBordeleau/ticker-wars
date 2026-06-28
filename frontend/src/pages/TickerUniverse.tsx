@@ -98,7 +98,7 @@ export default function TickerUniverse() {
           return a.ticker.localeCompare(b.ticker);
         }
         if (sort === "price") {
-          return compareDesc(a.close, b.close) || a.ticker.localeCompare(b.ticker);
+          return compareDesc(a.priceChange, b.priceChange) || a.ticker.localeCompare(b.ticker);
         }
         const key = sort === "model" ? "modelConsensus" : "userConsensus";
         return compareDesc(a[key], b[key]) || a.ticker.localeCompare(b.ticker);
@@ -320,7 +320,7 @@ function SortSelector({ value, onChange }: { value: SortKey; onChange: (value: S
     { value: "ticker", label: "A–Z", tooltip: "Sort tickers alphabetically." },
     { value: "model", label: "Models", tooltip: "Sort by the most bullish model consensus." },
     { value: "user", label: "Users", tooltip: "Sort by the most bullish user consensus." },
-    { value: "price", label: "Price", tooltip: "Sort by the latest closing price, high to low." },
+    { value: "price", label: "Price", tooltip: "Sort by price change for the selected horizon, biggest gainers first." },
   ];
 
   return (
