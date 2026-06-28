@@ -48,7 +48,10 @@ const USERNAMES = [
   "LiterallyBankrupt", "bagcheckme", "onlydips", "candlewick", "longvol", "basistrader", "JimCramersHairline",
   "AIBubbleTruther", "riskparity", "TheBladeGamer", "Breakout11", "xToDx_XCELL", "stoplossly", "MelonHusk",
   "GrandmasterFunk", "CailChips", "Nesthorlan", "HedgehogFund", "BearishBard", "DCASPY4EVER", "CamTheMan3245",
-  "KilljoyTheCat", "gabrielwingue"
+  "KilljoyTheCat", "gabrielwingue", "OccupyTheDip", "RoaringPuppy", "zurplox", "TaxBezos", "insolvent", "RoeJogan",
+  "UnrealOdin", "CFalcon", "CryptoBaron", "Goonbah", "COSTCOCHICKENS", "ShadesOfPale", "PennyStockPirate", "MikeBurrysPessimism",
+  "shortGME", "ShallowFreakingValue", "TheMeltdownClown", "MisterMorale", "BearNecessity", "londontrader", "BigOunce",
+  "BlackEspio", "crashcoot", "quadrillionaire", "BedBathAndBankrupt", "thequantqt", "Darktruth", "jaromirj"
 ];
 
 type FakeUser = { name: string; avatarUrl: string };
@@ -83,8 +86,10 @@ function pick<T>(arr: T[]): T {
 }
 
 let nextId = 1;
-function makeItem(): FeedItem {
-  const isUser = Math.random() < 0.5;
+function makeItem(previousKind?: FeedItem["kind"]): FeedItem {
+  // Never surface two model predictions back to back: if the previous row was a
+  // model, the next one is always a user.
+  const isUser = previousKind === "model" ? true : Math.random() < 0.5;
   const base: FeedItem = {
     id: nextId++,
     kind: isUser ? "user" : "model",
@@ -101,14 +106,26 @@ function makeItem(): FeedItem {
   return { ...base, name: model.name, modelSlug: model.slug, modelType: model.type };
 }
 
+// Seed the feed honoring the no-consecutive-models rule across the initial rows.
+function makeInitialItems(count: number): FeedItem[] {
+  const items: FeedItem[] = [];
+  let previousKind: FeedItem["kind"] | undefined;
+  for (let i = 0; i < count; i += 1) {
+    const item = makeItem(previousKind);
+    items.push(item);
+    previousKind = item.kind;
+  }
+  return items;
+}
+
 export default function LivePredictionFeed({ tickerLogos }: Props) {
-  const [items, setItems] = useState<FeedItem[]>(() => Array.from({ length: VISIBLE }, makeItem));
+  const [items, setItems] = useState<FeedItem[]>(() => makeInitialItems(VISIBLE));
   const pausedRef = useRef(false);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
       if (pausedRef.current) return;
-      setItems((current) => [makeItem(), ...current].slice(0, VISIBLE));
+      setItems((current) => [makeItem(current[0]?.kind), ...current].slice(0, VISIBLE));
     }, 2200);
     return () => window.clearInterval(interval);
   }, []);
