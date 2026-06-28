@@ -1854,8 +1854,8 @@ h2,
 
 .metric-card {
   height: 100%;
-  padding: 22px;
-  min-height: 148px;
+  padding: 20px;
+  min-height: 184px;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -1954,34 +1954,355 @@ h2,
     rgba(8, 13, 11, 0.42);
 }
 
-.metric-label {
-  color: #4ade80;
+/* ---------------------------------------------------------------------------
+   Leaderboard podium (metric strip). Three medal-ranked cards that shout out
+   the current top performers for the selected view + horizon. Each card *is* a
+   competitor (avatar/logo + name), topped with a gold/silver/bronze accent so
+   the cards read as a prize to chase rather than a passive stat readout.
+--------------------------------------------------------------------------- */
+.metric-strip-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
 }
 
-.metric-value {
-  margin-top: 10px;
-  font-size: clamp(1.35rem, 2.25vw, 1.8rem);
-  font-weight: 820;
-  line-height: 1.08;
-  color: #ffffff;
+.metric-strip-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 0 2px;
 }
 
-.metric-icon {
+.metric-strip-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #6ee7a8;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.metric-strip-eyebrow svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: #fbbf24;
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.5));
+}
+
+.metric-strip-sub {
+  color: rgba(219, 230, 223, 0.62);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.podium-card {
+  /* Multi-stop "brushed metal" gradients: alternating light/dark bands read as
+     a metallic sheen, and panning the oversized background slides that light. */
+  --podium-metal: linear-gradient(135deg,
+      #fff6d5 0%, #fbe08a 14%, #f4c23c 30%, #c8860f 46%,
+      #f6cf63 64%, #fbe7a6 82%, #d99c14 100%);
+  --podium-medal-ink: #3a2600;
+  --podium-glow: rgba(245, 191, 36, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Cohesive metallic border ring (masked to the 1px frame) that slowly pans its
+   light — replaces the old top-only ribbon and gives gentle continuous movement. */
+.podium-card::before {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  content: "";
+  padding: 1px;
+  border-radius: inherit;
+  background-image: var(--podium-metal);
+  background-size: 220% 220%;
+  background-position: 0% 50%;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0.82;
+  pointer-events: none;
+  animation: podium-shine 7s ease-in-out infinite;
+}
+
+.metric-magic-surface:hover .podium-card::before {
+  opacity: 1;
+}
+
+.podium-card--gold {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 24px 70px rgba(0, 0, 0, 0.28),
+    0 0 30px -12px var(--podium-glow);
+}
+
+.podium-card--silver {
+  --podium-metal: linear-gradient(135deg,
+      #ffffff 0%, #dfe6ee 16%, #aab4c0 32%, #717b88 48%,
+      #b9c2cd 66%, #eef2f6 82%, #8c96a3 100%);
+  --podium-medal-ink: #222b36;
+  --podium-glow: rgba(203, 213, 225, 0.34);
+}
+
+.podium-card--bronze {
+  --podium-metal: linear-gradient(135deg,
+      #ffe9c9 0%, #e8ac72 16%, #c9823f 32%, #8f5424 48%,
+      #d2935f 66%, #f4d2a8 82%, #a5662f 100%);
+  --podium-medal-ink: #2a1605;
+  --podium-glow: rgba(208, 138, 82, 0.32);
+}
+
+/* Stagger the pan so the three cards shimmer out of phase (synchronized pulsing
+   reads as mechanical). */
+.podium-card--silver::before,
+.podium-card--silver .podium-medal {
+  animation-delay: -2.4s;
+}
+
+.podium-card--bronze::before,
+.podium-card--bronze .podium-medal {
+  animation-delay: -4.8s;
+}
+
+@keyframes podium-shine {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.podium-card-top {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.podium-medal {
+  position: relative;
   display: inline-grid;
+  flex: 0 0 auto;
   width: 42px;
   height: 42px;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 8px;
-  color: #ffffff;
-  background: rgba(34, 197, 94, 0.65);
-  backdrop-filter: blur(11px);
-  -webkit-backdrop-filter: blur(11px);
+  overflow: hidden;
+  border-radius: 11px;
+  color: var(--podium-medal-ink);
+  background-image: var(--podium-metal);
+  background-size: 220% 220%;
+  background-position: 0% 50%;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.22),
+    0 6px 16px rgba(0, 0, 0, 0.34);
+  animation: podium-shine 7s ease-in-out infinite;
 }
 
-.metric-card .secondary-text {
-  font-size: clamp(0.92rem, 0.92vw, 1.08rem);
-  line-height: 1.48;
+/* Static glassy highlight over the top-left, sitting above the metal but below
+   the icon, so the chip reads as a polished, curved medallion. */
+.podium-medal::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  background: linear-gradient(155deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.12) 30%,
+      transparent 52%);
+  pointer-events: none;
+}
+
+.podium-medal svg {
+  position: relative;
+  z-index: 1;
+  width: 1.1rem;
+  height: 1.1rem;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.35));
+}
+
+.podium-rank-copy {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  line-height: 1.12;
+}
+
+.podium-eyebrow {
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 850;
+}
+
+.podium-rank-num {
+  color: rgba(219, 230, 223, 0.55);
+  font-size: 0.78rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Identity sits in the header row, to the right of the rank, separated by a thin
+   divider. flex/min-width:0 lets long names ellipsis instead of overflowing. */
+.podium-identity {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-left: 13px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.podium-avatar-img,
+.podium-identity .model-avatar {
+  flex: 0 0 auto;
+}
+
+.podium-identity-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.podium-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 850;
+  line-height: 1.1;
+  text-decoration: none;
+}
+
+.podium-name > span {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podium-name--link {
+  transition: color 160ms ease;
+}
+
+.podium-name--link svg {
+  flex: 0 0 auto;
+  width: 0.82rem;
+  height: 0.82rem;
+  color: #86efac;
+  opacity: 0;
+  transform: translate(-2px, 2px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.podium-name--link:hover {
+  color: #bbf7d0;
+}
+
+.podium-name--link:hover svg {
+  opacity: 1;
+  transform: translate(1px, -1px);
+}
+
+.podium-name--open {
+  color: rgba(219, 230, 223, 0.62);
+}
+
+.podium-sub {
+  color: rgba(219, 230, 223, 0.6);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.podium-type-badge {
+  align-self: flex-start;
+  max-width: 100%;
+}
+
+.podium-avatar-ghost {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px dashed rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
+  color: rgba(219, 230, 223, 0.5);
+  font-size: 1.2rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.podium-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: auto;
+}
+
+.podium-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.podium-stat-value {
+  color: #ffffff;
+  font-size: 1.02rem;
+  font-weight: 820;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.podium-stat-label {
+  color: rgba(219, 230, 223, 0.52);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.podium-stat--accent {
+  border-color: rgba(74, 222, 128, 0.32);
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.14), rgba(34, 211, 238, 0.06));
+}
+
+.podium-stat--accent .podium-stat-value {
+  color: #bbf7d0;
+}
+
+.podium-stats--ghost .podium-stat {
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.podium-stats--ghost .podium-stat-value {
+  color: rgba(219, 230, 223, 0.4);
 }
 
 .section-panel {
