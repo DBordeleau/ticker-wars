@@ -84,6 +84,21 @@ export default function Onboarding() {
 
   const canSave = Boolean(user && !usernameError && usernameAvailability !== "checking");
 
+  const handleCancel = () => {
+    // Discard any unsaved edits so reopening the editor shows the saved avatar.
+    if (profile) {
+      setDisplayUsername(profile.display_username);
+      setIsPublic(profile.is_public);
+      setAvatarOptions(normalizeAvatarOptions(profile.avatar_options));
+    } else {
+      setDisplayUsername("");
+      setIsPublic(true);
+      setAvatarOptions(normalizeAvatarOptions(defaultAvatarOptions));
+    }
+    const nextPath = (location.state as { from?: string } | null)?.from ?? "/dashboard";
+    navigate(nextPath === "/onboarding" ? "/dashboard" : nextPath);
+  };
+
   const handleSubmit = async () => {
     if (!user || usernameFormatError) {
       return;
@@ -185,6 +200,9 @@ export default function Onboarding() {
           ) : null}
           <AvatarEditor seed={avatarSeed} value={avatarOptions} onChange={setAvatarOptions} />
           <Group justify="flex-end">
+            <Button variant="subtle" color="gray" disabled={saving} onClick={handleCancel}>
+              Cancel
+            </Button>
             <Button color="green" disabled={!canSave} loading={saving} onClick={() => void handleSubmit()}>
               Save profile
             </Button>
