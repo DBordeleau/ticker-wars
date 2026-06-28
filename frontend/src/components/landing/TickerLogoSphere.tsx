@@ -1,6 +1,6 @@
 import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useMemo, useRef } from "react";
-import type { MouseEvent } from "react";
+import type { PointerEvent } from "react";
 import { Link } from "react-router-dom";
 import EntityHoverCard from "../cards/EntityHoverCard";
 import { LANDING_TICKERS } from "./landingTickers";
@@ -36,8 +36,10 @@ export default function TickerLogoSphere({ tickerLogos }: Props) {
   const points = useMemo(() => fibonacciSphere(tickers.length), [tickers.length]);
 
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)") ?? false;
-  const isCompact = useMediaQuery("(max-width: 820px)") ?? false;
-  const use3d = !reduceMotion && !isCompact;
+  // The cloud now runs on touch devices too — pointer events let a finger swipe
+  // inject spin (see handlePointer* below). Only reduced-motion falls back to the
+  // static grid.
+  const use3d = !reduceMotion;
 
   const stageRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -119,7 +121,18 @@ export default function TickerLogoSphere({ tickerLogos }: Props) {
     };
   }, [points, use3d]);
 
-  const handlePointerMove = (event: MouseEvent<HTMLDivElement>) => {
+  // Pointer events cover mouse (hover-move on desktop) and touch (drag-to-spin on
+  // mobile) with one code path. On a mouse, moves fire continuously on hover; on
+  // touch, moves only fire while a finger is down — both feed the same impulse.
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    lastPointerRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      t: performance.now(),
+      active: true,
+    };
+  };
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const now = performance.now();
     const last = lastPointerRef.current;
     const px = event.clientX;
@@ -139,7 +152,7 @@ export default function TickerLogoSphere({ tickerLogos }: Props) {
     }
     lastPointerRef.current = { x: px, y: py, t: now, active: true };
   };
-  const handlePointerLeave = () => {
+  const handlePointerEnd = () => {
     lastPointerRef.current.active = false;
   };
 
@@ -160,8 +173,11 @@ export default function TickerLogoSphere({ tickerLogos }: Props) {
   return (
     <div
       className="ticker-sphere"
-      onMouseMove={handlePointerMove}
-      onMouseLeave={handlePointerLeave}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+      onPointerLeave={handlePointerEnd}
     >
       <div className="ticker-sphere-stage" ref={stageRef}>
         {tickers.map((ticker, index) => (

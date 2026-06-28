@@ -1,10 +1,9 @@
-import { Badge, Progress, Skeleton, Text } from "@mantine/core";
+import { Progress, Skeleton, Text } from "@mantine/core";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 import type { AvatarOptions } from "../../auth/types";
 import type { LeaderboardRow, UserLeaderboardRow } from "../../api/dashboardData";
 import { formatPercent } from "../../utils/format";
-import { modelTypeColor, normalizeModelType } from "../../utils/models";
 import EntityHoverCard from "../cards/EntityHoverCard";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
 import AvatarImage from "../users/AvatarImage";
@@ -23,7 +22,6 @@ type CombinedRow = {
   directional: number | null;
   scored: number;
   modelSlug?: string;
-  modelType?: string;
   avatarSeed?: string;
   avatarOptions?: AvatarOptions;
   username?: string;
@@ -47,7 +45,6 @@ export default function LandingLeaderboard({ modelRows, userRows, loading }: Pro
         directional: row.directional_accuracy,
         scored: row.prediction_count,
         modelSlug: row.model_slug,
-        modelType: normalizeModelType(row.model_type),
       }));
 
     const users: CombinedRow[] = userRows
@@ -111,14 +108,6 @@ export default function LandingLeaderboard({ modelRows, userRows, loading }: Pro
                     <div className="landing-leaderboard-name">
                       <ModelAvatar size={34} />
                       <span className="landing-competitor-name">{row.name}</span>
-                      <Badge
-                        color={modelTypeColor(normalizeModelType(row.modelType))}
-                        variant="light"
-                        size="sm"
-                        className="landing-leaderboard-badge"
-                      >
-                        {row.modelType}
-                      </Badge>
                     </div>
                   </EntityHoverCard>
                 ) : (

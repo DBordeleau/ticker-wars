@@ -9,6 +9,7 @@ import LandingFaq from "../components/landing/LandingFaq";
 import LandingHero from "../components/landing/LandingHero";
 import LandingLeaderboard from "../components/landing/LandingLeaderboard";
 import LivePredictionFeed from "../components/landing/LivePredictionFeed";
+import MobileCompeteCTA from "../components/landing/MobileCompeteCTA";
 import ScrollCue from "../components/landing/ScrollCue";
 import SectionShell from "../components/landing/SectionShell";
 import StatusStrip from "../components/landing/StatusStrip";
@@ -27,6 +28,7 @@ export default function Landing() {
   const enableMorph = useMediaQuery("(min-width: 768px) and (hover: hover)") ?? false;
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)") ?? false;
   const morph = enableMorph && !reduceMotion;
+  const isMobile = useMediaQuery("(max-width: 767px)") ?? false;
 
   const tickerLogos = useMemo(
     () => Object.fromEntries(dashboard.tickerAssets.map((asset) => [asset.ticker, asset.logo_data_url])),
@@ -84,6 +86,9 @@ export default function Landing() {
             </Text>
           </div>
           <TickerLogoSphere tickerLogos={tickerLogos} />
+          <Text className="landing-sphere-hint" aria-hidden>
+            Swipe to spin · tap a logo to explore
+          </Text>
         </div>
       </SectionShell>
 
@@ -97,6 +102,7 @@ export default function Landing() {
           <FloatingCompeteCTA anchorRef={anchorRef} scrollerRef={scrollerRef} onClick={openSignIn} />
         </>
       ) : null}
+      {isMobile ? <MobileCompeteCTA scrollerRef={scrollerRef} onClick={openSignIn} /> : null}
       <SignInModal opened={signInOpen} onClose={() => setSignInOpen(false)} />
     </div>
   );
