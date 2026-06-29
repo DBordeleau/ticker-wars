@@ -1,0 +1,59 @@
+name: Live Price Refresh
+
+on:
+  schedule:
+    # Broad UTC window covering 9:30 AM-4:00 PM ET in both EDT and EST.
+    # The CLI's --regular-hours-only guard performs the exact ET session check.
+    - cron: "*/5 13-21 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-price-refresh
+  cancel-in-progress: true
+
+jobs:
+  refresh-live-prices:
+    name: Refresh live price cache
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      MARKET_DATA_SOURCE: yfinance
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Verify required secrets
+        shell: bash
+        run: |
+          missing=0
+          for name in SUPABASE_URL SUPABASE_SECRET_KEY SUPABASE_PUBLISHABLE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error title=Missing required secret::$name is not configured."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Refresh live price cache
+        run: python -m pipeline.cli refresh-live-prices --regular-hours-only
+
+      - name: Check live price freshness
+        run: python -m pipeline.cli check-live-prices --regular-hours-only --max-stale-minutes 5

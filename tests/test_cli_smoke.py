@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import unittest
 from contextlib import redirect_stdout
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from unittest.mock import patch
 
-from pipeline.cli import _feature_rows_for_incremental_upsert, main
+from pipeline.cli import _feature_rows_for_incremental_upsert, _report_live_price_health, main
 from pipeline.config import Settings
 
 
@@ -52,6 +53,50 @@ class CliSmokeTest(unittest.TestCase):
         with patch("pipeline.cli.run_ingest_latest_prices", return_value=0) as run_prices:
             self.assertEqual(main(["ingest-latest-prices"]), 0)
         run_prices.assert_called_once_with()
+
+    def test_refresh_live_prices_command_forwards_tickers_and_dry_run(self) -> None:
+        with patch("pipeline.cli.run_refresh_live_prices", return_value=0) as run_live:
+            self.assertEqual(
+                main(
+                    [
+                        "refresh-live-prices",
+                        "--tickers",
+                        "aapl, msft,AAPL",
+                        "--dry-run",
+                        "--regular-hours-only",
+                        "--batch-size",
+                        "25",
+                    ]
+                ),
+                0,
+            )
+        run_live.assert_called_once_with(
+            tickers=("AAPL", "MSFT"),
+            dry_run=True,
+            batch_size=25,
+            regular_hours_only=True,
+        )
+
+    def test_check_live_prices_command_forwards_health_options(self) -> None:
+        with patch("pipeline.cli.run_check_live_prices", return_value=0) as run_check:
+            self.assertEqual(
+                main(
+                    [
+                        "check-live-prices",
+                        "--tickers",
+                        "aapl,msft",
+                        "--regular-hours-only",
+                        "--max-stale-minutes",
+                        "3",
+                    ]
+                ),
+                0,
+            )
+        run_check.assert_called_once_with(
+            tickers=("AAPL", "MSFT"),
+            max_stale_minutes=3,
+            regular_hours_only=True,
+        )
 
     def test_build_features_full_refresh_flag_is_forwarded(self) -> None:
         with patch("pipeline.cli.run_build_features", return_value=0) as run_features:
@@ -133,6 +178,50 @@ class CliSmokeTest(unittest.TestCase):
                 {"ticker": "AAPL", "date": "2026-01-02"},
                 {"ticker": "GME", "date": "2024-01-01"},
             ],
+        )
+
+    def test_live_price_health_passes_for_fresh_regular_snapshots(self) -> None:
+        now = datetime(2026, 6, 29, 14, 35, tzinfo=UTC)
+        rows = [
+            {
+                "ticker": "AAPL",
+                "market_state": "regular",
+                "as_of": (now - timedelta(minutes=1)).isoformat(),
+                "stale_after": (now + timedelta(minutes=1)).isoformat(),
+            }
+        ]
+
+        self.assertEqual(
+            _report_live_price_health(
+                rows,
+                expected_tickers=("AAPL",),
+                max_stale_minutes=5,
+                require_regular=True,
+                now=now,
+            ),
+            0,
+        )
+
+    def test_live_price_health_fails_for_stale_regular_hour_snapshots(self) -> None:
+        now = datetime(2026, 6, 29, 14, 35, tzinfo=UTC)
+        rows = [
+            {
+                "ticker": "AAPL",
+                "market_state": "closed",
+                "as_of": (now - timedelta(days=3)).isoformat(),
+                "stale_after": (now - timedelta(days=3)).isoformat(),
+            }
+        ]
+
+        self.assertEqual(
+            _report_live_price_health(
+                rows,
+                expected_tickers=("AAPL",),
+                max_stale_minutes=5,
+                require_regular=True,
+                now=now,
+            ),
+            1,
         )
 
 

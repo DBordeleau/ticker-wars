@@ -100,6 +100,73 @@ class SupabaseDatabase:
 
         return latest_dates
 
+    def upsert_live_price_snapshots(
+        self,
+        rows: list[dict[str, Any]],
+        batch_size: int = 500,
+    ) -> int:
+        if not rows:
+            return 0
+
+        written = 0
+        for batch in _chunks(rows, batch_size):
+            self._client.table("live_price_snapshots").upsert(
+                batch,
+                on_conflict="ticker",
+            ).execute()
+            written += len(batch)
+
+        return written
+
+    def upsert_intraday_price_bars(
+        self,
+        rows: list[dict[str, Any]],
+        batch_size: int = 500,
+    ) -> int:
+        if not rows:
+            return 0
+
+        written = 0
+        for batch in _chunks(rows, batch_size):
+            self._client.table("intraday_price_bars").upsert(
+                batch,
+                on_conflict="ticker,ts",
+            ).execute()
+            written += len(batch)
+
+        return written
+
+    def delete_intraday_price_bars_before(self, cutoff_ts: str) -> int:
+        self._client.table("intraday_price_bars").delete().lt("ts", cutoff_ts).execute()
+        return 0
+
+    def insert_live_price_fetch_event(self, row: dict[str, Any]) -> int:
+        self._client.table("live_price_fetch_events").insert(row).execute()
+        return 1
+
+    def fetch_live_price_snapshots(
+        self,
+        tickers: tuple[str, ...] | None = None,
+        batch_size: int = 1000,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        start = 0
+
+        while True:
+            end = start + batch_size - 1
+            query = self._client.table("live_price_snapshots").select("*").order("ticker")
+            if tickers is not None:
+                query = query.in_("ticker", list(tickers))
+
+            response = query.range(start, end).execute()
+            batch = response.data or []
+            rows.extend(batch)
+
+            if len(batch) < batch_size:
+                return rows
+
+            start += batch_size
+
     def upsert_features(self, rows: list[dict[str, Any]], batch_size: int = 500) -> int:
         if not rows:
             return 0
