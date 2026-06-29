@@ -5,8 +5,10 @@ import type { ReactNode } from "react";
 import { FiArrowRight } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import type { TickerCloseSnapshot, TickerProfile } from "../../api/dashboardData";
+import { loadLivePriceSnapshot } from "../../api/livePriceCache";
+import { resolveTickerDisplayPrice, type LivePriceSnapshot } from "../../api/livePrices";
 import { loadTickerCloseSnapshot, loadTickerProfile } from "../../api/tickerCache";
-import { formatCurrency, formatDate, formatSignedPercent } from "../../utils/format";
+import { formatCurrency, formatSignedPercent } from "../../utils/format";
 import { getModelInfo, modelTypeColor } from "../../utils/models";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
 
@@ -82,19 +84,20 @@ function ModelCardBody({ slug, name }: { slug: string; name?: string }) {
 }
 
 function TickerCardBody({ ticker, logoUrl }: { ticker: string; logoUrl?: string | null }) {
-  const { profile, close, loading } = useTickerHoverData(ticker);
+  const { profile, close, live, loading } = useTickerHoverData(ticker);
   const symbol = ticker.trim().toUpperCase();
   const name = profile?.company_name ?? symbol;
   const showSymbolBadge = name.toUpperCase() !== symbol;
   const industry = profile?.industry ?? profile?.sector ?? null;
   const logo = logoUrl ?? profile?.logo_data_url ?? null;
   const summary = profile?.business_summary ?? null;
+  const displayPrice = resolveTickerDisplayPrice(live, close);
   const moveClass =
-    close?.change == null
+    displayPrice?.change == null
       ? "entity-hover-move-flat"
-      : close.change > 0
+      : displayPrice.change > 0
         ? "entity-hover-move-up"
-        : close.change < 0
+        : displayPrice.change < 0
           ? "entity-hover-move-down"
           : "entity-hover-move-flat";
 
@@ -125,14 +128,19 @@ function TickerCardBody({ ticker, logoUrl }: { ticker: string; logoUrl?: string 
         </div>
       </div>
 
-      {close ? (
+      {displayPrice ? (
         <div className="entity-hover-close">
-          <span className="entity-hover-close-label">{formatDate(close.date)} close</span>
+          <span className="entity-hover-close-label">
+            {displayPrice.label}
+            <span className={`entity-hover-freshness entity-hover-${displayPrice.freshness}`}>
+              {displayPrice.detailLabel}
+            </span>
+          </span>
           <span className="entity-hover-close-value">
-            {formatCurrency(close.close)}
-            {close.change != null && close.change_percent != null ? (
+            {formatCurrency(displayPrice.price)}
+            {displayPrice.change != null && displayPrice.changePercent != null ? (
               <span className={`entity-hover-move ${moveClass}`}>
-                {formatSignedPercent(close.change_percent)}
+                {formatSignedPercent(displayPrice.changePercent)}
               </span>
             ) : null}
           </span>
@@ -164,6 +172,7 @@ function useTickerHoverData(ticker: string) {
   const key = ticker.trim().toUpperCase();
   const [profile, setProfile] = useState<TickerProfile | null>(null);
   const [close, setClose] = useState<TickerCloseSnapshot | null>(null);
+  const [live, setLive] = useState<LivePriceSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -173,11 +182,13 @@ function useTickerHoverData(ticker: string) {
     Promise.all([
       loadTickerProfile(key).catch(() => null),
       loadTickerCloseSnapshot(key).catch(() => null),
+      loadLivePriceSnapshot(key).catch(() => null),
     ])
-      .then(([nextProfile, nextClose]) => {
+      .then(([nextProfile, nextClose, nextLive]) => {
         if (!active) return;
         setProfile(nextProfile);
         setClose(nextClose);
+        setLive(nextLive);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -188,5 +199,5 @@ function useTickerHoverData(ticker: string) {
     };
   }, [key]);
 
-  return { profile, close, loading };
+  return { profile, close, live, loading };
 }
