@@ -3,16 +3,18 @@ import { notifications } from "@mantine/notifications";
 import { useEffect, useMemo, useState } from "react";
 import { FiAlertTriangle, FiCheck } from "react-icons/fi";
 import type { LatestPrediction, MetricHorizon } from "../../api/dashboardData";
+import { resolveTickerDisplayPrice } from "../../api/livePrices";
 import {
   editUserPrediction,
   findPendingPrediction,
   getPredictionTargets,
   isPredictionEditable,
   submitUserPrediction,
-  type PredictionTarget,
   type UserPrediction,
 } from "../../api/userPredictions";
 import { useAuth } from "../../auth/AuthProvider";
+import { useLiveTickerPrice } from "../../hooks/useLiveTickerPrice";
+import { useTickerCloseSnapshot } from "../../hooks/useTickerCloseSnapshot";
 import { formatCurrency, formatDate, formatHorizon } from "../../utils/format";
 
 type Props = {
@@ -47,6 +49,10 @@ export default function UserPredictionForm({
   const [predictedClose, setPredictedClose] = useState<number | "">(
     existingPrediction?.predicted_close ?? "",
   );
+  const livePrice = useLiveTickerPrice(ticker, { poll: true, pollMs: 45_000 });
+  const closeSnapshot = useTickerCloseSnapshot(ticker);
+  const displayPrice = resolveTickerDisplayPrice(livePrice.data, closeSnapshot.data);
+  const referenceIsStale = displayPrice?.freshness === "stale";
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +63,14 @@ export default function UserPredictionForm({
     }
   }, [existingPrediction]);
 
-  const canSubmit = Boolean(user && selectedTarget && typeof predictedClose === "number" && predictedClose > 0);
+  const canSubmit = Boolean(
+    user &&
+      selectedTarget &&
+      displayPrice &&
+      !referenceIsStale &&
+      typeof predictedClose === "number" &&
+      predictedClose > 0,
+  );
 
   const handleSubmit = async () => {
     if (!user || !selectedTarget || typeof predictedClose !== "number") {
@@ -69,8 +82,8 @@ export default function UserPredictionForm({
 
     try {
       const input = {
-        userId: user.id,
-        target: selectedTarget as PredictionTarget,
+        ticker: selectedTarget.ticker,
+        horizon: selectedTarget.horizon,
         predictedClose,
       };
       const pending = existingPrediction
@@ -88,7 +101,7 @@ export default function UserPredictionForm({
           color: "green",
           icon: <FiCheck />,
           title: "Prediction updated",
-          message: `${ticker} ${formatHorizon(selectedTarget.horizon)} now matures on ${formatDate(selectedTarget.targetDate)}.`,
+          message: `${ticker} ${formatHorizon(edited.prediction_horizon)} now matures on ${formatDate(edited.target_date)}.`,
         });
         onSaved?.(edited);
         return;
@@ -99,7 +112,7 @@ export default function UserPredictionForm({
         color: "green",
         icon: <FiCheck />,
         title: "Prediction made",
-        message: `${ticker} ${formatHorizon(selectedTarget.horizon)} matures on ${formatDate(selectedTarget.targetDate)}.`,
+        message: `${ticker} ${formatHorizon(created.prediction_horizon)} matures on ${formatDate(created.target_date)}.`,
       });
       onSaved?.(created);
     } catch (caught) {
@@ -151,9 +164,18 @@ export default function UserPredictionForm({
       <Group gap="lg">
         <div>
           <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-            Reference close
+            Reference price
           </Text>
-          <Text fw={800}>{formatCurrency(selectedTarget.referenceClose)}</Text>
+          <Text fw={800}>{formatCurrency(displayPrice?.price)}</Text>
+          {displayPrice ? (
+            <Text size="xs" c={referenceIsStale ? "orange" : "dimmed"} fw={700}>
+              {displayPrice.label} - {displayPrice.detailLabel}
+            </Text>
+          ) : livePrice.loading || closeSnapshot.loading ? (
+            <Text size="xs" c="dimmed" fw={700}>
+              Loading reference...
+            </Text>
+          ) : null}
         </div>
         <div>
           <Text size="xs" c="dimmed" tt="uppercase" fw={700}>

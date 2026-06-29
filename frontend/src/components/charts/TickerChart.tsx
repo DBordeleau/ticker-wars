@@ -2,19 +2,27 @@ import { Group, Select, Skeleton, Text } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
-  Area,
   ComposedChart,
   Legend,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import type { LatestPrediction, TickerHistoryRow } from "../../api/dashboardData";
+import type { LatestPrediction, MetricHorizon, TickerHistoryRow } from "../../api/dashboardData";
+import { resolveTickerDisplayPrice } from "../../api/livePrices";
+import { useLiveTickerPrice } from "../../hooks/useLiveTickerPrice";
+import { useTickerCloseSnapshot } from "../../hooks/useTickerCloseSnapshot";
+import { useTickerPriceSeries } from "../../hooks/useTickerPriceSeries";
 import SectionPanel from "../layout/SectionPanel";
+import PredictionHorizonSelector from "../predictions/PredictionHorizonSelector";
 import ChartTooltip from "./ChartTooltip";
 import type { ChartTooltipItem } from "./ChartTooltip";
 import ModelToggleGroup from "./ModelToggleGroup";
+
+type PredictionHorizon = Exclude<MetricHorizon, "all">;
 
 type Props = {
   history: TickerHistoryRow[];
@@ -33,11 +41,31 @@ const preferredDefaultModels = [
   "TimesFM",
   "Chronos-2",
 ];
+const horizonOrder: PredictionHorizon[] = ["1w", "1m", "3m", "1y"];
+const horizonLookbackDays: Record<PredictionHorizon, number> = {
+  "1w": 10,
+  "1m": 35,
+  "3m": 75,
+  "1y": 180,
+};
+const horizonForwardDays: Record<PredictionHorizon, number> = {
+  "1w": 7,
+  "1m": 31,
+  "3m": 92,
+  "1y": 366,
+};
+
+type ChartRowMetadata = {
+  tooltipHiddenKeys?: string[];
+};
 
 type ChartRow = {
-  date: string;
+  x: string;
+  timestamp: number;
+  kind: "edge" | "close" | "intraday" | "current" | "forecast";
   actual: number | null;
-  [key: string]: string | number | [number, number] | null;
+  metadata?: ChartRowMetadata;
+  [key: string]: string | number | [number, number] | ChartRowMetadata | null | undefined;
 };
 
 type ChartHoverState = {
@@ -46,14 +74,14 @@ type ChartHoverState = {
   activePayload?: ChartTooltipItem[];
 };
 
-function formatChartDate(value: string | number, includeYear: boolean) {
-  const [year, month, day] = String(value).split("-");
-  if (!year || !month || !day) {
-    return String(value);
-  }
+type AxisDomain = [number | "auto", number | "auto"];
 
-  return includeYear ? `${year}/${month}/${day}` : `${month}/${day}`;
-}
+type ChartResult = {
+  rows: ChartRow[];
+  domain: [number, number];
+  yDomain: AxisDomain;
+  currentTimestamp: number | null;
+};
 
 export default function TickerChart({
   history,
@@ -63,16 +91,34 @@ export default function TickerChart({
   loading,
   showTickerSelect = true,
 }: Props) {
+  const normalizedTicker = selectedTicker?.trim().toUpperCase() ?? "";
   const tickers = useMemo(
     () => Array.from(new Set(predictions.map((row) => row.ticker))).sort(),
     [predictions],
   );
+  const [selectedHorizon, setSelectedHorizon] = useState<PredictionHorizon>("1w");
+  const priceSeries = useTickerPriceSeries(normalizedTicker);
+  const livePrice = useLiveTickerPrice(normalizedTicker, {
+    enabled: Boolean(normalizedTicker),
+    poll: true,
+  });
+  const closeSnapshot = useTickerCloseSnapshot(normalizedTicker);
+  const displayPrice = resolveTickerDisplayPrice(livePrice.data, closeSnapshot.data);
+
+  const chartPredictions = useMemo(
+    () => latestPredictionsThroughHorizon(predictions, normalizedTicker, selectedHorizon),
+    [normalizedTicker, predictions, selectedHorizon],
+  );
   const models = useMemo(
-    () => Array.from(new Set(history.map((row) => row.model_name))).sort(),
-    [history],
+    () => Array.from(new Set(chartPredictions.map((row) => row.model_name))).sort(),
+    [chartPredictions],
   );
   const [visibleModels, setVisibleModels] = useState<string[]>([]);
-  const [tooltip, setTooltip] = useState<{ label: string; payload: ChartTooltipItem[] } | null>(null);
+  const [tooltip, setTooltip] = useState<{
+    label: string;
+    payload: ChartTooltipItem[];
+    timestamp: number;
+  } | null>(null);
 
   useEffect(() => {
     if (models.length === 0) {
@@ -95,39 +141,29 @@ export default function TickerChart({
     });
   }, [models]);
 
-  const chartData = useMemo(() => {
-    const byDate = new Map<string, ChartRow>();
-
-    history.forEach((row) => {
-      const current = byDate.get(row.date) ?? { date: row.date, actual: row.actual_close };
-      current.actual = row.actual_close;
-      current[row.model_name] = row.predicted_close;
-      if (row.predicted_close_lower != null && row.predicted_close_upper != null) {
-        current[rangeKey(row.model_name)] = [
-          row.predicted_close_lower,
-          row.predicted_close_upper,
-        ];
-      }
-      byDate.set(row.date, current);
-    });
-
-    return Array.from(byDate.values());
-  }, [history]);
-
-  const hasDuplicateMonthDay = useMemo(() => {
-    const seen = new Set<string>();
-
-    return chartData.some((row) => {
-      const [, month, day] = String(row.date).split("-");
-      const monthDay = `${month}/${day}`;
-      if (seen.has(monthDay)) {
-        return true;
-      }
-
-      seen.add(monthDay);
-      return false;
-    });
-  }, [chartData]);
+  const chartResult = useMemo(
+    () =>
+      buildChartResult({
+        daily: priceSeries.daily,
+        intraday: priceSeries.intraday,
+        displayPrice,
+        predictions: chartPredictions,
+        selectedHorizon,
+        fallbackHistory: history.filter((row) => row.ticker === normalizedTicker),
+      }),
+    [
+      displayPrice,
+      history,
+      chartPredictions,
+      normalizedTicker,
+      priceSeries.daily,
+      priceSeries.intraday,
+      selectedHorizon,
+    ],
+  );
+  const chartData = chartResult.rows;
+  const currentTimestamp = chartResult.currentTimestamp;
+  const chartLoading = loading || priceSeries.loading;
 
   const handleChartMouseMove = (state: unknown) => {
     const chartState = state as ChartHoverState;
@@ -136,33 +172,59 @@ export default function TickerChart({
       return;
     }
 
+    const hoveredRow = (chartState.activePayload[0] as ChartTooltipItem & { payload?: ChartRow }).payload;
+    if (hoveredRow?.kind === "edge") {
+      setTooltip(null);
+      return;
+    }
+
+    const hiddenKeys = new Set(hoveredRow?.metadata?.tooltipHiddenKeys ?? []);
+    const payload = chartState.activePayload.filter(
+      (item) => item.value != null && !hiddenKeys.has(String(item.dataKey)),
+    );
+    if (!payload.length) {
+      setTooltip(null);
+      return;
+    }
+
     setTooltip({
-      label: formatChartDate(chartState.activeLabel, true),
-      payload: chartState.activePayload,
+      label: formatTooltipDate(hoveredRow?.x ?? chartState.activeLabel),
+      payload: withTooltipRanges(payload, hoveredRow, hiddenKeys),
+      timestamp: hoveredRow?.timestamp ?? Number(chartState.activeLabel),
     });
   };
 
   return (
     <SectionPanel
-      title="Actual vs Predicted"
+      title="Price History & Forecast"
       subtitle={
         showTickerSelect
-          ? "Select a ticker and compare model prediction lines against actual closes."
-          : "Compare model prediction lines against actual closes for this ticker."
+          ? "Select a ticker, inspect recent price history, and compare model forecasts."
+          : `Inspect recent ${normalizedTicker} price history and compare model forecasts.`
       }
-      action={showTickerSelect ? (
-        <Select
-          data={tickers}
-          value={selectedTicker}
-          onChange={onTickerChange}
-          placeholder="Select ticker"
-          searchable
-          aria-label="Select ticker for chart"
-        />
-      ) : undefined}
+      action={
+        <Group gap="sm" justify="flex-end" className="ticker-chart-actions">
+          <PredictionHorizonSelector
+            value={selectedHorizon}
+            onChange={(value) => setSelectedHorizon(value as PredictionHorizon)}
+            label="Ticker chart horizon"
+            includeAll={false}
+          />
+          {showTickerSelect ? (
+            <Select
+              data={tickers}
+              value={selectedTicker}
+              onChange={onTickerChange}
+              placeholder="Select ticker"
+              searchable
+              aria-label="Select ticker for chart"
+            />
+          ) : null}
+        </Group>
+      }
       className="chart-panel"
     >
-      {loading ? (
+      {chartLoading ? (
         <ChartLoadingState />
       ) : !selectedTicker ? (
         <Text c="dimmed" size="sm">
@@ -170,7 +232,7 @@ export default function TickerChart({
         </Text>
       ) : chartData.length === 0 ? (
         <Text c="dimmed" size="sm">
-          Chart history for {selectedTicker} will appear after scored dashboard history is published.
+          Price history for {selectedTicker} will appear once price data is published.
         </Text>
       ) : (
         <>
@@ -181,7 +243,7 @@ export default function TickerChart({
                 <ChartTooltip label={tooltip.label} payload={tooltip.payload} />
               </div>
             ) : null}
-            <ResponsiveContainer width="100%" height={530}>
+            <ResponsiveContainer width="100%" height={590}>
               <ComposedChart
                 data={chartData}
                 margin={{ top: 34, right: 18, bottom: 12, left: 6 }}
@@ -190,19 +252,24 @@ export default function TickerChart({
               >
                 <CartesianGrid stroke="rgba(255, 255, 255, 0.08)" />
                 <XAxis
-                  dataKey="date"
+                  dataKey="timestamp"
+                  type="number"
+                  scale="time"
+                  domain={chartResult.domain}
                   stroke="#b8c6bf"
                   tickLine={true}
                   axisLine={true}
                   minTickGap={28}
-                  tickFormatter={(value) => formatChartDate(value, hasDuplicateMonthDay)}
+                  tickFormatter={(value) => formatAxisDate(value)}
                 />
                 <YAxis
                   stroke="#b8c6bf"
                   tickLine={true}
                   axisLine={true}
                   width={64}
-                  domain={["auto", "auto"]}
+                  domain={chartResult.yDomain}
+                  allowDataOverflow
+                  tickFormatter={(value) => formatYAxisPrice(value)}
                 />
                 <Legend
                   verticalAlign="top"
@@ -210,32 +277,38 @@ export default function TickerChart({
                   wrapperStyle={{ paddingBottom: 12 }}
                   content={<FilteredLegend />}
                 />
+                <Tooltip
+                  content={() => null}
+                  cursor={false}
+                  isAnimationActive={false}
+                />
+                {currentTimestamp ? (
+                  <ReferenceLine
+                    x={currentTimestamp}
+                    stroke="rgba(244, 247, 245, 0.52)"
+                    strokeDasharray="3 5"
+                    ifOverflow="extendDomain"
+                  />
+                ) : null}
+                {tooltip ? (
+                  <ReferenceLine
+                    x={tooltip.timestamp}
+                    stroke="rgba(244, 247, 245, 0.78)"
+                    strokeWidth={1.5}
+                    ifOverflow="extendDomain"
+                  />
+                ) : null}
                 <Line
                   type="monotone"
                   dataKey="actual"
-                  name="Actual close"
+                  name="Actual price"
                   stroke="#f4f7f5"
                   strokeWidth={3}
-                  dot={false}
-                  connectNulls
+                  dot={renderActualDot}
+                  activeDot={{ r: 5, stroke: "#f4f7f5", strokeWidth: 2 }}
+                  connectNulls={false}
+                  isAnimationActive={false}
                 />
-                {visibleModels.map((model, index) => {
-                  const color = lineColors[index % lineColors.length];
-                  return (
-                    <Area
-                      key={`${model}-range`}
-                      type="monotone"
-                      dataKey={rangeKey(model)}
-                      name={`${model} 80% range`}
-                      stroke="none"
-                      fill={color}
-                      fillOpacity={0.1}
-                      connectNulls
-                      legendType="none"
-                      activeDot={false}
-                    />
-                  );
-                })}
                 {visibleModels.map((model, index) => (
                   <Line
                     key={model}
@@ -244,9 +317,11 @@ export default function TickerChart({
                     name={model}
                     stroke={lineColors[index % lineColors.length]}
                     strokeWidth={model.toLowerCase().includes("baseline") ? 2 : 2.4}
-                    strokeDasharray={model.toLowerCase().includes("baseline") ? "5 5" : undefined}
-                    dot={false}
+                    strokeDasharray={model.toLowerCase().includes("baseline") ? "5 5" : "6 5"}
+                    dot={renderForecastDot(model, lineColors[index % lineColors.length])}
+                    activeDot={{ r: 5, stroke: lineColors[index % lineColors.length], strokeWidth: 2 }}
                     connectNulls
+                    isAnimationActive={false}
                   />
                 ))}
               </ComposedChart>
@@ -256,6 +331,356 @@ export default function TickerChart({
       )}
     </SectionPanel>
   );
+}
+
+function buildChartResult({
+  daily,
+  intraday,
+  displayPrice,
+  predictions,
+  selectedHorizon,
+  fallbackHistory,
+}: {
+  daily: { date: string; close: number }[];
+  intraday: { ts: string; close: number }[];
+  displayPrice: ReturnType<typeof resolveTickerDisplayPrice>;
+  predictions: LatestPrediction[];
+  selectedHorizon: PredictionHorizon;
+  fallbackHistory: TickerHistoryRow[];
+}): ChartResult {
+  const rows = new Map<string, ChartRow>();
+  const latestActualTs = latestActualTimestamp(daily, intraday, displayPrice);
+  const lookbackStart = latestActualTs - horizonLookbackDays[selectedHorizon] * 86_400_000;
+
+  daily.forEach((point) => {
+    const timestamp = dateTimestamp(point.date);
+    if (timestamp < lookbackStart) {
+      return;
+    }
+    rows.set(point.date, {
+      x: point.date,
+      timestamp,
+      kind: "close",
+      actual: point.close,
+    });
+  });
+
+  intraday.forEach((bar) => {
+    const timestamp = Date.parse(bar.ts);
+    if (!Number.isFinite(timestamp) || timestamp < lookbackStart) {
+      return;
+    }
+    rows.set(bar.ts, {
+      x: bar.ts,
+      timestamp,
+      kind: "intraday",
+      actual: bar.close,
+    });
+  });
+
+  if (displayPrice) {
+    const timestamp = Date.parse(displayPrice.asOf);
+    const x = displayPrice.source === "close" ? displayPrice.asOf : displayPrice.asOf;
+    rows.set(x, {
+      x,
+      timestamp: Number.isFinite(timestamp) ? timestamp : latestActualTs,
+      kind: "current",
+      actual: displayPrice.price,
+    });
+  }
+
+  if (rows.size === 0 && fallbackHistory.length > 0) {
+    fallbackHistory.forEach((row) => {
+      if (row.actual_close == null) {
+        return;
+      }
+      rows.set(row.target_date, {
+        x: row.target_date,
+        timestamp: dateTimestamp(row.target_date),
+        kind: "close",
+        actual: row.actual_close,
+      });
+    });
+  }
+
+  const currentRow = latestActualRow(rows);
+  const modelNames = Array.from(new Set(predictions.map((row) => row.model_name)));
+  predictions
+    .forEach((prediction) => {
+      const key = prediction.model_name;
+      if (currentRow) {
+        currentRow[key] = currentRow.actual;
+        currentRow.metadata = {
+          tooltipHiddenKeys: [
+            ...(currentRow.metadata?.tooltipHiddenKeys ?? []),
+            key,
+            rangeKey(key),
+          ],
+        };
+        if (
+          prediction.predicted_close_lower != null &&
+          prediction.predicted_close_upper != null &&
+          currentRow.actual != null
+        ) {
+          currentRow[rangeKey(key)] = [currentRow.actual, currentRow.actual];
+        }
+      }
+
+      const forecastRow = rows.get(prediction.target_date) ?? {
+        x: prediction.target_date,
+        timestamp: dateTimestamp(prediction.target_date),
+        kind: "forecast" as const,
+        actual: null,
+      };
+      forecastRow.kind = forecastRow.kind === "current" ? "current" : "forecast";
+      forecastRow[key] = prediction.predicted_close;
+      if (prediction.predicted_close_lower != null && prediction.predicted_close_upper != null) {
+        forecastRow[rangeKey(key)] = [
+          prediction.predicted_close_lower,
+          prediction.predicted_close_upper,
+        ];
+      }
+      rows.set(prediction.target_date, forecastRow);
+    });
+
+  const domain = chartTimeDomain({
+    rows: Array.from(rows.values()),
+    currentTimestamp: currentRow?.timestamp ?? latestActualTs,
+    selectedHorizon,
+    lookbackStart,
+  });
+  const sortedRows = withLeftEdgeActualRow(
+    Array.from(rows.values()).sort((a, b) => a.timestamp - b.timestamp),
+    domain[0],
+  );
+  return {
+    rows: sortedRows,
+    domain,
+    yDomain: chartPriceDomain(sortedRows, modelNames),
+    currentTimestamp: currentRow?.timestamp ?? null,
+  };
+}
+
+function withLeftEdgeActualRow(rows: ChartRow[], domainStart: number): ChartRow[] {
+  const firstActualRow = rows.find((row) => row.actual != null && row.kind !== "forecast");
+  if (!firstActualRow || firstActualRow.timestamp <= domainStart) {
+    return rows;
+  }
+
+  return [
+    {
+      x: "visible-start",
+      timestamp: domainStart,
+      kind: "edge",
+      actual: firstActualRow.actual,
+    },
+    ...rows,
+  ];
+}
+
+function chartTimeDomain({
+  rows,
+  currentTimestamp,
+  selectedHorizon,
+  lookbackStart,
+}: {
+  rows: ChartRow[];
+  currentTimestamp: number;
+  selectedHorizon: PredictionHorizon;
+  lookbackStart: number;
+}): [number, number] {
+  const dayMs = 86_400_000;
+  const forecastTimestamps = rows
+    .filter((row) => row.kind === "forecast")
+    .map((row) => row.timestamp)
+    .filter(Number.isFinite);
+  const forwardMs = horizonForwardDays[selectedHorizon] * dayMs;
+  const forecastEnd = Math.max(currentTimestamp + forwardMs, ...forecastTimestamps);
+  const rightPadding = Math.max(forwardMs * 0.1, dayMs * 2);
+  const leftPadding = Math.min(dayMs * 3, Math.max(0, currentTimestamp - lookbackStart) * 0.03);
+  const start = lookbackStart - leftPadding;
+  const end = forecastEnd + rightPadding;
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) {
+    return [Date.now() - horizonLookbackDays[selectedHorizon] * dayMs, Date.now() + forwardMs];
+  }
+
+  return [start, end];
+}
+
+function chartPriceDomain(rows: ChartRow[], visibleModels: string[]): AxisDomain {
+  const values: number[] = [];
+  rows.forEach((row) => {
+    if (typeof row.actual === "number" && Number.isFinite(row.actual)) {
+      values.push(row.actual);
+    }
+    visibleModels.forEach((model) => {
+      const value = row[model];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        values.push(value);
+      }
+    });
+  });
+
+  if (values.length === 0) {
+    return ["auto", "auto"];
+  }
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const mid = (min + max) / 2;
+  const spread = Math.max(max - min, Math.abs(mid) * 0.004, 1);
+  const padding = Math.max(spread * 0.22, Math.abs(mid) * 0.0025, 0.5);
+  return [min - padding, max + padding];
+}
+
+function withTooltipRanges(
+  payload: ChartTooltipItem[],
+  hoveredRow: ChartRow | undefined,
+  hiddenKeys: Set<string>,
+): ChartTooltipItem[] {
+  if (!hoveredRow) {
+    return payload;
+  }
+
+  return payload.flatMap((item) => {
+    const name = String(item.name ?? item.dataKey ?? "");
+    const rangeDataKey = rangeKey(name);
+    const rangeValue = hoveredRow[rangeDataKey];
+    if (
+      name === "Actual price" ||
+      name.endsWith(" 80% range") ||
+      hiddenKeys.has(rangeDataKey) ||
+      !Array.isArray(rangeValue)
+    ) {
+      return [item];
+    }
+
+    return [
+      item,
+      {
+        dataKey: rangeDataKey,
+        name: `${name} 80% range`,
+        value: rangeValue,
+        color: item.color,
+        stroke: item.stroke,
+      },
+    ];
+  });
+}
+
+function latestPredictionsThroughHorizon(
+  predictions: LatestPrediction[],
+  ticker: string,
+  horizon: PredictionHorizon,
+) {
+  const byModelAndHorizon = new Map<string, LatestPrediction>();
+  const maxRank = horizonRank(horizon);
+  predictions
+    .filter(
+      (row): row is LatestPrediction & { prediction_horizon: PredictionHorizon } =>
+        row.ticker === ticker &&
+        isPredictionHorizon(row.prediction_horizon) &&
+        horizonRank(row.prediction_horizon) <= maxRank,
+    )
+    .forEach((row) => {
+      const key = `${row.model_name}|${row.prediction_horizon}`;
+      const current = byModelAndHorizon.get(key);
+      if (!current || predictionSortValue(row) > predictionSortValue(current)) {
+        byModelAndHorizon.set(key, row);
+      }
+    });
+  return Array.from(byModelAndHorizon.values()).sort(
+    (a, b) =>
+      dateTimestamp(a.target_date) - dateTimestamp(b.target_date) ||
+      horizonRank(a.prediction_horizon as PredictionHorizon) -
+        horizonRank(b.prediction_horizon as PredictionHorizon) ||
+      a.model_name.localeCompare(b.model_name),
+  );
+}
+
+function isPredictionHorizon(value: MetricHorizon): value is PredictionHorizon {
+  return value !== "all";
+}
+
+function horizonRank(horizon: PredictionHorizon) {
+  return horizonOrder.indexOf(horizon);
+}
+
+function predictionSortValue(row: LatestPrediction) {
+  return `${row.prediction_date}|${row.target_date}`;
+}
+
+function latestActualTimestamp(
+  daily: { date: string; close: number }[],
+  intraday: { ts: string; close: number }[],
+  displayPrice: ReturnType<typeof resolveTickerDisplayPrice>,
+) {
+  const values = [
+    ...daily.map((row) => dateTimestamp(row.date)),
+    ...intraday.map((row) => Date.parse(row.ts)),
+    displayPrice ? Date.parse(displayPrice.asOf) : NaN,
+  ].filter(Number.isFinite);
+  return values.length > 0 ? Math.max(...values) : Date.now();
+}
+
+function latestActualRow(rows: Map<string, ChartRow>) {
+  return Array.from(rows.values())
+    .filter((row) => row.actual != null)
+    .sort((a, b) => b.timestamp - a.timestamp)[0];
+}
+
+function dateTimestamp(value: string) {
+  return Date.parse(`${value}T16:00:00Z`);
+}
+
+function formatAxisDate(value: string | number) {
+  const date = parseChartDate(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "numeric",
+    day: "numeric",
+  }).format(date);
+}
+
+function formatYAxisPrice(value: string | number) {
+  const price = Number(value);
+  if (!Number.isFinite(price)) {
+    return String(value);
+  }
+  return `$${Math.round(price).toLocaleString("en-US")}`;
+}
+
+function formatTooltipDate(value: string | number) {
+  const text = String(value);
+  const date = parseChartDate(value);
+  if (Number.isNaN(date.getTime())) {
+    return text;
+  }
+
+  const hasTime = typeof value === "number" || text.includes("T");
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    ...(hasTime ? { hour: "numeric", minute: "2-digit" } : {}),
+  }).format(date);
+}
+
+function parseChartDate(value: string | number) {
+  if (typeof value === "number") {
+    return new Date(value);
+  }
+
+  const numericValue = Number(value);
+  if (Number.isFinite(numericValue)) {
+    return new Date(numericValue);
+  }
+
+  return new Date(value);
 }
 
 function withPreferredDefaults(current: string[], models: string[]) {
@@ -305,6 +730,42 @@ function FilteredLegend({ payload }: { payload?: LegendEntry[] }) {
       ))}
     </div>
   );
+}
+
+function renderActualDot(props: unknown) {
+  const dot = props as { cx?: number; cy?: number; payload?: ChartRow };
+  if (dot.cx == null || dot.cy == null || !dot.payload) {
+    return <g />;
+  }
+  if (dot.payload.kind === "close") {
+    return <circle cx={dot.cx} cy={dot.cy} r={2.8} fill="#f4f7f5" opacity={0.72} />;
+  }
+  if (dot.payload.kind === "current") {
+    return (
+      <circle
+        cx={dot.cx}
+        cy={dot.cy}
+        r={5}
+        fill="#f4f7f5"
+        stroke="#22c55e"
+        strokeWidth={2.4}
+      />
+    );
+  }
+  return <g />;
+}
+
+function renderForecastDot(model: string, color: string) {
+  return (props: unknown) => {
+    const dot = props as { cx?: number; cy?: number; payload?: ChartRow };
+    if (dot.cx == null || dot.cy == null || dot.payload?.kind !== "forecast") {
+      return <g />;
+    }
+    if (dot.payload[model] == null) {
+      return <g />;
+    }
+    return <circle cx={dot.cx} cy={dot.cy} r={4.8} fill={color} stroke="#06110b" strokeWidth={2} />;
+  };
 }
 
 function ChartLoadingState() {

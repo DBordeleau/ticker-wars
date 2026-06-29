@@ -42,12 +42,23 @@ class FakeTable:
         )
         return self
 
+    def insert(self, rows: dict[str, Any] | list[dict[str, Any]]) -> FakeTable:
+        self.operation.update(
+            action="insert",
+            rows=rows,
+        )
+        return self
+
     def select(self, columns: str) -> FakeTable:
         self.operation.update(action="select", columns=columns)
         return self
 
     def update(self, values: dict[str, Any]) -> FakeTable:
         self.operation.update(action="update", values=values)
+        return self
+
+    def delete(self) -> FakeTable:
+        self.operation.update(action="delete")
         return self
 
     def order(self, column: str, desc: bool = False) -> FakeTable:
@@ -60,6 +71,10 @@ class FakeTable:
 
     def in_(self, column: str, values: list[Any]) -> FakeTable:
         self.operation.setdefault("filters", []).append(("in", column, values))
+        return self
+
+    def lt(self, column: str, value: Any) -> FakeTable:
+        self.operation.setdefault("filters", []).append(("lt", column, value))
         return self
 
     def range(self, start: int, end: int) -> FakeTable:
@@ -222,6 +237,67 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertIn(("eq", "ticker", "AAPL"), client.operations[0]["filters"])
         self.assertEqual(client.operations[0]["order"], [("date", True)])
         self.assertEqual(client.operations[0]["limit"], 1)
+
+    def test_live_price_methods_use_live_tables(self) -> None:
+        database, client = _database_with_fake_client()
+        snapshots = [
+            {
+                "ticker": "AAPL",
+                "provider": "yfinance",
+                "provider_symbol": "AAPL",
+                "market_state": "regular",
+                "price": 205.5,
+                "as_of": "2026-06-29T14:31:00+00:00",
+                "fetched_at": "2026-06-29T14:31:04+00:00",
+                "stale_after": "2026-06-29T14:32:19+00:00",
+            }
+        ]
+        bars = [
+            {
+                "ticker": "AAPL",
+                "ts": "2026-06-29T14:31:00+00:00",
+                "provider": "yfinance",
+                "provider_symbol": "AAPL",
+                "close": 205.5,
+            }
+        ]
+        event = {
+            "provider": "yfinance",
+            "requested_tickers": ["AAPL"],
+            "succeeded_tickers": ["AAPL"],
+            "failed_tickers": [],
+            "started_at": "2026-06-29T14:31:00+00:00",
+            "finished_at": "2026-06-29T14:31:02+00:00",
+            "duration_ms": 2000,
+            "error_message": None,
+        }
+
+        snapshot_count = database.upsert_live_price_snapshots(snapshots)
+        bar_count = database.upsert_intraday_price_bars(bars)
+        database.delete_intraday_price_bars_before("2026-06-29T04:00:00+00:00")
+        event_count = database.insert_live_price_fetch_event(event)
+        client.data["live_price_snapshots"] = snapshots
+        fetched_snapshots = database.fetch_live_price_snapshots(("AAPL",))
+
+        self.assertEqual(snapshot_count, 1)
+        self.assertEqual(bar_count, 1)
+        self.assertEqual(event_count, 1)
+        self.assertEqual(fetched_snapshots, snapshots)
+        self.assertEqual(client.operations[0]["table"], "live_price_snapshots")
+        self.assertEqual(client.operations[0]["action"], "upsert")
+        self.assertEqual(client.operations[0]["on_conflict"], "ticker")
+        self.assertEqual(client.operations[1]["table"], "intraday_price_bars")
+        self.assertEqual(client.operations[1]["action"], "upsert")
+        self.assertEqual(client.operations[1]["on_conflict"], "ticker,ts")
+        self.assertEqual(client.operations[2]["table"], "intraday_price_bars")
+        self.assertEqual(client.operations[2]["action"], "delete")
+        self.assertIn(("lt", "ts", "2026-06-29T04:00:00+00:00"), client.operations[2]["filters"])
+        self.assertEqual(client.operations[3]["table"], "live_price_fetch_events")
+        self.assertEqual(client.operations[3]["action"], "insert")
+        self.assertEqual(client.operations[3]["rows"], event)
+        self.assertEqual(client.operations[4]["table"], "live_price_snapshots")
+        self.assertEqual(client.operations[4]["action"], "select")
+        self.assertIn(("in", "ticker", ["AAPL"]), client.operations[4]["filters"])
 
     def test_ticker_asset_cache_round_trip_methods_use_ticker_assets(self) -> None:
         database, client = _database_with_fake_client()

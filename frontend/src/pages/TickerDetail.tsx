@@ -2,6 +2,7 @@ import { Badge, Card, Group, Skeleton, Stack, Text, Title, UnstyledButton } from
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { MetricHorizon } from "../api/dashboardData";
+import { resolveTickerDisplayPrice } from "../api/livePrices";
 import type { DashboardView } from "../components/dashboard/DashboardViewToggle";
 import TickerChart from "../components/charts/TickerChart";
 import AnimatedSection from "../components/layout/AnimatedSection";
@@ -15,6 +16,7 @@ import PredictionTable from "../components/predictions/PredictionTable";
 import UserPredictionTable from "../components/predictions/UserPredictionTable";
 import UserPredictionButton from "../components/predictions/UserPredictionButton";
 import { useDashboardData } from "../hooks/useDashboardData";
+import { useLiveTickerPrice } from "../hooks/useLiveTickerPrice";
 import { useTickerCloseSnapshot } from "../hooks/useTickerCloseSnapshot";
 import { useTickerHistory } from "../hooks/useTickerHistory";
 import { useTickerProfile } from "../hooks/useTickerProfile";
@@ -34,6 +36,7 @@ export default function TickerDetail() {
   const dashboard = useDashboardData();
   const tickerHistory = useTickerHistory(ticker);
   const tickerClose = useTickerCloseSnapshot(ticker);
+  const livePrice = useLiveTickerPrice(ticker, { poll: true });
   const tickerProfile = useTickerProfile(ticker);
   const tickerLogos = useMemo(
     () =>
@@ -61,10 +64,13 @@ export default function TickerDetail() {
   const visibleLogoUrl = logoUrl && failedLogoUrl !== logoUrl ? logoUrl : null;
   const summary = tickerProfile.data?.business_summary;
   const canExpandSummary = Boolean(summary && summary.length > 180);
-  const closeValue = tickerClose.data?.close ?? firstPrediction?.reference_close;
+  const displayPrice = resolveTickerDisplayPrice(livePrice.data, tickerClose.data);
+  const closeValue = displayPrice?.price ?? tickerClose.data?.close ?? firstPrediction?.reference_close;
   const closeDate = tickerClose.data?.date ?? firstPrediction?.prediction_date;
-  const closeChange = tickerClose.data?.change;
-  const closeChangePercent = tickerClose.data?.change_percent;
+  const closeChange = displayPrice?.change ?? tickerClose.data?.change;
+  const closeChangePercent = displayPrice?.changePercent ?? tickerClose.data?.change_percent;
+  const priceLabel = displayPrice?.label ?? `${formatDate(closeDate)} closing price`;
+  const priceDetail = displayPrice?.detailLabel;
   const closeMoveClass =
     closeChange == null ? "ticker-close-move-neutral" :
     closeChange > 0 ? "ticker-close-move-up" :
@@ -157,8 +163,8 @@ export default function TickerDetail() {
                 </Group>
                 <Group mt="md" gap="lg">
                   <div>
-                    <Text c="dimmed" size="xs" fw={700}>
-                      {formatDate(closeDate)} closing price
+                    <Text c="dimmed" size="xs" fw={700} className="ticker-price-label">
+                      {priceLabel}
                     </Text>
                     <Group gap="xs" align="baseline">
                       <Text fw={850}>{formatCurrency(closeValue)}</Text>
@@ -166,10 +172,15 @@ export default function TickerDetail() {
                         <Text size="sm" fw={800} className={closeMoveClass}>
                           {formatSignedCurrency(closeChange)} ({formatSignedPercent(closeChangePercent)})
                         </Text>
-                      ) : tickerClose.loading ? (
+                      ) : tickerClose.loading || livePrice.loading ? (
                         <Skeleton width={92} height={16} radius="sm" />
                       ) : null}
                     </Group>
+                    {priceDetail ? (
+                      <Text size="xs" className={`ticker-price-freshness ticker-price-${displayPrice?.freshness}`}>
+                        {priceDetail}
+                      </Text>
+                    ) : null}
                   </div>
                 </Group>
               </>

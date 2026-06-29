@@ -31,6 +31,9 @@ export type UserPrediction = {
   prediction_horizon: PredictionHorizon;
   horizon_calendar_days: number;
   reference_close: number;
+  reference_source?: "live_price" | "daily_close";
+  reference_as_of?: string | null;
+  reference_market_state?: "pre" | "regular" | "post" | "closed" | "unknown";
   predicted_close: number;
   predicted_return: number;
   status: UserPredictionStatus;
@@ -51,13 +54,13 @@ export type PredictionTarget = {
 };
 
 export type UserPredictionInput = {
-  userId: string;
-  target: PredictionTarget;
+  ticker: string;
+  horizon: PredictionHorizon;
   predictedClose: number;
 };
 
 const predictionColumns =
-  "prediction_id,user_id,ticker,prediction_date,target_date,prediction_horizon,horizon_calendar_days,reference_close,predicted_close,predicted_return,status,edit_count,last_edited_at,created_at,updated_at";
+  "prediction_id,user_id,ticker,prediction_date,target_date,prediction_horizon,horizon_calendar_days,reference_close,reference_source,reference_as_of,reference_market_state,predicted_close,predicted_return,status,edit_count,last_edited_at,created_at,updated_at";
 
 export function getPredictionTargets(
   ticker: string,
@@ -161,31 +164,18 @@ export async function submitUserPrediction(input: UserPredictionInput): Promise<
     throw new Error("Supabase is not configured for this React build.");
   }
 
-  const predictedReturn = input.predictedClose / input.target.referenceClose - 1;
-  const row = {
-    user_id: input.userId,
-    ticker: input.target.ticker,
-    prediction_date: input.target.predictionDate,
-    target_date: input.target.targetDate,
-    prediction_horizon: input.target.horizon,
-    horizon_calendar_days: input.target.horizonCalendarDays,
-    reference_close: input.target.referenceClose,
-    predicted_close: input.predictedClose,
-    predicted_return: predictedReturn,
-    status: "pending",
-  };
-
   const { data, error } = await supabase
-    .from("user_predictions")
-    .insert(row)
-    .select(predictionColumns)
-    .single();
+    .rpc("submit_user_prediction", {
+      p_ticker: input.ticker,
+      p_prediction_horizon: input.horizon,
+      p_predicted_close: input.predictedClose,
+    });
 
   if (error) {
     throw error;
   }
 
-  return data as UserPrediction;
+  return normalizeRpcPrediction(data);
 }
 
 export async function editUserPrediction(
@@ -196,29 +186,18 @@ export async function editUserPrediction(
     throw new Error("Supabase is not configured for this React build.");
   }
 
-  const predictedReturn = input.predictedClose / input.target.referenceClose - 1;
   const { data, error } = await supabase
-    .from("user_predictions")
-    .update({
-      prediction_date: input.target.predictionDate,
-      target_date: input.target.targetDate,
-      prediction_horizon: input.target.horizon,
-      horizon_calendar_days: input.target.horizonCalendarDays,
-      reference_close: input.target.referenceClose,
-      predicted_close: input.predictedClose,
-      predicted_return: predictedReturn,
-      edit_count: prediction.edit_count + 1,
-      last_edited_at: new Date().toISOString(),
-    })
-    .eq("prediction_id", prediction.prediction_id)
-    .select(predictionColumns)
-    .single();
+    .rpc("edit_user_prediction", {
+      p_prediction_id: prediction.prediction_id,
+      p_prediction_horizon: input.horizon,
+      p_predicted_close: input.predictedClose,
+    });
 
   if (error) {
     throw error;
   }
 
-  return data as UserPrediction;
+  return normalizeRpcPrediction(data);
 }
 
 export function isPredictionEditable(prediction: UserPrediction, now = new Date()) {
@@ -257,4 +236,12 @@ function startOfLocalDay(value: Date) {
 
 function isPredictionHorizon(value: MetricHorizon): value is PredictionHorizon {
   return value === "1w" || value === "1m" || value === "3m" || value === "1y";
+}
+
+function normalizeRpcPrediction(data: unknown): UserPrediction {
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== "object") {
+    throw new Error("Prediction save did not return a prediction row.");
+  }
+  return row as UserPrediction;
 }

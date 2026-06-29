@@ -7,6 +7,11 @@ from unittest.mock import patch
 import pandas as pd
 
 from pipeline.ingestion.fundamentals import _build_fundamentals_row, fetch_fundamentals
+from pipeline.ingestion.live_prices import (
+    _build_live_snapshot_row,
+    _frame_to_intraday_bar_rows,
+    current_intraday_retention_cutoff,
+)
 from pipeline.ingestion.market_data import _frame_to_price_rows, fetch_incremental_daily_prices
 
 
@@ -77,6 +82,83 @@ class MarketDataIngestionTest(unittest.TestCase):
                 {"ticker": "GME", "date": "2020-01-01"},
             ],
         )
+
+    def test_live_price_rows_match_database_contract(self) -> None:
+        fetched_at = datetime(2026, 6, 29, 14, 31, 4, tzinfo=UTC)
+        frame = pd.DataFrame(
+            {
+                "Open": [205.0, 205.25],
+                "High": [205.75, 206.0],
+                "Low": [204.9, 205.1],
+                "Close": [205.5, 205.8],
+                "Volume": [50_000, 42_000],
+            },
+            index=[
+                pd.Timestamp("2026-06-29 10:30:00", tz="America/New_York"),
+                pd.Timestamp("2026-06-29 10:31:00", tz="America/New_York"),
+            ],
+        )
+
+        bars = _frame_to_intraday_bar_rows(
+            ticker="AAPL",
+            frame=frame,
+            fetched_at=fetched_at,
+        )
+        snapshot = _build_live_snapshot_row(
+            ticker="AAPL",
+            bars=bars,
+            fetched_at=fetched_at,
+            period="1d",
+            interval="1m",
+        )
+
+        self.assertEqual(len(bars), 2)
+        self.assertEqual(bars[0]["ticker"], "AAPL")
+        self.assertEqual(bars[0]["ts"], "2026-06-29T14:30:00+00:00")
+        self.assertEqual(bars[0]["close"], 205.5)
+        self.assertEqual(bars[0]["provider"], "yfinance")
+        self.assertEqual(snapshot["ticker"], "AAPL")
+        self.assertEqual(snapshot["price"], 205.8)
+        self.assertEqual(snapshot["day_open"], 205.0)
+        self.assertEqual(snapshot["day_high"], 206.0)
+        self.assertEqual(snapshot["day_low"], 204.9)
+        self.assertEqual(snapshot["day_volume"], 92_000)
+        self.assertEqual(snapshot["market_state"], "regular")
+        self.assertEqual(snapshot["provider_metadata"]["bar_count"], 2)
+
+    def test_live_price_retention_cutoff_keeps_current_et_day_only(self) -> None:
+        cutoff = current_intraday_retention_cutoff(
+            datetime(2026, 6, 29, 14, 31, 4, tzinfo=UTC),
+        )
+
+        self.assertEqual(cutoff, "2026-06-29T04:00:00+00:00")
+
+    def test_live_snapshot_downgrades_previous_session_bar_during_regular_hours(self) -> None:
+        fetched_at = datetime(2026, 6, 29, 13, 40, 0, tzinfo=UTC)
+        bars = [
+            {
+                "ticker": "AAPL",
+                "ts": "2026-06-26T19:59:00+00:00",
+                "provider": "yfinance",
+                "provider_symbol": "AAPL",
+                "open": 281.0,
+                "high": 282.0,
+                "low": 280.5,
+                "close": 281.2,
+                "volume": 1000,
+                "fetched_at": fetched_at.isoformat(),
+            }
+        ]
+
+        snapshot = _build_live_snapshot_row(
+            ticker="AAPL",
+            bars=bars,
+            fetched_at=fetched_at,
+            period="1d",
+            interval="1m",
+        )
+
+        self.assertEqual(snapshot["market_state"], "closed")
 
 
 class FakeTickerData:

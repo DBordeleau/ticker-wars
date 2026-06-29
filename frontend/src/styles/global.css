@@ -2427,6 +2427,14 @@ h2,
   margin-top: 14px;
 }
 
+.ticker-chart-actions {
+  flex-wrap: wrap;
+}
+
+.ticker-chart-actions .horizon-selector-wrap {
+  flex: 1 1 280px;
+}
+
 .chart-loading-state {
   animation: chart-loading-in 220ms ease both;
 }
@@ -3136,11 +3144,30 @@ h2,
 }
 
 .entity-hover-close-label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
   color: rgba(219, 230, 223, 0.7);
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.entity-hover-freshness {
+  color: rgba(219, 230, 223, 0.58);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.entity-hover-fresh {
+  color: rgba(134, 239, 172, 0.84);
+}
+
+.entity-hover-stale {
+  color: rgba(253, 186, 116, 0.86);
 }
 
 .entity-hover-close-value {
@@ -3286,6 +3313,25 @@ h2,
 
 .ticker-close-move-neutral {
   color: rgba(219, 230, 223, 0.68);
+}
+
+.ticker-price-label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ticker-price-freshness {
+  margin-top: 3px;
+  color: rgba(219, 230, 223, 0.62);
+  font-weight: 700;
+}
+
+.ticker-price-fresh {
+  color: rgba(134, 239, 172, 0.84);
+}
+
+.ticker-price-stale {
+  color: rgba(253, 186, 116, 0.86);
 }
 
 .visually-hidden {
