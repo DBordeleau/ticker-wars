@@ -52,7 +52,7 @@ export default function StatusStrip({
         </span>
         <span className="status-strip-sep" aria-hidden />
         <span className="status-strip-note">
-          New data every trading day ~7:30&nbsp;PM&nbsp;ET.
+          Models train and make predictions every trading day ~7:30&nbsp;PM&nbsp;ET.
         </span>
       </div>
     </MagicHoverSurface>
