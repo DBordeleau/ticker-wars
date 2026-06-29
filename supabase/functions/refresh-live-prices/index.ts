@@ -88,6 +88,10 @@ Deno.serve(async (request) => {
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed." }, 405);
   }
+  if (!isAuthorizedRequest(request)) {
+    console.warn("Unauthorized live price refresh request.");
+    return jsonResponse({ error: "Unauthorized." }, 401);
+  }
 
   const startedAt = new Date();
   const requestBody = await readRequestBody(request);
@@ -347,6 +351,17 @@ async function supabaseFetch(path: string, init: RequestInit) {
       ...(init.headers ?? {}),
     },
   });
+}
+
+function isAuthorizedRequest(request: Request) {
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceRoleKey) {
+    console.error("SUPABASE_SERVICE_ROLE_KEY is not configured.");
+    return false;
+  }
+
+  const authorization = request.headers.get("Authorization");
+  return authorization === `Bearer ${serviceRoleKey}`;
 }
 
 async function readRequestBody(request: Request): Promise<RefreshRequest> {
