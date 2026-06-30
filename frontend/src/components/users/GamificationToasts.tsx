@@ -3,8 +3,8 @@ import { useCallback, useEffect, useRef } from "react";
 import { FiAward, FiStar, FiTarget, FiTrendingUp } from "react-icons/fi";
 import {
   dispatchProgressionRefresh,
-  fetchUnseenEngagementEvents,
-  markEngagementEventsSeen,
+  fetchToastEngagementEvents,
+  markToastEngagementEventsSeen,
   type UserEngagementEvent,
 } from "../../api/gamification";
 import { useAuth } from "../../auth/AuthProvider";
@@ -19,7 +19,7 @@ export default function GamificationToasts() {
       return;
     }
 
-    const events = await fetchUnseenEngagementEvents(user.id).catch(() => []);
+    const events = await fetchToastEngagementEvents(user.id).catch(() => []);
     const unseen = events.filter((event) => !shownIds.current.has(event.event_id));
     if (unseen.length === 0) {
       return;
@@ -30,7 +30,7 @@ export default function GamificationToasts() {
       showEvent(event);
     });
 
-    await markEngagementEventsSeen(unseen.map((event) => event.event_id)).catch(() => undefined);
+    await markToastEngagementEventsSeen(unseen.map((event) => event.event_id)).catch(() => undefined);
     dispatchProgressionRefresh();
   }, [user]);
 

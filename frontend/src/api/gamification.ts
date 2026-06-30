@@ -45,6 +45,10 @@ export type UserEngagementEvent = {
     | "prediction_scored"
     | "badge_unlocked"
     | "level_reached"
+    | "prediction_locked"
+    | "prediction_maturing_soon"
+    | "prediction_due_today"
+    | "active_prediction_summary"
     | string;
   headline: string;
   body: string | null;
@@ -53,7 +57,23 @@ export type UserEngagementEvent = {
   xp_amount: number | null;
   metadata: Record<string, unknown>;
   seen_at: string | null;
+  toast_seen_at?: string | null;
+  digest_seen_at?: string | null;
+  event_key?: string | null;
+  priority?: number | null;
+  action_path?: string | null;
+  expires_at?: string | null;
   created_at: string;
+};
+
+export type EngagementSummary = {
+  scoredCount: number;
+  xpEarned: number;
+  badgeCount: number;
+  levelUpCount: number;
+  lockCount: number;
+  maturityCount: number;
+  totalCount: number;
 };
 
 export const LEVEL_THRESHOLDS = [
@@ -155,7 +175,21 @@ export async function fetchOwnBadges(userId: string): Promise<UserBadge[]> {
   );
 }
 
-export async function fetchUnseenEngagementEvents(userId: string): Promise<UserEngagementEvent[]> {
+export async function refreshPredictionTimingEvents(): Promise<number> {
+  if (!supabase) {
+    return 0;
+  }
+
+  const { data, error } = await supabase.rpc("refresh_user_prediction_timing_events");
+
+  if (error) {
+    throw error;
+  }
+
+  return typeof data === "number" ? data : 0;
+}
+
+export async function fetchToastEngagementEvents(userId: string): Promise<UserEngagementEvent[]> {
   if (!supabase) {
     return [];
   }
@@ -164,7 +198,11 @@ export async function fetchUnseenEngagementEvents(userId: string): Promise<UserE
     .from("user_engagement_events")
     .select("*")
     .eq("user_id", userId)
+    .is("toast_seen_at", null)
     .is("seen_at", null)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    .in("event_type", ["prediction_scored", "badge_unlocked", "level_reached", "prediction_due_today"])
+    .order("priority", { ascending: true })
     .order("created_at", { ascending: true })
     .limit(12);
 
@@ -175,19 +213,79 @@ export async function fetchUnseenEngagementEvents(userId: string): Promise<UserE
   return (data ?? []) as UserEngagementEvent[];
 }
 
-export async function markEngagementEventsSeen(eventIds: string[]) {
-  if (!supabase || eventIds.length === 0) {
-    return;
+export async function fetchDigestEngagementEvents(userId: string): Promise<UserEngagementEvent[]> {
+  if (!supabase) {
+    return [];
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("user_engagement_events")
-    .update({ seen_at: new Date().toISOString() })
-    .in("event_id", eventIds);
+    .select("*")
+    .eq("user_id", userId)
+    .is("digest_seen_at", null)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    .order("priority", { ascending: true })
+    .order("created_at", { ascending: false })
+    .limit(20);
 
   if (error) {
     throw error;
   }
+
+  return (data ?? []) as UserEngagementEvent[];
+}
+
+export async function markToastEngagementEventsSeen(eventIds: string[]) {
+  if (!supabase || eventIds.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase.rpc("mark_user_engagement_events_toast_seen", {
+    p_event_ids: eventIds,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function markDigestEngagementEventsSeen(eventIds: string[]) {
+  if (!supabase || eventIds.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase.rpc("mark_user_engagement_events_digest_seen", {
+    p_event_ids: eventIds,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export function summarizeEngagementEvents(events: UserEngagementEvent[]): EngagementSummary {
+  return events.reduce(
+    (summary, event) => ({
+      scoredCount: summary.scoredCount + (event.event_type === "prediction_scored" ? 1 : 0),
+      xpEarned: summary.xpEarned + (event.xp_amount ?? 0),
+      badgeCount: summary.badgeCount + (event.event_type === "badge_unlocked" ? 1 : 0),
+      levelUpCount: summary.levelUpCount + (event.event_type === "level_reached" ? 1 : 0),
+      lockCount: summary.lockCount + (event.event_type === "prediction_locked" ? 1 : 0),
+      maturityCount:
+        summary.maturityCount +
+        (event.event_type === "prediction_maturing_soon" || event.event_type === "prediction_due_today" ? 1 : 0),
+      totalCount: summary.totalCount + 1,
+    }),
+    {
+      scoredCount: 0,
+      xpEarned: 0,
+      badgeCount: 0,
+      levelUpCount: 0,
+      lockCount: 0,
+      maturityCount: 0,
+      totalCount: 0,
+    },
+  );
 }
 
 export function isScoreVerdict(value: string | null | undefined): value is ScoreVerdict {
