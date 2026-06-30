@@ -117,10 +117,10 @@ class PredictionScoringTest(unittest.TestCase):
         self.assertEqual(score["absolute_error"], 1.0)
         self.assertEqual(score["predicted_direction"], 1)
         self.assertEqual(score["actual_direction"], 1)
-        self.assertEqual(score["score_verdict"], "called_it")
-        self.assertEqual(score["score_verdict_rank"], 1)
-        self.assertEqual(score["score_verdict_color"], "yellow")
-        self.assertEqual(score["xp_awarded"], 295)
+        self.assertEqual(score["score_verdict"], "close_call")
+        self.assertEqual(score["score_verdict_rank"], 2)
+        self.assertEqual(score["score_verdict_color"], "green")
+        self.assertEqual(score["xp_awarded"], 195)
 
     def test_user_prediction_verdict_and_xp_scale_by_horizon(self) -> None:
         prediction_rows = [
@@ -140,9 +140,9 @@ class PredictionScoringTest(unittest.TestCase):
 
         score = score_matured_user_predictions(prediction_rows, price_rows)[0]
 
-        self.assertEqual(score["score_verdict"], "miss")
+        self.assertEqual(score["score_verdict"], "way_off")
         self.assertEqual(score["direction_correct"], 0)
-        self.assertEqual(score["xp_awarded"], 150)
+        self.assertEqual(score["xp_awarded"], 90)
 
 
 def _score_single(

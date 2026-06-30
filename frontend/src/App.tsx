@@ -17,6 +17,7 @@ import MyPredictions from "./pages/MyPredictions";
 import Onboarding from "./pages/Onboarding";
 import TickerDetail from "./pages/TickerDetail";
 import TickerUniverse from "./pages/TickerUniverse";
+import UserProfile, { MyProfileRedirect } from "./pages/UserProfile";
 import { theme } from "./styles/theme";
 
 export default function App() {
@@ -53,7 +54,7 @@ export default function App() {
               path="/me/profile"
               element={
                 <RequireAuth>
-                  <Onboarding />
+                  <MyProfileRedirect />
                 </RequireAuth>
               }
             />
@@ -68,6 +69,7 @@ export default function App() {
             <Route path="/models/:modelSlug" element={<ModelDetail />} />
             <Route path="/tickers" element={<TickerUniverse />} />
             <Route path="/tickers/:ticker" element={<TickerDetail />} />
+            <Route path="/users/:username" element={<UserProfile />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

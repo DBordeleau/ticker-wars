@@ -1,5 +1,5 @@
 import { Badge, Drawer, Group, Stack, Text, Title } from "@mantine/core";
-import { isScoreVerdict, VERDICT_LABELS } from "../../api/gamification";
+import { isScoreVerdict, verdictForScore, VERDICT_LABELS } from "../../api/gamification";
 import type { UserPrediction } from "../../api/userPredictions";
 import {
   formatCurrency,
@@ -19,7 +19,13 @@ type Props = {
 
 export default function ScoreBreakdownDrawer({ prediction, opened, onClose }: Props) {
   const score = prediction?.score ?? null;
-  const verdict = score?.score_verdict;
+  const verdict = score
+    ? verdictForScore({
+        absolutePctError: score.absolute_pct_error,
+        predictionHorizon: score.prediction_horizon,
+        directionCorrect: score.direction_correct,
+      }) ?? score.score_verdict
+    : null;
   const verdictLabel = isScoreVerdict(verdict) ? VERDICT_LABELS[verdict] : "Scored";
   const directionHit = score?.direction_correct === 1;
   const directionCopy = !score ? "Pending" : directionHit ? "Direction hit" : "Direction miss";

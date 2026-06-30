@@ -7,15 +7,19 @@ import { Link } from "react-router-dom";
 import type { TickerCloseSnapshot, TickerProfile } from "../../api/dashboardData";
 import { loadLivePriceSnapshot } from "../../api/livePriceCache";
 import { resolveTickerDisplayPrice, type LivePriceSnapshot } from "../../api/livePrices";
+import { fetchPublicUserProfile, type PublicUserProfileBundle } from "../../api/publicProfiles";
 import { loadTickerCloseSnapshot, loadTickerProfile } from "../../api/tickerCache";
-import { formatCurrency, formatSignedPercent } from "../../utils/format";
+import { titleForLevel } from "../../api/gamification";
+import { formatCurrency, formatPercent, formatSignedPercent } from "../../utils/format";
 import { getModelInfo, modelTypeColor } from "../../utils/models";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
+import UserIdentityBlock from "../users/UserIdentityBlock";
 
 type BaseProps = { children: ReactNode };
 type ModelProps = BaseProps & { kind: "model"; slug: string; name?: string };
 type TickerProps = BaseProps & { kind: "ticker"; ticker: string; logoUrl?: string | null };
-type Props = ModelProps | TickerProps;
+type UserProps = BaseProps & { kind: "user"; username: string };
+type Props = ModelProps | TickerProps | UserProps;
 
 // Smooth scale + lift, used for both entry and exit via Mantine's Transition.
 const cardTransition = {
@@ -54,8 +58,10 @@ export default function EntityHoverCard(props: Props) {
         <MagicHoverSurface className="entity-hover-surface">
           {props.kind === "model" ? (
             <ModelCardBody slug={props.slug} name={props.name} />
-          ) : (
+          ) : props.kind === "ticker" ? (
             <TickerCardBody ticker={props.ticker} logoUrl={props.logoUrl} />
+          ) : (
+            <UserCardBody username={props.username} />
           )}
         </MagicHoverSurface>
       </HoverCard.Dropdown>
@@ -81,6 +87,77 @@ function ModelCardBody({ slug, name }: { slug: string; name?: string }) {
       </Link>
     </div>
   );
+}
+
+function UserCardBody({ username }: { username: string }) {
+  const { bundle, loading } = usePublicUserHoverData(username);
+  const profile = bundle?.profile ?? null;
+  const featuredBadges = bundle ? getFeaturedBadges(bundle.badges) : [];
+
+  if (loading) {
+    return (
+      <div className="entity-hover-card">
+        <Skeleton height={46} radius="sm" />
+        <Skeleton height={60} radius="sm" />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="entity-hover-card">
+        <Text className="entity-hover-title">{username}</Text>
+        <Text className="entity-hover-desc">This profile is private or unavailable.</Text>
+      </div>
+    );
+  }
+
+  return (
+    <div className="entity-hover-card entity-hover-user-card">
+      <UserIdentityBlock
+        displayUsername={profile.display_username}
+        username={profile.username}
+        avatarSeed={profile.avatar_seed}
+        avatarOptions={profile.avatar_options}
+        level={profile.level}
+        displayTitle={titleForLevel(profile.level)}
+        featuredBadges={featuredBadges}
+        badgePresentation="full"
+        size={44}
+      />
+      <div className="entity-hover-user-stats">
+        <span>
+          <strong>{profile.scored_count.toLocaleString()}</strong>
+          scored
+        </span>
+        <span>
+          <strong>{formatPercent(profile.directional_accuracy)}</strong>
+          directional
+        </span>
+        <span>
+          <strong>{profile.badge_count.toLocaleString()}</strong>
+          badges
+        </span>
+      </div>
+      <Link className="entity-hover-cta" to={`/users/${profile.username}`}>
+        View profile
+        <FiArrowRight aria-hidden />
+      </Link>
+    </div>
+  );
+}
+
+function getFeaturedBadges(badges: PublicUserProfileBundle["badges"]) {
+  const slottedBadges = badges
+    .filter((badge) => badge.featured_slot === 1 || badge.featured_slot === 2)
+    .sort((a, b) => (a.featured_slot ?? 99) - (b.featured_slot ?? 99));
+
+  if (slottedBadges.length > 0) {
+    return slottedBadges;
+  }
+
+  const legacyFeatured = badges.filter((badge) => badge.is_featured);
+  return legacyFeatured.length > 0 ? legacyFeatured.slice(0, 2) : badges.slice(0, 2);
 }
 
 function TickerCardBody({ ticker, logoUrl }: { ticker: string; logoUrl?: string | null }) {
@@ -163,6 +240,34 @@ function TickerCardBody({ ticker, logoUrl }: { ticker: string; logoUrl?: string 
       </Link>
     </div>
   );
+}
+
+function usePublicUserHoverData(username: string) {
+  const key = username.trim().toLowerCase();
+  const [bundle, setBundle] = useState<PublicUserProfileBundle | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+
+    fetchPublicUserProfile(key)
+      .then((nextBundle) => {
+        if (active) setBundle(nextBundle);
+      })
+      .catch(() => {
+        if (active) setBundle(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [key]);
+
+  return { bundle, loading };
 }
 
 // Profile + close snapshot fetched lazily when a card first opens. Both resolve

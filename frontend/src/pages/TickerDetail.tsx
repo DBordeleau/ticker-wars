@@ -20,6 +20,7 @@ import { useLiveTickerPrice } from "../hooks/useLiveTickerPrice";
 import { useTickerCloseSnapshot } from "../hooks/useTickerCloseSnapshot";
 import { useTickerHistory } from "../hooks/useTickerHistory";
 import { useTickerProfile } from "../hooks/useTickerProfile";
+import { isRemovedTicker } from "../api/tickerUniverse";
 import {
   formatCurrency,
   formatDate,
@@ -33,6 +34,7 @@ export default function TickerDetail() {
   const [latestUserHorizon, setLatestUserHorizon] = useState<MetricHorizon>("all");
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
+  const removedTicker = isRemovedTicker(ticker);
   const dashboard = useDashboardData();
   const tickerHistory = useTickerHistory(ticker);
   const tickerClose = useTickerCloseSnapshot(ticker);
@@ -84,6 +86,23 @@ export default function TickerDetail() {
   useEffect(() => {
     setIsSummaryExpanded(false);
   }, [summary]);
+
+  if (removedTicker) {
+    return (
+      <main className="dashboard-shell detail-page">
+        <AnimatedSection delay={0}>
+          <BackToDashboardButton />
+        </AnimatedSection>
+        <AnimatedSection delay={0.08}>
+          <SectionPanel title="Ticker Not Available" subtitle="This ticker is no longer part of Ticker Wars.">
+            <Text c="dimmed" size="sm">
+              This ticker has been removed from the app.
+            </Text>
+          </SectionPanel>
+        </AnimatedSection>
+      </main>
+    );
+  }
 
   return (
     <main className="dashboard-shell detail-page">

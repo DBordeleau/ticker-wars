@@ -28,6 +28,7 @@ const DEFAULT_TICKERS = [
   "BAC",
   "KO",
   "CRM",
+  "SPY",
 ];
 
 type RefreshRequest = {

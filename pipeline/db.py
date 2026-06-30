@@ -497,6 +497,10 @@ class SupabaseDatabase:
 
         return granted
 
+    def refresh_public_user_profiles(self) -> int:
+        response = self._client.rpc("refresh_public_user_profiles", {}).execute()
+        return int(response.data or 0)
+
     def fetch_user_prediction_scores(
         self,
         batch_size: int = 1000,

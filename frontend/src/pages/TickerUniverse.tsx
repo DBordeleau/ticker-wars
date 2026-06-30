@@ -342,11 +342,14 @@ function SortSelector({ value, onChange }: { value: SortKey; onChange: (value: S
   );
 }
 
-function averageReturn(predictions: { predicted_return: number }[]): number | null {
-  if (predictions.length === 0) {
+function averageReturn(predictions: { predicted_return: number | null }[]): number | null {
+  const visiblePredictions = predictions.filter(
+    (prediction): prediction is { predicted_return: number } => prediction.predicted_return != null,
+  );
+  if (visiblePredictions.length === 0) {
     return null;
   }
-  return predictions.reduce((sum, prediction) => sum + prediction.predicted_return, 0) / predictions.length;
+  return visiblePredictions.reduce((sum, prediction) => sum + prediction.predicted_return, 0) / visiblePredictions.length;
 }
 
 // Descending order with nulls sorted to the end regardless of direction.

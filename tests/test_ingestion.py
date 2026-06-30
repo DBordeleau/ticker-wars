@@ -6,7 +6,11 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from pipeline.ingestion.fundamentals import _build_fundamentals_row, fetch_fundamentals
+from pipeline.ingestion.fundamentals import (
+    _build_fundamentals_row,
+    _has_any_fundamental_value,
+    fetch_fundamentals,
+)
 from pipeline.ingestion.live_prices import (
     _build_live_snapshot_row,
     _frame_to_intraday_bar_rows,
@@ -212,6 +216,23 @@ class FundamentalsIngestionTest(unittest.TestCase):
         self.assertEqual(row["sector"], "Technology")
         self.assertEqual(row["source"], "yfinance")
         self.assertIn("raw_json", row)
+
+    def test_profile_only_fundamentals_row_is_kept_for_etfs(self) -> None:
+        row = {
+            "ticker": "SPY",
+            "as_of_date": "2026-06-21",
+            "market_cap": None,
+            "sector": None,
+            "industry": None,
+            "source": "yfinance",
+            "raw_json": {
+                "longName": "SPDR S&P 500 ETF Trust",
+                "longBusinessSummary": "Tracks the S&P 500 Index.",
+            },
+            "ingested_at": "2026-06-21T00:00:00+00:00",
+        }
+
+        self.assertTrue(_has_any_fundamental_value(row))
 
     def test_fetch_fundamentals_skips_fresh_cached_rows(self) -> None:
         with patch("pipeline.ingestion.fundamentals._fetch_ticker_with_retries") as fetch_ticker:

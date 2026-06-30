@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient";
 import type { LatestPrediction, MetricHorizon } from "./dashboardData";
 import type { ScoreVerdict } from "./gamification";
+import { isRemovedTicker } from "./tickerUniverse";
 
 export type UserPredictionStatus = "pending" | "scored" | "cancelled";
 export type PredictionHorizon = Exclude<MetricHorizon, "all">;
@@ -41,6 +42,7 @@ export type UserPrediction = {
   reference_market_state?: "pre" | "regular" | "post" | "closed" | "unknown";
   predicted_close: number;
   predicted_return: number;
+  hide_details_until_scored: boolean;
   status: UserPredictionStatus;
   edit_count: number;
   last_edited_at: string | null;
@@ -62,15 +64,20 @@ export type UserPredictionInput = {
   ticker: string;
   horizon: PredictionHorizon;
   predictedClose: number;
+  hideDetailsUntilScored?: boolean;
 };
 
 const predictionColumns =
-  "prediction_id,user_id,ticker,prediction_date,target_date,prediction_horizon,horizon_calendar_days,reference_close,reference_source,reference_as_of,reference_market_state,predicted_close,predicted_return,status,edit_count,last_edited_at,created_at,updated_at";
+  "prediction_id,user_id,ticker,prediction_date,target_date,prediction_horizon,horizon_calendar_days,reference_close,reference_source,reference_as_of,reference_market_state,predicted_close,predicted_return,hide_details_until_scored,status,edit_count,last_edited_at,created_at,updated_at";
 
 export function getPredictionTargets(
   ticker: string,
   latestPredictions: LatestPrediction[],
 ): PredictionTarget[] {
+  if (isRemovedTicker(ticker)) {
+    return [];
+  }
+
   const byHorizon = new Map<PredictionHorizon, LatestPrediction & { prediction_horizon: PredictionHorizon }>();
 
   latestPredictions
@@ -136,7 +143,7 @@ export async function fetchOwnUserPredictions(userId: string): Promise<UserPredi
   return ((predictionData ?? []) as UserPrediction[]).map((prediction) => ({
     ...prediction,
     score: scoresByPredictionId.get(prediction.prediction_id) ?? null,
-  }));
+  })).filter((prediction) => !isRemovedTicker(prediction.ticker));
 }
 
 export async function findPendingPrediction(
@@ -168,12 +175,16 @@ export async function submitUserPrediction(input: UserPredictionInput): Promise<
   if (!supabase) {
     throw new Error("Supabase is not configured for this React build.");
   }
+  if (isRemovedTicker(input.ticker)) {
+    throw new Error(`${input.ticker.toUpperCase()} is no longer available for predictions.`);
+  }
 
   const { data, error } = await supabase
     .rpc("submit_user_prediction", {
       p_ticker: input.ticker,
       p_prediction_horizon: input.horizon,
       p_predicted_close: input.predictedClose,
+      p_hide_details_until_scored: input.hideDetailsUntilScored ?? false,
     });
 
   if (error) {
@@ -190,12 +201,16 @@ export async function editUserPrediction(
   if (!supabase) {
     throw new Error("Supabase is not configured for this React build.");
   }
+  if (isRemovedTicker(input.ticker) || isRemovedTicker(prediction.ticker)) {
+    throw new Error(`${prediction.ticker.toUpperCase()} is no longer available for predictions.`);
+  }
 
   const { data, error } = await supabase
     .rpc("edit_user_prediction", {
       p_prediction_id: prediction.prediction_id,
       p_prediction_horizon: input.horizon,
       p_predicted_close: input.predictedClose,
+      p_hide_details_until_scored: input.hideDetailsUntilScored ?? false,
     });
 
   if (error) {
@@ -248,5 +263,8 @@ function normalizeRpcPrediction(data: unknown): UserPrediction {
   if (!row || typeof row !== "object") {
     throw new Error("Prediction save did not return a prediction row.");
   }
-  return row as UserPrediction;
+  return {
+    ...(row as UserPrediction),
+    hide_details_until_scored: Boolean((row as Partial<UserPrediction>).hide_details_until_scored),
+  };
 }

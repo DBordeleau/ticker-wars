@@ -13,6 +13,7 @@ export type UserProgression = {
   total_xp: number;
   level: number;
   featured_badge_slug: string | null;
+  secondary_featured_badge_slug?: string | null;
   equipped_title: string | null;
   last_event_at: string | null;
 };
@@ -95,11 +96,63 @@ export const VERDICT_LABELS: Record<ScoreVerdict, string> = {
 export const VERDICT_COLORS: Record<ScoreVerdict, string> = {
   called_it: "yellow",
   close_call: "green",
-  in_the_zone: "teal",
-  miss: "yellow",
+  in_the_zone: "green",
+  miss: "orange",
   way_off: "orange",
   not_even_close: "red",
 };
+
+const VERDICT_BY_RANK: Record<number, ScoreVerdict> = {
+  1: "called_it",
+  2: "close_call",
+  3: "in_the_zone",
+  4: "miss",
+  5: "way_off",
+  6: "not_even_close",
+};
+
+export const VERDICT_THRESHOLDS_BY_HORIZON: Record<string, Array<number | null>> = {
+  "1w": [0.005, 0.015, 0.03, 0.06, 0.12, null],
+  "1m": [0.0075, 0.025, 0.05, 0.09, 0.18, null],
+  "3m": [0.01, 0.03, 0.06, 0.12, 0.24, null],
+  "1y": [0.015, 0.04, 0.08, 0.16, 0.32, null],
+};
+
+export function verdictForScore(input: {
+  absolutePctError: number | null | undefined;
+  predictionHorizon?: string | null;
+  directionCorrect?: number | null;
+}): ScoreVerdict | null {
+  const { absolutePctError, directionCorrect, predictionHorizon } = input;
+  if (absolutePctError == null || !Number.isFinite(absolutePctError)) {
+    return null;
+  }
+
+  const horizon = predictionHorizon ?? "1m";
+  const thresholds = VERDICT_THRESHOLDS_BY_HORIZON[horizon] ?? VERDICT_THRESHOLDS_BY_HORIZON["1m"];
+  let rank = 6;
+
+  for (let index = 0; index < thresholds.length; index += 1) {
+    const maxError = thresholds[index];
+    if (maxError == null || absolutePctError <= maxError) {
+      rank = index + 1;
+      break;
+    }
+  }
+
+  if (directionCorrect != null && directionCorrect !== 1) {
+    rank = Math.min(6, rank + 1);
+    if (horizon === "1w") {
+      rank = Math.max(rank, 4);
+    }
+  }
+
+  return VERDICT_BY_RANK[rank] ?? "not_even_close";
+}
+
+export function verdictForAbsolutePctError(absolutePctError: number | null | undefined): ScoreVerdict | null {
+  return verdictForScore({ absolutePctError });
+}
 
 export function levelProgress(totalXp: number) {
   const safeXp = Math.max(0, Math.floor(totalXp));
@@ -127,6 +180,17 @@ export function levelProgress(totalXp: number) {
   };
 }
 
+export function titleForLevel(level: number) {
+  if (level >= 50) return "Market Legend";
+  if (level >= 40) return "Prediction Savant";
+  if (level >= 30) return "Portfolio Oracle";
+  if (level >= 20) return "Veteran Forecaster";
+  if (level >= 15) return "Market Tactician";
+  if (level >= 10) return "Signal Hunter";
+  if (level >= 5) return "Market Scout";
+  return "Rookie Forecaster";
+}
+
 export function dispatchProgressionRefresh() {
   window.dispatchEvent(new CustomEvent("tickerwars:progression-refresh"));
   window.dispatchEvent(new CustomEvent("tickerwars:engagement-events-refresh"));
@@ -139,7 +203,7 @@ export async function fetchOwnProgression(userId: string): Promise<UserProgressi
 
   const { data, error } = await supabase
     .from("user_progression")
-    .select("user_id,total_xp,level,featured_badge_slug,equipped_title,last_event_at")
+    .select("user_id,total_xp,level,featured_badge_slug,secondary_featured_badge_slug,equipped_title,last_event_at")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -298,6 +362,7 @@ function emptyProgression(userId: string): UserProgression {
     total_xp: 0,
     level: 1,
     featured_badge_slug: null,
+    secondary_featured_badge_slug: null,
     equipped_title: null,
     last_event_at: null,
   };

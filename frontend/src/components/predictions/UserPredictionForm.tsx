@@ -1,10 +1,10 @@
-import { Alert, Button, Group, NumberInput, Select, Stack, Text } from "@mantine/core";
+import { Alert, Button, Group, NumberInput, Select, Stack, Switch, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useEffect, useMemo, useState } from "react";
 import { FiAlertTriangle, FiCheck } from "react-icons/fi";
 import type { LatestPrediction, MetricHorizon } from "../../api/dashboardData";
 import { dispatchProgressionRefresh } from "../../api/gamification";
-import { resolveTickerDisplayPrice } from "../../api/livePrices";
+import { isRegularMarketTime, resolveTickerDisplayPrice } from "../../api/livePrices";
 import {
   editUserPrediction,
   findPendingPrediction,
@@ -50,10 +50,15 @@ export default function UserPredictionForm({
   const [predictedClose, setPredictedClose] = useState<number | "">(
     existingPrediction?.predicted_close ?? "",
   );
+  const [hideDetailsUntilScored, setHideDetailsUntilScored] = useState(
+    existingPrediction?.hide_details_until_scored ?? false,
+  );
   const livePrice = useLiveTickerPrice(ticker, { poll: true, pollMs: 45_000 });
   const closeSnapshot = useTickerCloseSnapshot(ticker);
   const displayPrice = resolveTickerDisplayPrice(livePrice.data, closeSnapshot.data);
-  const referenceIsStale = displayPrice?.freshness === "stale";
+  const needsFreshLiveReference = isRegularMarketTime();
+  const hasFreshLiveReference = displayPrice?.source === "live" && displayPrice.freshness === "fresh";
+  const referenceIsStale = displayPrice?.freshness === "stale" || (needsFreshLiveReference && !hasFreshLiveReference);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,6 +66,7 @@ export default function UserPredictionForm({
     if (existingPrediction) {
       setHorizon(existingPrediction.prediction_horizon);
       setPredictedClose(existingPrediction.predicted_close);
+      setHideDetailsUntilScored(existingPrediction.hide_details_until_scored);
     }
   }, [existingPrediction]);
 
@@ -86,6 +92,7 @@ export default function UserPredictionForm({
         ticker: selectedTarget.ticker,
         horizon: selectedTarget.horizon,
         predictedClose,
+        hideDetailsUntilScored,
       };
       const pending = existingPrediction
         ? existingPrediction
@@ -102,7 +109,7 @@ export default function UserPredictionForm({
           color: "green",
           icon: <FiCheck />,
           title: "Prediction updated",
-          message: `${ticker} ${formatHorizon(edited.prediction_horizon)} now uses ${formatDate(edited.prediction_date)} as its prediction date and matures on ${formatDate(edited.target_date)}.`,
+          message: `${ticker} ${formatHorizon(edited.prediction_horizon)} now uses ${formatDate(edited.prediction_date)} as its prediction date and matures on ${formatDate(edited.target_date)}.${edited.hide_details_until_scored ? " Details are hidden publicly until scoring." : ""}`,
         });
         dispatchProgressionRefresh();
         onSaved?.(edited);
@@ -114,12 +121,12 @@ export default function UserPredictionForm({
           color: "green",
           icon: <FiCheck />,
           title: "Prediction made",
-          message: `${ticker} ${formatHorizon(created.prediction_horizon)} matures on ${formatDate(created.target_date)}. +10 XP`,
+          message: `${ticker} ${formatHorizon(created.prediction_horizon)} matures on ${formatDate(created.target_date)}. +10 XP${created.hide_details_until_scored ? " Details are hidden publicly until scoring." : ""}`,
         });
       dispatchProgressionRefresh();
       onSaved?.(created);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to save prediction.");
+      setError(saveErrorMessage(caught));
     } finally {
       setSaving(false);
     }
@@ -172,7 +179,9 @@ export default function UserPredictionForm({
           <Text fw={800}>{formatCurrency(displayPrice?.price)}</Text>
           {displayPrice ? (
             <Text size="xs" c={referenceIsStale ? "orange" : "dimmed"} fw={700}>
-              {displayPrice.label} - {displayPrice.detailLabel}
+              {referenceIsStale && needsFreshLiveReference
+                ? "Waiting for fresh live reference"
+                : `${displayPrice.label} - ${displayPrice.detailLabel}`}
             </Text>
           ) : livePrice.loading || closeSnapshot.loading ? (
             <Text size="xs" c="dimmed" fw={700}>
@@ -191,6 +200,14 @@ export default function UserPredictionForm({
         New predictions earn 10 XP now. Edits reset the prediction date, target date, reference
         price, and scoring context. Final XP arrives after the official close is scored.
       </Text>
+      <Switch
+        checked={hideDetailsUntilScored}
+        onChange={(event) => setHideDetailsUntilScored(event.currentTarget.checked)}
+        label="Hide prediction details until this prediction has matured."
+        description="Your profile can still show that you have an active call, but the predicted price and return stay hidden until it is scored."
+        color="green"
+        className="prediction-privacy-switch"
+      />
       <Group justify="flex-end">
         {onCancel ? (
           <Button variant="subtle" color="gray" onClick={onCancel}>
@@ -203,5 +220,19 @@ export default function UserPredictionForm({
       </Group>
     </Stack>
   );
+}
+
+function saveErrorMessage(caught: unknown) {
+  if (caught instanceof Error && caught.message) {
+    return caught.message;
+  }
+  if (isRecord(caught) && typeof caught.message === "string" && caught.message.trim()) {
+    return caught.message;
+  }
+  return "Unable to save prediction.";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 

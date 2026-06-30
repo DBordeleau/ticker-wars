@@ -27,6 +27,7 @@ MVP_TICKERS: tuple[str, ...] = (
     "BAC",
     "KO",
     "CRM",
+    "SPY",
 )
 
 

@@ -419,6 +419,16 @@ class DatabaseAccessTest(unittest.TestCase):
             {"p_prediction_id": "prediction-1"},
         )
 
+    def test_refresh_public_user_profiles_calls_projection_rpc(self) -> None:
+        database, client = _database_with_fake_client()
+        client.rpc_results["refresh_public_user_profiles"] = 3
+
+        refreshed = database.refresh_public_user_profiles()
+
+        self.assertEqual(refreshed, 3)
+        self.assertEqual(client.operations[0]["rpc"], "refresh_public_user_profiles")
+        self.assertEqual(client.operations[0]["params"], {})
+
 
 def _database_with_fake_client() -> tuple[SupabaseDatabase, FakeSupabaseClient]:
     database = object.__new__(SupabaseDatabase)

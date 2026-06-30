@@ -7,7 +7,7 @@ import { FiEdit3, FiList, FiLogOut, FiTarget, FiUser } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "../../auth/authApi";
 import { useAuth } from "../../auth/AuthProvider";
-import { levelProgress } from "../../api/gamification";
+import { levelProgress, titleForLevel } from "../../api/gamification";
 import { useUserProgression } from "../../hooks/useUserProgression";
 import AvatarImage from "./AvatarImage";
 
@@ -103,24 +103,31 @@ export default function UserControl() {
               }}
             />
             <RadialItem
+              icon={<FiUser />}
+              label="View profile"
+              x={compactMenu ? 0 : -166}
+              y={compactMenu ? -116 : -68}
+              onClick={() => go(profile ? `/users/${profile.username}` : "/onboarding")}
+            />
+            <RadialItem
               icon={<FiEdit3 />}
               label="Edit profile"
-              x={compactMenu ? 0 : -160}
-              y={compactMenu ? -116 : -86}
-              onClick={() => go("/me/profile")}
+              x={compactMenu ? 0 : -138}
+              y={compactMenu ? -174 : -128}
+              onClick={() => go("/onboarding")}
             />
             <RadialItem
               icon={<FiList />}
               label="My predictions"
-              x={compactMenu ? 0 : -116}
-              y={compactMenu ? -174 : -154}
+              x={compactMenu ? 0 : -84}
+              y={compactMenu ? -232 : -178}
               onClick={() => go("/me/predictions")}
             />
             <RadialItem
               icon={<FiTarget />}
               label="Make prediction"
-              x={compactMenu ? 0 : -36}
-              y={compactMenu ? -232 : -205}
+              x={compactMenu ? 0 : -18}
+              y={compactMenu ? -290 : -218}
               onClick={() => go("/tickers")}
             />
             <motion.div
@@ -128,7 +135,7 @@ export default function UserControl() {
               variants={{
                 open: {
                   x: compactMenu ? 0 : -214,
-                  y: compactMenu ? -292 : -222,
+                  y: compactMenu ? -350 : -242,
                   opacity: 1,
                   scale: 1,
                 },
@@ -138,7 +145,7 @@ export default function UserControl() {
             >
               <span className="user-progression-kicker">Level {displayedLevel}</span>
               <span className="user-progression-title">
-                {progression?.equipped_title ?? "Rookie Forecaster"}
+                {titleForLevel(displayedLevel)}
               </span>
               <span className="user-progression-meter">
                 <span style={{ width: `${Math.round(xpProgress.progress * 100)}%` }} />

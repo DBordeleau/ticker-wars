@@ -124,17 +124,21 @@ export default function LeaderboardTable({
                       {isModelRow ? (
                         <ModelIdentity row={row} />
                       ) : (
-                        <Group gap="xs" wrap="nowrap">
-                          <AvatarImage
-                            profile={{
-                              display_username: row.username,
-                              avatar_seed: row.avatar_seed,
-                              avatar_options: row.avatar_options,
-                            }}
-                            size={38}
-                          />
-                          <Text fw={800}>{row.username}</Text>
-                        </Group>
+                        <EntityHoverCard kind="user" username={row.username}>
+                          <Group gap="xs" wrap="nowrap" className="user-cell-link">
+                            <AvatarImage
+                              profile={{
+                                display_username: row.username,
+                                avatar_seed: row.avatar_seed,
+                                avatar_options: row.avatar_options,
+                              }}
+                              size={38}
+                            />
+                            <Text component={Link} to={`/users/${row.username}`} fw={800} className="plain-link">
+                              {row.username}
+                            </Text>
+                          </Group>
+                        </EntityHoverCard>
                       )}
                     </Table.Td>
                     <Table.Td className="leaderboard-table-center">{formatMetric(row.mae)}</Table.Td>

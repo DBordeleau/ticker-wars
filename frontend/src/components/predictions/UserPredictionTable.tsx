@@ -12,6 +12,7 @@ import SectionPanel from "../layout/SectionPanel";
 import EntityHoverCard from "../cards/EntityHoverCard";
 import AvatarImage from "../users/AvatarImage";
 import TickerLogoMark from "../tickers/TickerLogoMark";
+import PredictionPrivacyIndicator from "./PredictionPrivacyIndicator";
 import PredictionHorizonSelector from "./PredictionHorizonSelector";
 
 type Props = {
@@ -97,17 +98,21 @@ export default function UserPredictionTable({
                         </EntityHoverCard>
                       </Table.Td>
                       <Table.Td>
-                        <Group gap="xs" wrap="nowrap">
-                          <AvatarImage
-                            profile={{
-                              display_username: row.username,
-                              avatar_seed: row.avatar_seed,
-                              avatar_options: row.avatar_options,
-                            }}
-                            size={34}
-                          />
-                          <Text fw={800}>{row.username}</Text>
-                        </Group>
+                        <EntityHoverCard kind="user" username={row.username}>
+                          <Group gap="xs" wrap="nowrap" className="user-cell-link">
+                            <AvatarImage
+                              profile={{
+                                display_username: row.username,
+                                avatar_seed: row.avatar_seed,
+                                avatar_options: row.avatar_options,
+                              }}
+                              size={34}
+                            />
+                            <Text component={Link} to={`/users/${row.username}`} fw={800} className="plain-link">
+                              {row.username}
+                            </Text>
+                          </Group>
+                        </EntityHoverCard>
                       </Table.Td>
                       <Table.Td className="prediction-table-center">
                         <Badge variant="light" color="green">
@@ -116,10 +121,21 @@ export default function UserPredictionTable({
                       </Table.Td>
                       <Table.Td className="prediction-table-center">{formatCurrency(row.reference_close)}</Table.Td>
                       <Table.Td className="prediction-table-center">
-                        <Text fw={850}>{formatCurrency(row.predicted_close)}</Text>
-                        <Text size="xs" className={row.predicted_return >= 0 ? "prediction-return-up" : "prediction-return-down"}>
-                          {formatSignedPercent(row.predicted_return)}
-                        </Text>
+                        {row.hide_details_until_scored || row.predicted_close == null ? (
+                          <PredictionPrivacyIndicator />
+                        ) : (
+                          <>
+                            <Text fw={850}>{formatCurrency(row.predicted_close)}</Text>
+                            <Text
+                              size="xs"
+                              className={
+                                (row.predicted_return ?? 0) >= 0 ? "prediction-return-up" : "prediction-return-down"
+                              }
+                            >
+                              {formatSignedPercent(row.predicted_return)}
+                            </Text>
+                          </>
+                        )}
                       </Table.Td>
                       <Table.Td className="prediction-table-center">{formatDate(row.target_date)}</Table.Td>
                       <Table.Td className="prediction-table-center">{formatDate(row.prediction_date)}</Table.Td>
@@ -150,7 +166,7 @@ export default function UserPredictionTable({
                           }}
                           size={28}
                         />
-                        <Text size="sm" fw={800}>
+                        <Text component={Link} to={`/users/${row.username}`} size="sm" fw={800} className="plain-link">
                           {row.username}
                         </Text>
                       </Group>
@@ -169,7 +185,11 @@ export default function UserPredictionTable({
                     <Text size="xs" c="dimmed">
                       Predicted
                     </Text>
-                    <Text fw={850}>{formatCurrency(row.predicted_close)}</Text>
+                    {row.hide_details_until_scored || row.predicted_close == null ? (
+                      <PredictionPrivacyIndicator />
+                    ) : (
+                      <Text fw={850}>{formatCurrency(row.predicted_close)}</Text>
+                    )}
                   </Group>
                   <Group mt={6} justify="space-between">
                     <Text size="xs" c="dimmed">

@@ -19,6 +19,7 @@ import {
   formatCurrency,
   formatDate,
   formatHorizon,
+  formatPercent,
   formatSignedPercent,
 } from "../utils/format";
 import {
@@ -303,6 +304,7 @@ function ActivePredictionsTable({ rows, latestPredictions, tickerLogos, onChange
                       {formatHorizon(row.prediction_horizon)}
                     </Badge>
                   </Table.Td>
+                  <Table.Td className="prediction-table-center">{formatCurrency(row.reference_close)}</Table.Td>
                   <Table.Td className="prediction-table-center">
                     {formatCurrency(row.reference_close)}
                   </Table.Td>
@@ -393,16 +395,16 @@ function SettledPredictionsTable({ rows, tickerLogos, highlightId }: SettledTabl
             className="prediction-table user-predictions-table"
           >
             <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Ticker</Table.Th>
-                <Table.Th className="prediction-table-center">Horizon</Table.Th>
-                <Table.Th className="prediction-table-center">Predicted</Table.Th>
-                <Table.Th className="prediction-table-center">Actual</Table.Th>
-                <Table.Th className="prediction-table-center">Verdict</Table.Th>
-                <Table.Th className="prediction-table-center">Error</Table.Th>
-                <Table.Th className="prediction-table-center">Direction</Table.Th>
-                <Table.Th className="prediction-table-center">Matured On</Table.Th>
-              </Table.Tr>
+                <Table.Tr>
+                  <Table.Th>Ticker</Table.Th>
+                  <Table.Th className="prediction-table-center">Horizon</Table.Th>
+                  <Table.Th className="prediction-table-center">Reference</Table.Th>
+                  <Table.Th className="prediction-table-center">Predicted</Table.Th>
+                  <Table.Th className="prediction-table-center">Actual</Table.Th>
+                  <Table.Th className="prediction-table-center">Error</Table.Th>
+                  <Table.Th className="prediction-table-center">Verdict</Table.Th>
+                  <Table.Th className="prediction-table-center">Matured On</Table.Th>
+                </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {rows.map((row) => (
@@ -426,13 +428,10 @@ function SettledPredictionsTable({ rows, tickerLogos, highlightId }: SettledTabl
                     <ActualValue score={row.score} />
                   </Table.Td>
                   <Table.Td className="prediction-table-center">
+                    {row.score ? formatPercent(row.score.absolute_pct_error, 2) : "—"}
+                  </Table.Td>
+                  <Table.Td className="prediction-table-center">
                     <ScoreVerdictBadge score={row.score} onClick={() => setSelectedPrediction(row)} />
-                  </Table.Td>
-                  <Table.Td className="prediction-table-center">
-                    {row.score ? formatCurrency(row.score.absolute_error) : "—"}
-                  </Table.Td>
-                  <Table.Td className="prediction-table-center">
-                    <DirectionBadge score={row.score} />
                   </Table.Td>
                   <Table.Td className="prediction-table-center">{formatDate(row.target_date)}</Table.Td>
                 </Table.Tr>
@@ -455,7 +454,6 @@ function SettledPredictionsTable({ rows, tickerLogos, highlightId }: SettledTabl
                   <Badge variant="light" color="green">
                     {formatHorizon(row.prediction_horizon)}
                   </Badge>
-                  <DirectionBadge score={row.score} />
                 </Group>
               </Group>
               <Group mt="sm" justify="space-between">
@@ -465,6 +463,12 @@ function SettledPredictionsTable({ rows, tickerLogos, highlightId }: SettledTabl
                 <ScoreVerdictBadge score={row.score} onClick={() => setSelectedPrediction(row)} />
               </Group>
               <Group mt="sm" justify="space-between">
+                <Text size="xs" c="dimmed">
+                  Reference
+                </Text>
+                <Text fw={800}>{formatCurrency(row.reference_close)}</Text>
+              </Group>
+              <Group mt={6} justify="space-between">
                 <Text size="xs" c="dimmed">
                   Predicted
                 </Text>
@@ -480,7 +484,7 @@ function SettledPredictionsTable({ rows, tickerLogos, highlightId }: SettledTabl
                 <Text size="xs" c="dimmed">
                   Error
                 </Text>
-                <Text size="sm">{row.score ? formatCurrency(row.score.absolute_error) : "—"}</Text>
+                <Text size="sm">{row.score ? formatPercent(row.score.absolute_pct_error, 2) : "—"}</Text>
               </Group>
               <Group mt={6} justify="space-between">
                 <Text size="xs" c="dimmed">
@@ -577,20 +581,4 @@ function ActualValue({
     );
   }
   return <PriceReturn close={score.actual_close} ret={score.actual_return} inline={inline} />;
-}
-
-function DirectionBadge({ score }: { score: UserPredictionScore | null | undefined }) {
-  if (!score) {
-    return (
-      <Badge variant="light" color="gray">
-        —
-      </Badge>
-    );
-  }
-  const correct = score.direction_correct === 1;
-  return (
-    <Badge variant="light" color={correct ? "green" : "red"}>
-      {correct ? "Correct" : "Miss"}
-    </Badge>
-  );
 }

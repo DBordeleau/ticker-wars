@@ -640,6 +640,9 @@ def run_refresh_dashboard() -> int:
         written = database.replace_dashboard_table(table_name, rows)
         LOGGER.info("Refreshed %s with %s rows.", table_name, written)
 
+    refreshed_profiles = database.refresh_public_user_profiles()
+    LOGGER.info("Refreshed %s public user profile projections.", refreshed_profiles)
+
     return 0
 
 

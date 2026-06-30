@@ -39,7 +39,6 @@ class FeatureEngineeringTest(unittest.TestCase):
         closes = [100.0 + index for index in range(420)]
         price_rows = _price_rows("AAPL", closes)
         price_rows += _price_rows("SPY", [400.0 + index for index in range(420)])
-        price_rows += _price_rows("QQQ", [300.0 + index for index in range(420)])
 
         rows = build_feature_rows(price_rows)
         first_row = rows[0]
@@ -51,6 +50,7 @@ class FeatureEngineeringTest(unittest.TestCase):
         self.assertEqual(first_row["ticker"], "AAPL")
         self.assertIn("return_1y", first_row["feature_json"])
         self.assertIn("relative_spy_return_1m", first_row["feature_json"])
+        self.assertNotIn("relative_qqq_return_1m", first_row["feature_json"])
         self.assertEqual(first_row["target_date_1w"], target_1w.target_date.isoformat())
         self.assertAlmostEqual(
             first_row["target_return_1w"],
@@ -63,7 +63,6 @@ class FeatureEngineeringTest(unittest.TestCase):
     def test_rolling_features_do_not_use_future_rows(self) -> None:
         closes = [100.0 + index for index in range(420)]
         market_rows = _price_rows("SPY", [400.0 + index for index in range(420)])
-        market_rows += _price_rows("QQQ", [300.0 + index for index in range(420)])
         baseline_rows = _price_rows("AAPL", closes) + market_rows
 
         changed_closes = closes.copy()
@@ -80,9 +79,16 @@ class FeatureEngineeringTest(unittest.TestCase):
     def test_rows_with_incomplete_rolling_windows_are_dropped(self) -> None:
         price_rows = _price_rows("AAPL", [100.0 + index for index in range(220)])
         price_rows += _price_rows("SPY", [400.0 + index for index in range(220)])
-        price_rows += _price_rows("QQQ", [300.0 + index for index in range(220)])
 
         self.assertEqual(build_feature_rows(price_rows), [])
+
+    def test_spy_is_a_prediction_target(self) -> None:
+        price_rows = _price_rows("AAPL", [100.0 + index for index in range(420)])
+        price_rows += _price_rows("SPY", [400.0 + index for index in range(420)])
+
+        tickers = {row["ticker"] for row in build_feature_rows(price_rows)}
+
+        self.assertIn("SPY", tickers)
 
 
 if __name__ == "__main__":

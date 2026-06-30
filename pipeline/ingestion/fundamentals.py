@@ -223,7 +223,12 @@ def _parse_optional_date(value: object) -> date | None:
 
 def _has_any_fundamental_value(row: dict[str, Any]) -> bool:
     ignored_keys = {"ticker", "as_of_date", "source", "raw_json", "ingested_at"}
-    return any(row.get(key) is not None for key in row if key not in ignored_keys)
+    raw_json = row.get("raw_json")
+    raw_profile_fields = ("longName", "shortName", "displayName", "longBusinessSummary")
+    return any(row.get(key) is not None for key in row if key not in ignored_keys) or (
+        isinstance(raw_json, dict)
+        and any(_clean_string(raw_json.get(key)) for key in raw_profile_fields)
+    )
 
 
 def _first_clean_float(*values: object) -> float | None:
