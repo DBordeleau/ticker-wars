@@ -10,6 +10,8 @@ import SectionPanel from "../components/layout/SectionPanel";
 import EntityHoverCard from "../components/cards/EntityHoverCard";
 import TickerLogoMark from "../components/tickers/TickerLogoMark";
 import UserPredictionButton from "../components/predictions/UserPredictionButton";
+import ScoreBreakdownDrawer from "../components/predictions/ScoreBreakdownDrawer";
+import ScoreVerdictBadge from "../components/predictions/ScoreVerdictBadge";
 import SignInModal from "../components/users/SignInModal";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { useUserPredictions } from "../hooks/useUserPredictions";
@@ -348,6 +350,8 @@ type SettledTableProps = {
 };
 
 function SettledPredictionsTable({ rows, tickerLogos }: SettledTableProps) {
+  const [selectedPrediction, setSelectedPrediction] = useState<UserPrediction | null>(null);
+
   return (
     <>
       <div className="desktop-table">
@@ -363,6 +367,7 @@ function SettledPredictionsTable({ rows, tickerLogos }: SettledTableProps) {
                 <Table.Th className="prediction-table-center">Horizon</Table.Th>
                 <Table.Th className="prediction-table-center">Predicted</Table.Th>
                 <Table.Th className="prediction-table-center">Actual</Table.Th>
+                <Table.Th className="prediction-table-center">Verdict</Table.Th>
                 <Table.Th className="prediction-table-center">Error</Table.Th>
                 <Table.Th className="prediction-table-center">Direction</Table.Th>
                 <Table.Th className="prediction-table-center">Matured On</Table.Th>
@@ -384,6 +389,9 @@ function SettledPredictionsTable({ rows, tickerLogos }: SettledTableProps) {
                   </Table.Td>
                   <Table.Td className="prediction-table-center">
                     <ActualValue score={row.score} />
+                  </Table.Td>
+                  <Table.Td className="prediction-table-center">
+                    <ScoreVerdictBadge score={row.score} onClick={() => setSelectedPrediction(row)} />
                   </Table.Td>
                   <Table.Td className="prediction-table-center">
                     {row.score ? formatCurrency(row.score.absolute_error) : "—"}
@@ -413,6 +421,12 @@ function SettledPredictionsTable({ rows, tickerLogos }: SettledTableProps) {
               </Group>
               <Group mt="sm" justify="space-between">
                 <Text size="xs" c="dimmed">
+                  Verdict
+                </Text>
+                <ScoreVerdictBadge score={row.score} onClick={() => setSelectedPrediction(row)} />
+              </Group>
+              <Group mt="sm" justify="space-between">
+                <Text size="xs" c="dimmed">
                   Predicted
                 </Text>
                 <PriceReturn close={row.predicted_close} ret={row.predicted_return} inline />
@@ -439,6 +453,11 @@ function SettledPredictionsTable({ rows, tickerLogos }: SettledTableProps) {
           ))}
         </div>
       </div>
+      <ScoreBreakdownDrawer
+        prediction={selectedPrediction}
+        opened={Boolean(selectedPrediction)}
+        onClose={() => setSelectedPrediction(null)}
+      />
     </>
   );
 }

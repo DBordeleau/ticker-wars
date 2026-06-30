@@ -462,6 +462,10 @@ class SupabaseDatabase:
             "predicted_direction",
             "actual_direction",
             "direction_correct",
+            "score_verdict",
+            "score_verdict_rank",
+            "score_verdict_color",
+            "xp_awarded",
             "scored_at",
         }
         written = 0
@@ -477,6 +481,21 @@ class SupabaseDatabase:
             written += len(cleaned_batch)
 
         return written
+
+    def grant_scored_prediction_rewards(self, prediction_ids: list[str]) -> int:
+        if not prediction_ids:
+            return 0
+
+        granted = 0
+        for prediction_id in prediction_ids:
+            response = self._client.rpc(
+                "grant_scored_prediction_reward",
+                {"p_prediction_id": prediction_id},
+            ).execute()
+            if response.data:
+                granted += 1
+
+        return granted
 
     def fetch_user_prediction_scores(
         self,

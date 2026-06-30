@@ -6,6 +6,7 @@ from typing import Any
 import pandas as pd
 
 from pipeline.evaluation.metrics import absolute_percentage_error, direction
+from pipeline.evaluation.user_verdicts import score_verdict_fields
 
 DEFAULT_INTERVAL_LEVEL = 0.80
 WINKLER_ALPHA = 1 - DEFAULT_INTERVAL_LEVEL
@@ -30,6 +31,10 @@ def score_matured_predictions(
         predicted_return = float(prediction["predicted_return"])
         actual_return = actual_close / reference_close - 1
         absolute_error = abs(predicted_close - actual_close)
+        absolute_pct_error = absolute_percentage_error(actual_close, predicted_close)
+        predicted_direction = direction(predicted_return)
+        actual_direction = direction(actual_return)
+        direction_correct = int(predicted_direction == actual_direction)
 
         score_rows.append(
             {
@@ -44,10 +49,10 @@ def score_matured_predictions(
                 "actual_return": actual_return,
                 "absolute_error": absolute_error,
                 "squared_error": absolute_error**2,
-                "absolute_pct_error": absolute_percentage_error(actual_close, predicted_close),
-                "predicted_direction": direction(predicted_return),
-                "actual_direction": direction(actual_return),
-                "direction_correct": int(direction(predicted_return) == direction(actual_return)),
+                "absolute_pct_error": absolute_pct_error,
+                "predicted_direction": predicted_direction,
+                "actual_direction": actual_direction,
+                "direction_correct": direction_correct,
                 **_interval_score_fields(prediction, actual_close, reference_close),
                 "scored_at": scored_at,
             }
@@ -75,6 +80,10 @@ def score_matured_user_predictions(
         predicted_return = float(prediction["predicted_return"])
         actual_return = actual_close / reference_close - 1
         absolute_error = abs(predicted_close - actual_close)
+        absolute_pct_error = absolute_percentage_error(actual_close, predicted_close)
+        predicted_direction = direction(predicted_return)
+        actual_direction = direction(actual_return)
+        direction_correct = int(predicted_direction == actual_direction)
 
         score_rows.append(
             {
@@ -88,10 +97,15 @@ def score_matured_user_predictions(
                 "actual_return": actual_return,
                 "absolute_error": absolute_error,
                 "squared_error": absolute_error**2,
-                "absolute_pct_error": absolute_percentage_error(actual_close, predicted_close),
-                "predicted_direction": direction(predicted_return),
-                "actual_direction": direction(actual_return),
-                "direction_correct": int(direction(predicted_return) == direction(actual_return)),
+                "absolute_pct_error": absolute_pct_error,
+                "predicted_direction": predicted_direction,
+                "actual_direction": actual_direction,
+                "direction_correct": direction_correct,
+                **score_verdict_fields(
+                    absolute_pct_error=absolute_pct_error,
+                    direction_correct=direction_correct,
+                    prediction_horizon=str(prediction["prediction_horizon"]),
+                ),
                 "scored_at": scored_at,
             }
         )

@@ -3,6 +3,7 @@ import { notifications } from "@mantine/notifications";
 import { useEffect, useMemo, useState } from "react";
 import { FiAlertTriangle, FiCheck } from "react-icons/fi";
 import type { LatestPrediction, MetricHorizon } from "../../api/dashboardData";
+import { dispatchProgressionRefresh } from "../../api/gamification";
 import { resolveTickerDisplayPrice } from "../../api/livePrices";
 import {
   editUserPrediction,
@@ -101,19 +102,21 @@ export default function UserPredictionForm({
           color: "green",
           icon: <FiCheck />,
           title: "Prediction updated",
-          message: `${ticker} ${formatHorizon(edited.prediction_horizon)} now matures on ${formatDate(edited.target_date)}.`,
+          message: `${ticker} ${formatHorizon(edited.prediction_horizon)} now uses ${formatDate(edited.prediction_date)} as its prediction date and matures on ${formatDate(edited.target_date)}.`,
         });
+        dispatchProgressionRefresh();
         onSaved?.(edited);
         return;
       }
 
       const created = await submitUserPrediction(input);
       notifications.show({
-        color: "green",
-        icon: <FiCheck />,
-        title: "Prediction made",
-        message: `${ticker} ${formatHorizon(created.prediction_horizon)} matures on ${formatDate(created.target_date)}.`,
-      });
+          color: "green",
+          icon: <FiCheck />,
+          title: "Prediction made",
+          message: `${ticker} ${formatHorizon(created.prediction_horizon)} matures on ${formatDate(created.target_date)}. +10 XP`,
+        });
+      dispatchProgressionRefresh();
       onSaved?.(created);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save prediction.");
@@ -184,6 +187,10 @@ export default function UserPredictionForm({
           <Text fw={800}>{formatDate(selectedTarget.targetDate)}</Text>
         </div>
       </Group>
+      <Text size="xs" c="dimmed" className="prediction-rules-note">
+        New predictions earn 10 XP now. Edits reset the prediction date, target date, reference
+        price, and scoring context. Final XP arrives after the official close is scored.
+      </Text>
       <Group justify="flex-end">
         {onCancel ? (
           <Button variant="subtle" color="gray" onClick={onCancel}>

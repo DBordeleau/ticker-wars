@@ -7,6 +7,7 @@ import RedirectIfAuthed from "./auth/RedirectIfAuthed";
 import RequireAuth from "./auth/RequireAuth";
 import AuroraBackground from "./components/layout/AuroraBackground";
 import ScrollManager from "./components/layout/ScrollManager";
+import GamificationToasts from "./components/users/GamificationToasts";
 import UserControl from "./components/users/UserControl";
 import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/Dashboard";
@@ -28,6 +29,7 @@ export default function App() {
           <ScrollManager />
           <AuthOnboardingRedirect />
           <UserControl />
+          <GamificationToasts />
           <Routes>
             <Route
               path="/"

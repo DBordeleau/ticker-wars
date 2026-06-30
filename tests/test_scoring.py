@@ -117,6 +117,32 @@ class PredictionScoringTest(unittest.TestCase):
         self.assertEqual(score["absolute_error"], 1.0)
         self.assertEqual(score["predicted_direction"], 1)
         self.assertEqual(score["actual_direction"], 1)
+        self.assertEqual(score["score_verdict"], "called_it")
+        self.assertEqual(score["score_verdict_rank"], 1)
+        self.assertEqual(score["score_verdict_color"], "yellow")
+        self.assertEqual(score["xp_awarded"], 295)
+
+    def test_user_prediction_verdict_and_xp_scale_by_horizon(self) -> None:
+        prediction_rows = [
+            {
+                "prediction_id": "11111111-1111-1111-1111-111111111111",
+                "user_id": "22222222-2222-2222-2222-222222222222",
+                "ticker": "AAPL",
+                "prediction_date": "2026-01-01",
+                "target_date": "2026-01-02",
+                "prediction_horizon": "1y",
+                "predicted_return": -0.10,
+                "predicted_close": 90.0,
+                "reference_close": 100.0,
+            }
+        ]
+        price_rows = [{"ticker": "AAPL", "date": "2026-01-02", "close": 100.0}]
+
+        score = score_matured_user_predictions(prediction_rows, price_rows)[0]
+
+        self.assertEqual(score["score_verdict"], "miss")
+        self.assertEqual(score["direction_correct"], 0)
+        self.assertEqual(score["xp_awarded"], 150)
 
 
 def _score_single(

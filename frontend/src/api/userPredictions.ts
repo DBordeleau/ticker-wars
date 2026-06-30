@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import type { LatestPrediction, MetricHorizon } from "./dashboardData";
+import type { ScoreVerdict } from "./gamification";
 
 export type UserPredictionStatus = "pending" | "scored" | "cancelled";
 export type PredictionHorizon = Exclude<MetricHorizon, "all">;
@@ -19,6 +20,10 @@ export type UserPredictionScore = {
   predicted_direction: number;
   actual_direction: number;
   direction_correct: number;
+  score_verdict?: ScoreVerdict | null;
+  score_verdict_rank?: number | null;
+  score_verdict_color?: string | null;
+  xp_awarded?: number;
   scored_at: string;
 };
 

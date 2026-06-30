@@ -610,12 +610,13 @@ def run_score() -> int:
     metrics = calculate_model_metrics(score_rows)
     user_score_rows = score_matured_user_predictions(user_prediction_rows, price_rows)
     user_written = database.upsert_user_prediction_scores(user_score_rows)
-    database.mark_user_predictions_scored(
-        [str(row["prediction_id"]) for row in user_score_rows],
-    )
+    user_score_prediction_ids = [str(row["prediction_id"]) for row in user_score_rows]
+    database.mark_user_predictions_scored(user_score_prediction_ids)
+    user_rewards_granted = database.grant_scored_prediction_rewards(user_score_prediction_ids)
 
     LOGGER.info("Prediction scoring wrote %s scored predictions.", written)
     LOGGER.info("User prediction scoring wrote %s scored predictions.", user_written)
+    LOGGER.info("User prediction rewards granted for %s scored predictions.", user_rewards_granted)
     latest_scored_target_date = max(
         (str(row["target_date"]) for row in score_rows + user_score_rows),
         default=None,
