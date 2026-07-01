@@ -640,6 +640,10 @@ def run_refresh_dashboard() -> int:
         written = database.replace_dashboard_table(table_name, rows)
         LOGGER.info("Refreshed %s with %s rows.", table_name, written)
 
+    competitive_counts = database.refresh_competitive_depth()
+    if competitive_counts:
+        LOGGER.info("Refreshed competitive depth projections: %s.", competitive_counts)
+
     refreshed_profiles = database.refresh_public_user_profiles()
     LOGGER.info("Refreshed %s public user profile projections.", refreshed_profiles)
 

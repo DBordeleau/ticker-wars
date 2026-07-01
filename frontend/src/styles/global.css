@@ -6050,6 +6050,212 @@ tr.prediction-row-highlighted {
   display: block;
 }
 
+.competition-dashboard-grid,
+.nearby-rivals-grid,
+.challenge-prompt-grid,
+.ticker-specialists-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.competition-dashboard-grid {
+  align-items: stretch;
+}
+
+.competition-panel {
+  height: 100%;
+}
+
+.leaderboard-movement {
+  height: 22px;
+  padding-inline: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.leaderboard-movement svg {
+  width: 12px;
+  height: 12px;
+}
+
+.leaderboard-movement--up {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(134, 239, 172, 0.34);
+}
+
+.leaderboard-movement--down {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(252, 165, 165, 0.28);
+}
+
+.leaderboard-movement--new {
+  color: #fde68a;
+  background:
+    linear-gradient(120deg, rgba(250, 204, 21, 0.18), rgba(56, 189, 248, 0.12)),
+    rgba(255, 255, 255, 0.055);
+  border-color: rgba(250, 204, 21, 0.38);
+}
+
+.leaderboard-movement--steady {
+  color: rgba(226, 232, 240, 0.76);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.nearby-rival-card,
+.challenge-prompt-card,
+.ticker-specialty-card {
+  display: grid;
+  gap: 11px;
+  min-height: 118px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 14% 8%, rgba(134, 239, 172, 0.12), transparent 36%),
+    rgba(255, 255, 255, 0.045);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.025) inset;
+}
+
+.nearby-rival-card {
+  color: #f8fafc;
+}
+
+.nearby-rival-icon,
+.challenge-prompt-icon,
+.ticker-specialty-medal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.13);
+  border: 1px solid rgba(134, 239, 172, 0.28);
+}
+
+.nearby-rival-copy,
+.ticker-specialty-identity > span,
+.challenge-prompt-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nearby-rival-label,
+.ticker-specialty-eyebrow,
+.challenge-prompt-foot {
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.nearby-rival-name,
+.ticker-specialty-title,
+.challenge-prompt-copy strong {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 0.96rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nearby-rival-rank {
+  color: #fde68a;
+  font-size: 1.1rem;
+  font-weight: 950;
+}
+
+.nearby-rival-foot,
+.ticker-specialty-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.challenge-prompt-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.challenge-prompt-card {
+  min-height: 144px;
+}
+
+.challenge-prompt-copy span {
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.ticker-specialists-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ticker-specialty-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ticker-specialty-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  color: #dcfce7;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(134, 239, 172, 0.28);
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+
+.ticker-specialty-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ticker-specialty-stats span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.ticker-specialty-stats strong {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ticker-specialty-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .entity-hover-user-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -6115,6 +6321,13 @@ tr.prediction-row-highlighted {
 
 @media (max-width: 900px) {
   .profile-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .competition-dashboard-grid,
+  .nearby-rivals-grid,
+  .challenge-prompt-grid,
+  .ticker-specialists-grid {
     grid-template-columns: 1fr;
   }
 

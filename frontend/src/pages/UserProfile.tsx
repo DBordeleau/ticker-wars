@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { FiAlertTriangle, FiCheck } from "react-icons/fi";
 import { Navigate, useParams } from "react-router-dom";
 import { fetchPublicUserProfile, updateOwnFeaturedBadges, type PublicProfilePrediction, type PublicUserBadge, type PublicUserProfileBundle } from "../api/publicProfiles";
+import { fetchUserTickerSpecialties, type TickerSpecialtyRow } from "../api/competition";
 import { dispatchProgressionRefresh, levelProgress, titleForLevel } from "../api/gamification";
 import type { BadgeDefinition } from "../api/gamification";
 import { fetchOwnUserPredictions, type UserPrediction } from "../api/userPredictions";
 import { useAuth } from "../auth/AuthProvider";
 import type { UserProfile as OwnProfile } from "../auth/types";
 import BadgeToken from "../components/badges/BadgeToken";
+import TickerSpecialtyCard from "../components/competition/TickerSpecialtyCard";
 import BackToDashboardButton from "../components/layout/BackToDashboardButton";
 import DashboardFooter from "../components/layout/DashboardFooter";
 import PublicPredictionCard from "../components/predictions/PublicPredictionCard";
@@ -23,6 +25,7 @@ export default function UserProfile() {
   const progression = useUserProgression();
   const [bundle, setBundle] = useState<PublicUserProfileBundle | null>(null);
   const [ownPredictions, setOwnPredictions] = useState<UserPrediction[]>([]);
+  const [tickerSpecialties, setTickerSpecialties] = useState<TickerSpecialtyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,6 +81,26 @@ export default function UserProfile() {
   }, [isOwner, ownPredictions, profile, progression.badges, progression.progression]);
 
   const visibleBundle = bundle ?? ownerBundle;
+
+  useEffect(() => {
+    let active = true;
+    if (!visibleBundle?.profile.user_id) {
+      setTickerSpecialties([]);
+      return undefined;
+    }
+
+    fetchUserTickerSpecialties(visibleBundle.profile.user_id)
+      .then((rows) => {
+        if (active) setTickerSpecialties(rows);
+      })
+      .catch(() => {
+        if (active) setTickerSpecialties([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [visibleBundle?.profile.user_id]);
 
   if (loading && !visibleBundle) {
     return (
@@ -162,6 +185,18 @@ export default function UserProfile() {
           </div>
         )}
       </section>
+
+      {tickerSpecialties.length > 0 ? (
+        <section className="profile-section">
+          <Title order={2}>Ticker Specialties</Title>
+          <Text c="dimmed" size="sm">Tickers where this profile has enough scored predictions to stand out.</Text>
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+            {tickerSpecialties.map((specialty) => (
+              <TickerSpecialtyCard key={specialty.ticker} specialty={specialty} mode="user" />
+            ))}
+          </SimpleGrid>
+        </section>
+      ) : null}
 
       <section className="profile-section">
         <Title order={2}>On Deck</Title>

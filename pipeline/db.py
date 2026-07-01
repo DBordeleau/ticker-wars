@@ -501,6 +501,31 @@ class SupabaseDatabase:
         response = self._client.rpc("refresh_public_user_profiles", {}).execute()
         return int(response.data or 0)
 
+    def refresh_competitive_depth(self) -> dict[str, Any]:
+        response = self._client.rpc("refresh_competitive_depth", {}).execute()
+        data = response.data or {}
+        return data if isinstance(data, dict) else {}
+
+    def snapshot_user_leaderboard_ranks(self) -> int:
+        response = self._client.rpc("snapshot_user_leaderboard_ranks", {}).execute()
+        return int(response.data or 0)
+
+    def refresh_user_leaderboard_movement(self) -> int:
+        response = self._client.rpc("refresh_user_leaderboard_movement", {}).execute()
+        return int(response.data or 0)
+
+    def evaluate_public_competition_badges(self) -> int:
+        response = self._client.rpc("evaluate_public_competition_badges", {}).execute()
+        return int(response.data or 0)
+
+    def refresh_nearby_rivals(self) -> int:
+        response = self._client.rpc("refresh_nearby_rivals", {}).execute()
+        return int(response.data or 0)
+
+    def refresh_user_ticker_specialties(self) -> int:
+        response = self._client.rpc("refresh_user_ticker_specialties", {}).execute()
+        return int(response.data or 0)
+
     def fetch_user_prediction_scores(
         self,
         batch_size: int = 1000,

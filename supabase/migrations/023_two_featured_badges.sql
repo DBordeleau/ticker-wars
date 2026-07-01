@@ -194,7 +194,10 @@ begin
         definition.title_unlock,
         definition.sort_order,
         badge.unlocked_at,
-        badge.badge_slug in (progress.featured_badge_slug, progress.secondary_featured_badge_slug),
+        coalesce(
+            badge.badge_slug in (progress.featured_badge_slug, progress.secondary_featured_badge_slug),
+            false
+        ),
         case
             when badge.badge_slug = progress.featured_badge_slug then 1
             when badge.badge_slug = progress.secondary_featured_badge_slug then 2

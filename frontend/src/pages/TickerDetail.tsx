@@ -2,9 +2,11 @@ import { Badge, Card, Group, Skeleton, Stack, Text, Title, UnstyledButton } from
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { MetricHorizon } from "../api/dashboardData";
+import { fetchTickerSpecialists, type TickerSpecialtyRow } from "../api/competition";
 import { resolveTickerDisplayPrice } from "../api/livePrices";
 import type { DashboardView } from "../components/dashboard/DashboardViewToggle";
 import TickerChart from "../components/charts/TickerChart";
+import TickerSpecialtyCard from "../components/competition/TickerSpecialtyCard";
 import AnimatedSection from "../components/layout/AnimatedSection";
 import BackToDashboardButton from "../components/layout/BackToDashboardButton";
 import DashboardFooter from "../components/layout/DashboardFooter";
@@ -34,6 +36,7 @@ export default function TickerDetail() {
   const [latestUserHorizon, setLatestUserHorizon] = useState<MetricHorizon>("all");
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
+  const [tickerSpecialists, setTickerSpecialists] = useState<TickerSpecialtyRow[]>([]);
   const removedTicker = isRemovedTicker(ticker);
   const dashboard = useDashboardData();
   const tickerHistory = useTickerHistory(ticker);
@@ -86,6 +89,21 @@ export default function TickerDetail() {
   useEffect(() => {
     setIsSummaryExpanded(false);
   }, [summary]);
+
+  useEffect(() => {
+    let active = true;
+    fetchTickerSpecialists(ticker)
+      .then((rows) => {
+        if (active) setTickerSpecialists(rows);
+      })
+      .catch(() => {
+        if (active) setTickerSpecialists([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [ticker]);
 
   if (removedTicker) {
     return (
@@ -283,6 +301,21 @@ export default function TickerDetail() {
           loading={dashboard.loading || tickerHistory.loading}
         />
       </AnimatedSection>
+      {tickerSpecialists.length > 0 ? (
+        <AnimatedSection delay={0.44}>
+          <SectionPanel
+            title="Human Specialists"
+            subtitle={`Public users with the strongest scored track record on ${ticker}.`}
+            className="competition-panel"
+          >
+            <div className="ticker-specialists-grid">
+              {tickerSpecialists.map((specialty) => (
+                <TickerSpecialtyCard key={specialty.user_id} specialty={specialty} mode="ticker" />
+              ))}
+            </div>
+          </SectionPanel>
+        </AnimatedSection>
+      ) : null}
       <AnimatedSection delay={0.48}>
         <DashboardFooter metadata={dashboard.metadata} loading={dashboard.loading} />
       </AnimatedSection>

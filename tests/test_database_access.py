@@ -429,6 +429,44 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertEqual(client.operations[0]["rpc"], "refresh_public_user_profiles")
         self.assertEqual(client.operations[0]["params"], {})
 
+    def test_refresh_competitive_depth_calls_projection_rpc(self) -> None:
+        database, client = _database_with_fake_client()
+        client.rpc_results["refresh_competitive_depth"] = {"movement": 2, "rivals": 4}
+
+        refreshed = database.refresh_competitive_depth()
+
+        self.assertEqual(refreshed, {"movement": 2, "rivals": 4})
+        self.assertEqual(client.operations[0]["rpc"], "refresh_competitive_depth")
+        self.assertEqual(client.operations[0]["params"], {})
+
+    def test_competition_projection_wrappers_call_expected_rpcs(self) -> None:
+        database, client = _database_with_fake_client()
+        client.rpc_results.update(
+            {
+                "snapshot_user_leaderboard_ranks": 1,
+                "refresh_user_leaderboard_movement": 2,
+                "evaluate_public_competition_badges": 3,
+                "refresh_nearby_rivals": 4,
+                "refresh_user_ticker_specialties": 5,
+            }
+        )
+
+        self.assertEqual(database.snapshot_user_leaderboard_ranks(), 1)
+        self.assertEqual(database.refresh_user_leaderboard_movement(), 2)
+        self.assertEqual(database.evaluate_public_competition_badges(), 3)
+        self.assertEqual(database.refresh_nearby_rivals(), 4)
+        self.assertEqual(database.refresh_user_ticker_specialties(), 5)
+        self.assertEqual(
+            [operation["rpc"] for operation in client.operations],
+            [
+                "snapshot_user_leaderboard_ranks",
+                "refresh_user_leaderboard_movement",
+                "evaluate_public_competition_badges",
+                "refresh_nearby_rivals",
+                "refresh_user_ticker_specialties",
+            ],
+        )
+
 
 def _database_with_fake_client() -> tuple[SupabaseDatabase, FakeSupabaseClient]:
     database = object.__new__(SupabaseDatabase)
