@@ -129,7 +129,8 @@ class HistoricalPredictionTest(unittest.TestCase):
         row = result.prediction_rows[0]
         self.assertEqual(row["prediction_id"], "AAPL:2026-06-24:2026-07-01:1w:baseline")
         self.assertEqual(row["reference_close"], 100.0)
-        self.assertNotIn("interval_method", row)
+        self.assertEqual(row["interval_method"], "fallback-wide-return-band")
+        self.assertEqual(row["interval_level"], 0.80)
 
     def test_classic_seed_uses_pooled_fallback_without_future_rows(self) -> None:
         pooled_rows = [

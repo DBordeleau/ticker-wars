@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 # Static MVP universe for reproducibility. Market-cap rankings change over time.
-MVP_TICKERS: tuple[str, ...] = (
+MVP_TICKERS = (
+    # Big Tech / AI
     "AAPL",
     "MSFT",
     "NVDA",
@@ -10,49 +11,72 @@ MVP_TICKERS: tuple[str, ...] = (
     "META",
     "AVGO",
     "TSLA",
+    "AMD",
+    "TSM",
+    "ARM",
+    "ORCL",
+    "INTC",
+    "SMCI",
+    "IBM",
+    "CRWD",
+
+    # Financials
     "BRK-B",
     "JPM",
-    "LLY",
-    "V",
-    "UNH",
-    "XOM",
-    "MA",
-    "COST",
-    "HD",
-    "PG",
-    "NFLX",
-    "JNJ",
-    "WMT",
-    "ABBV",
     "BAC",
-    "KO",
+    "V",
+    "MA",
+    "HOOD",
+    "SOFI",
+
+    # Consumer
+    "WMT",
+    "COST",
+    "NFLX",
+    "DIS",
+    "NKE",
+    "UBER",
+    "HIMS",
+    "CAVA",
+
+    # Healthcare
+    "LLY",
+    "ABBV",
+
+    # Energy
+    "XOM",
+
+    # Software / Enterprise
     "CRM",
+
+    # ETFs
     "SPY",
+
+    # Meme / Internet
     "GME",
     "AMC",
     "RDDT",
-    "HOOD",
-    "SOFI",
-    "PLTR",
-    "AMD",
-    "MU",
-    "TSM",
-    "ARM",
+
+    # Space
     "RKLB",
     "ASTS",
     "LUNR",
+
+    # EV
     "RIVN",
     "LCID",
+
+    # Crypto
     "COIN",
     "MSTR",
-    "MARA",
-    "IREN",
-    "WEN",
-    "HIMS",
-    "UBER",
-    "DIS",
-    "NKE",
-    "PEP",
+
+    # Growth
+    "PLTR",
+    "MU",
+
+    # Interesting Stories
+    "OKLO",
+    "APP",
 )
 
 

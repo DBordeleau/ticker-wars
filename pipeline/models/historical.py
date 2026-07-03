@@ -14,6 +14,8 @@ from pipeline.features.build_features import (
 )
 from pipeline.forecasting.horizons import FORECAST_HORIZONS, ForecastHorizon, HorizonTarget
 from pipeline.models.base import (
+    DEFAULT_INTERVAL_LEVEL,
+    PredictionInterval,
     build_prediction_row,
     historical_return_interval,
     residual_prediction_interval,
@@ -381,7 +383,9 @@ def _prediction_interval(
 ):
     target_returns = [float(value) for value in completed_rows[target_column].tolist()]
     if spec.minimum_training_rows == 0:
-        return historical_return_interval(target_returns=target_returns)
+        return historical_return_interval(target_returns=target_returns) or _fallback_interval(
+            predicted_return
+        )
 
     fitted_returns = spec.make_model()
     fitted_returns.fit(completed_rows[list(FEATURE_COLUMNS)], completed_rows[target_column])
@@ -393,6 +397,15 @@ def _prediction_interval(
         actual_returns=target_returns,
         fitted_returns=fitted_values,
         point_prediction=predicted_return,
+    ) or _fallback_interval(predicted_return)
+
+
+def _fallback_interval(predicted_return: float) -> PredictionInterval:
+    return PredictionInterval(
+        predicted_return_lower=predicted_return - 0.20,
+        predicted_return_upper=predicted_return + 0.20,
+        interval_level=DEFAULT_INTERVAL_LEVEL,
+        interval_method="fallback-wide-return-band",
     )
 
 
