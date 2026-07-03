@@ -161,8 +161,8 @@ export function resolveTickerDisplayPrice(
     return {
       ticker: close.ticker,
       price: close.close,
-      label: `${formatShortDate(close.date)} closing price`,
-      detailLabel: "Last official close",
+      label: `${formatCloseLabelDate(close.date)} Close`,
+      detailLabel: "",
       asOf: close.date,
       marketState: live?.market_state ?? "closed",
       freshness: "close",
@@ -340,7 +340,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function formatShortDate(value: string) {
+function formatCloseLabelDate(value: string) {
   const [year, month, day] = value.split("-").map(Number);
   if (!year || !month || !day) {
     return value;
@@ -349,6 +349,5 @@ function formatShortDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
   }).format(new Date(year, month - 1, day));
 }

@@ -303,9 +303,11 @@ function TickerCardBody({ ticker, logoUrl }: { ticker: string; logoUrl?: string 
         <div className="entity-hover-close">
           <span className="entity-hover-close-label">
             {displayPrice.label}
-            <span className={`entity-hover-freshness entity-hover-${displayPrice.freshness}`}>
-              {displayPrice.detailLabel}
-            </span>
+            {displayPrice.detailLabel ? (
+              <span className={`entity-hover-freshness entity-hover-${displayPrice.freshness}`}>
+                {displayPrice.detailLabel}
+              </span>
+            ) : null}
           </span>
           <span className="entity-hover-close-value">
             {formatCurrency(displayPrice.price)}
