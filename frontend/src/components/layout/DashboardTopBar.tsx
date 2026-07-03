@@ -1,14 +1,13 @@
-import { Title } from "@mantine/core";
-import { useAuth } from "../../auth/AuthProvider";
+import RulesLink from "../help/RulesLink";
 
 export default function DashboardTopBar() {
-  const { profile } = useAuth();
-  const name = profile?.display_username;
-
   return (
-    <h1 className="hero-title">
-      <span className="hero-title-text">Ticker</span>
-      <span className="accent">Wars</span>
-    </h1>
+    <div className="dashboard-rules-topbar">
+      <h1 className="hero-title">
+        <span className="hero-title-text">Ticker</span>
+        <span className="accent">Wars</span>
+      </h1>
+      <RulesLink section="quick-start">How it works</RulesLink>
+    </div>
   );
 }
