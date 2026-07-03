@@ -4,21 +4,43 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { FiArrowRight } from "react-icons/fi";
 import { Link } from "react-router-dom";
+import type { AvatarOptions } from "../../auth/types";
 import type { TickerCloseSnapshot, TickerProfile } from "../../api/dashboardData";
 import { loadLivePriceSnapshot } from "../../api/livePriceCache";
 import { resolveTickerDisplayPrice, type LivePriceSnapshot } from "../../api/livePrices";
 import { fetchPublicUserProfile, type PublicUserProfileBundle } from "../../api/publicProfiles";
 import { loadTickerCloseSnapshot, loadTickerProfile } from "../../api/tickerCache";
-import { titleForLevel } from "../../api/gamification";
-import { formatCurrency, formatPercent, formatSignedPercent } from "../../utils/format";
+import {
+  isScoreVerdict,
+  titleForLevel,
+  verdictForScore,
+  type ScoreVerdict,
+} from "../../api/gamification";
+import { formatCurrency, formatSignedPercent } from "../../utils/format";
 import { getModelInfo, modelTypeColor } from "../../utils/models";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
 import UserIdentityBlock from "../users/UserIdentityBlock";
+import UserVerdictBreakdown from "../users/UserVerdictBreakdown";
 
 type BaseProps = { children: ReactNode };
 type ModelProps = BaseProps & { kind: "model"; slug: string; name?: string };
 type TickerProps = BaseProps & { kind: "ticker"; ticker: string; logoUrl?: string | null };
-type UserProps = BaseProps & { kind: "user"; username: string };
+export type FakeUserHoverProfile = {
+  displayUsername?: string;
+  avatarSeed: string;
+  avatarOptions: AvatarOptions;
+  level?: number;
+  totalXp?: number;
+  activePredictionCount: number;
+  settledPredictionCount: number;
+  verdictCounts?: Partial<Record<ScoreVerdict, number>>;
+};
+type UserProps = BaseProps & {
+  kind: "user";
+  username: string;
+  fakeUser?: FakeUserHoverProfile;
+  onProfileClick?: (username: string) => void;
+};
 type Props = ModelProps | TickerProps | UserProps;
 
 // Smooth scale + lift, used for both entry and exit via Mantine's Transition.
@@ -61,7 +83,11 @@ export default function EntityHoverCard(props: Props) {
           ) : props.kind === "ticker" ? (
             <TickerCardBody ticker={props.ticker} logoUrl={props.logoUrl} />
           ) : (
-            <UserCardBody username={props.username} />
+            <UserCardBody
+              username={props.username}
+              fakeUser={props.fakeUser}
+              onProfileClick={props.onProfileClick}
+            />
           )}
         </MagicHoverSurface>
       </HoverCard.Dropdown>
@@ -89,10 +115,43 @@ function ModelCardBody({ slug, name }: { slug: string; name?: string }) {
   );
 }
 
-function UserCardBody({ username }: { username: string }) {
+function UserCardBody({
+  username,
+  fakeUser,
+  onProfileClick,
+}: {
+  username: string;
+  fakeUser?: FakeUserHoverProfile;
+  onProfileClick?: (username: string) => void;
+}) {
+  if (fakeUser) {
+    const level = fakeUser.level ?? 1;
+    return (
+      <div className="entity-hover-card entity-hover-user-card">
+        <UserIdentityBlock
+          displayUsername={fakeUser.displayUsername ?? username}
+          username={username}
+          avatarSeed={fakeUser.avatarSeed}
+          avatarOptions={fakeUser.avatarOptions}
+          level={level}
+          displayTitle={titleForLevel(level)}
+          badgePresentation="none"
+          size={44}
+        />
+        <UserVerdictBreakdown
+          activeCount={fakeUser.activePredictionCount}
+          settledCount={fakeUser.settledPredictionCount}
+          verdictCounts={fakeUser.verdictCounts ?? {}}
+        />
+        <ProfileCta username={username} onProfileClick={onProfileClick} />
+      </div>
+    );
+  }
+
   const { bundle, loading } = usePublicUserHoverData(username);
   const profile = bundle?.profile ?? null;
   const featuredBadges = bundle ? getFeaturedBadges(bundle.badges) : [];
+  const verdictCounts = profile?.verdict_counts ?? (bundle ? verdictCountsFromProfilePredictions(bundle) : {});
 
   if (loading) {
     return (
@@ -125,26 +184,61 @@ function UserCardBody({ username }: { username: string }) {
         badgePresentation="full"
         size={44}
       />
-      <div className="entity-hover-user-stats">
-        <span>
-          <strong>{profile.scored_count.toLocaleString()}</strong>
-          scored
-        </span>
-        <span>
-          <strong>{formatPercent(profile.directional_accuracy)}</strong>
-          directional
-        </span>
-        <span>
-          <strong>{profile.badge_count.toLocaleString()}</strong>
-          badges
-        </span>
-      </div>
-      <Link className="entity-hover-cta" to={`/users/${profile.username}`}>
-        View profile
-        <FiArrowRight aria-hidden />
-      </Link>
+      <UserVerdictBreakdown
+        activeCount={profile.active_prediction_count}
+        settledCount={profile.scored_count}
+        verdictCounts={verdictCounts}
+      />
+      <ProfileCta username={profile.username} onProfileClick={onProfileClick} />
     </div>
   );
+}
+
+function ProfileCta({
+  username,
+  onProfileClick,
+}: {
+  username: string;
+  onProfileClick?: (username: string) => void;
+}) {
+  if (onProfileClick) {
+    return (
+      <button
+        type="button"
+        className="entity-hover-cta entity-hover-cta-button"
+        onClick={() => onProfileClick(username)}
+      >
+        View profile
+        <FiArrowRight aria-hidden />
+      </button>
+    );
+  }
+
+  return (
+    <Link className="entity-hover-cta" to={`/users/${username}`}>
+      View profile
+      <FiArrowRight aria-hidden />
+    </Link>
+  );
+}
+
+function verdictCountsFromProfilePredictions(bundle: PublicUserProfileBundle) {
+  return bundle.predictions.reduce<Partial<Record<ScoreVerdict, number>>>((counts, prediction) => {
+    if (prediction.section !== "recent") {
+      return counts;
+    }
+    const computed = verdictForScore({
+      absolutePctError: prediction.absolute_pct_error,
+      predictionHorizon: prediction.prediction_horizon,
+      directionCorrect: prediction.direction_correct,
+    });
+    const verdict = computed ?? prediction.score_verdict;
+    if (!isScoreVerdict(verdict)) {
+      return counts;
+    }
+    counts[verdict] = (counts[verdict] ?? 0) + 1;
+    return counts;
+  }, {});
 }
 
 function getFeaturedBadges(badges: PublicUserProfileBundle["badges"]) {
