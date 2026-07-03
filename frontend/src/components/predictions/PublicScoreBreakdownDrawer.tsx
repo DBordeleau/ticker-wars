@@ -100,9 +100,9 @@ export default function PublicScoreBreakdownDrawer({ prediction, opened, onClose
           </Group>
 
           <Text size="sm" className="score-breakdown-explanation">
-            This call was {formatPercent(prediction.absolute_pct_error, 2)} away from the final
+            This prediction was {formatPercent(prediction.absolute_pct_error, 2)} away from the final
             close on a {formatHorizon(prediction.prediction_horizon)} horizon. The stock moved{" "}
-            {directionName(prediction.actual_return)} and the prediction called{" "}
+            {directionName(prediction.actual_return)} and the prediction was{" "}
             {directionName(prediction.predicted_return)}, so this was a{" "}
             {directionHit ? "direction hit" : "direction miss"}. The final verdict combines
             percent error, horizon, and direction.{" "}

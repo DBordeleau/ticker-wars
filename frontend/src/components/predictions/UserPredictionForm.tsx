@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FiAlertTriangle, FiCheck } from "react-icons/fi";
 import type { LatestPrediction, MetricHorizon } from "../../api/dashboardData";
 import { dispatchProgressionRefresh } from "../../api/gamification";
-import { isRegularMarketTime, resolveTickerDisplayPrice } from "../../api/livePrices";
+import { resolveTickerDisplayPrice } from "../../api/livePrices";
 import {
   editUserPrediction,
   findPendingPrediction,
@@ -57,9 +57,7 @@ export default function UserPredictionForm({
   const livePrice = useLiveTickerPrice(ticker, { poll: true, pollMs: 45_000 });
   const closeSnapshot = useTickerCloseSnapshot(ticker);
   const displayPrice = resolveTickerDisplayPrice(livePrice.data, closeSnapshot.data);
-  const needsFreshLiveReference = isRegularMarketTime();
-  const hasFreshLiveReference = displayPrice?.source === "live" && displayPrice.freshness === "fresh";
-  const referenceIsStale = displayPrice?.freshness === "stale" || (needsFreshLiveReference && !hasFreshLiveReference);
+  const referenceIsStale = displayPrice?.source === "live" && displayPrice.freshness === "stale";
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -185,9 +183,11 @@ export default function UserPredictionForm({
           <Text fw={800}>{formatCurrency(displayPrice?.price)}</Text>
           {displayPrice ? (
             <Text size="xs" c={referenceIsStale ? "orange" : "dimmed"} fw={700}>
-              {referenceIsStale && needsFreshLiveReference
+              {referenceIsStale
                 ? "Waiting for fresh live reference"
-                : `${displayPrice.label} - ${displayPrice.detailLabel}`}
+                : displayPrice.detailLabel
+                  ? `${displayPrice.label} - ${displayPrice.detailLabel}`
+                  : displayPrice.label}
             </Text>
           ) : livePrice.loading || closeSnapshot.loading ? (
             <Text size="xs" c="dimmed" fw={700}>
@@ -205,7 +205,15 @@ export default function UserPredictionForm({
       <Text size="xs" c="dimmed" className="prediction-rules-note">
         New predictions earn 10 XP now. Edits reset the prediction date, target date, reference
         price, and scoring context. Final XP arrives after the official close is scored.{" "}
-        <RulesLink section="scoring" compact>Scoring guide</RulesLink>
+        <RulesLink
+          section="scoring"
+          compact
+          iconOnly
+          className="prediction-inline-rule-icon"
+          tooltipLabel="Learn more about scoring predictions."
+        >
+          Scoring guide
+        </RulesLink>
       </Text>
       <Switch
         checked={hideDetailsUntilScored}
@@ -213,8 +221,16 @@ export default function UserPredictionForm({
         label="Hide prediction details until this prediction has matured."
         description={
           <>
-            Your profile can still show that you have an active call, but the predicted price and return stay hidden until it is scored.{" "}
-            <RulesLink section="privacy" compact>Privacy rules</RulesLink>
+            Your profile can still show that you have an active prediction, but the predicted price and return stay hidden until it is scored.{" "}
+            <RulesLink
+              section="privacy"
+              compact
+              iconOnly
+              className="prediction-inline-rule-icon"
+              tooltipLabel="Learn more about prediction privacy."
+            >
+              Privacy rules
+            </RulesLink>
           </>
         }
         color="green"

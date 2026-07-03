@@ -99,7 +99,7 @@ export default function MyPredictions() {
             Your Predictions
           </Title>
           <Text className="predictions-header-lead">
-            Track your active and settled calls across every horizon.
+            Track your active and settled predictions across every horizon.
           </Text>
           <RulesLink section="predictions">Prediction rules</RulesLink>
           {showSummary ? (
@@ -210,7 +210,7 @@ function PredictionsBody({
           <SectionPanel
             className="my-predictions-panel"
             title="Active Predictions"
-            subtitle="Open calls awaiting maturity. Editable until 7 days before they settle."
+            subtitle="Open predictions awaiting maturity. Editable until 7 days before they settle."
             action={
               <Group gap="xs">
                 <RulesLink section="predictions" compact>Editing</RulesLink>
@@ -233,7 +233,7 @@ function PredictionsBody({
           <SectionPanel
             className="my-predictions-panel"
             title="Settled Predictions"
-            subtitle="Matured calls scored against the realized close."
+            subtitle="Matured predictions scored against the realized close."
             action={
               <Group gap="xs">
                 <RulesLink section="verdicts" compact>Verdicts</RulesLink>

@@ -151,7 +151,7 @@ export default function Rules() {
                 <Text>
                   Public profiles show active predictions. When making or editing a prediction,
                   you can hide the predicted price until maturity. Other users may still
-                  see that you have an active call for that ticker and horizon, but the predicted price will be hidden.
+                  see that you have an active prediction for that ticker and horizon, but the predicted price will be hidden.
                 </Text>
                 <Text>
                   Private users still earn XP and unlock badges, but they do not
@@ -258,10 +258,19 @@ export default function Rules() {
 //     the very bottom the trailing sections can never reach that line, so we pin
 //     the final section instead.
 function useActiveSection() {
-  const [activeId, setActiveId] = useState(sections[0]?.id ?? "");
+  const [activeId, setActiveId] = useState(() => sectionIdFromCurrentHash() ?? sections[0]?.id ?? "");
   const lockUntilRef = useRef(0);
 
   useEffect(() => {
+    const applyHashSelection = () => {
+      const hashSection = sectionIdFromCurrentHash();
+      if (!hashSection) {
+        return;
+      }
+      lockUntilRef.current = Date.now() + 900;
+      setActiveId(hashSection);
+    };
+
     const computeActive = () => {
       if (Date.now() < lockUntilRef.current) {
         return;
@@ -269,7 +278,7 @@ function useActiveSection() {
 
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
       if (maxScroll > 0 && window.scrollY >= maxScroll - 2) {
-        setActiveId(sections[sections.length - 1]?.id ?? "");
+        setActiveId(sectionIdFromCurrentHash() ?? sections[sections.length - 1]?.id ?? "");
         return;
       }
 
@@ -289,10 +298,13 @@ function useActiveSection() {
       setActiveId(current);
     };
 
+    applyHashSelection();
     computeActive();
+    window.addEventListener("hashchange", applyHashSelection);
     window.addEventListener("scroll", computeActive, { passive: true });
     window.addEventListener("resize", computeActive);
     return () => {
+      window.removeEventListener("hashchange", applyHashSelection);
       window.removeEventListener("scroll", computeActive);
       window.removeEventListener("resize", computeActive);
     };
@@ -304,6 +316,45 @@ function useActiveSection() {
   }, []);
 
   return { activeId, selectSection };
+}
+
+function sectionIdFromCurrentHash() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const hash = window.location.hash.replace(/^#/, "");
+  if (!hash) {
+    return null;
+  }
+
+  let id = hash;
+  try {
+    id = decodeURIComponent(hash);
+  } catch {
+    id = hash;
+  }
+
+  const directSection = sections.find((section) => section.id === id);
+  if (directSection) {
+    return directSection.id;
+  }
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const target = document.getElementById(id);
+  if (!target) {
+    return null;
+  }
+
+  return (
+    sections.find((section) => {
+      const sectionElement = document.getElementById(section.id);
+      return sectionElement?.contains(target);
+    })?.id ?? null
+  );
 }
 
 function RulesSection({

@@ -104,10 +104,10 @@ function summarySentence(summary: EngagementSummary) {
     parts.push(`${summary.levelUpCount} level-up${summary.levelUpCount === 1 ? "" : "s"}`);
   }
   if (summary.maturityCount > 0) {
-    parts.push(`${summary.maturityCount} call${summary.maturityCount === 1 ? "" : "s"} nearing maturity`);
+    parts.push(`${summary.maturityCount} prediction${summary.maturityCount === 1 ? "" : "s"} nearing maturity`);
   }
   if (summary.lockCount > 0) {
-    parts.push(`${summary.lockCount} locked call${summary.lockCount === 1 ? "" : "s"}`);
+    parts.push(`${summary.lockCount} locked prediction${summary.lockCount === 1 ? "" : "s"}`);
   }
 
   return parts.length > 0 ? parts.join(", ") : `${summary.totalCount} new update${summary.totalCount === 1 ? "" : "s"}`;

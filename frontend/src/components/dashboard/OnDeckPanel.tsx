@@ -32,7 +32,7 @@ export default function OnDeckPanel({ tickerLogos }: Props) {
     <SectionPanel
       className="on-deck-panel"
       title="On Deck"
-      subtitle={items.length > 0 ? onDeckSubtitle(items) : "No active calls waiting to mature."}
+      subtitle={items.length > 0 ? onDeckSubtitle(items) : "No active predictions waiting to mature."}
       action={
         <Link to="/me/predictions" className="dashboard-inline-cta">
           My predictions
@@ -56,7 +56,7 @@ export default function OnDeckPanel({ tickerLogos }: Props) {
             <FiTarget aria-hidden />
           </span>
           <div>
-            <Text fw={900}>No active calls on deck</Text>
+            <Text fw={900}>No active predictions on deck</Text>
             <Text size="sm" c="dimmed">
               Make a prediction to start building a return loop.
             </Text>
@@ -96,7 +96,7 @@ function OnDeckCard({ item, logoUrl }: { item: OnDeckItem; logoUrl?: string | nu
       </div>
       <Group justify="space-between" gap="xs" wrap="nowrap">
         <Text className="on-deck-meta">
-          {formatHorizon(prediction.prediction_horizon)} call
+          {formatHorizon(prediction.prediction_horizon)} prediction
         </Text>
         <Text className="on-deck-meta">
           {item.elapsedDays} days in, {Math.max(0, item.daysUntil)} to go
@@ -110,12 +110,12 @@ function onDeckSubtitle(items: OnDeckItem[]) {
   const urgent = items.filter((item) => item.status === "due_today" || item.status === "locked").length;
   const soon = items.filter((item) => item.status === "maturing_soon").length;
   if (urgent > 0) {
-    return `${urgent} call${urgent === 1 ? "" : "s"} locked or due today.`;
+    return `${urgent} prediction${urgent === 1 ? "" : "s"} locked or due today.`;
   }
   if (soon > 0) {
-    return `${soon} call${soon === 1 ? "" : "s"} mature within a week.`;
+    return `${soon} prediction${soon === 1 ? "" : "s"} mature within a week.`;
   }
-  return `${items.length} active call${items.length === 1 ? "" : "s"} building toward maturity.`;
+  return `${items.length} active prediction${items.length === 1 ? "" : "s"} building toward maturity.`;
 }
 
 function statusCopy(item: OnDeckItem): { label: string; color: string } {

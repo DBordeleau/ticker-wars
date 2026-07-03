@@ -123,7 +123,7 @@ export default function TickerUniverse() {
             Make a Prediction
           </Title>
           <Text className="predictions-header-lead">
-            Lock in your call on any of the following securities.
+            Make a prediction on any of the following securities.
           </Text>
         </header>
       </AnimatedSection>

@@ -252,7 +252,7 @@ export default function UserProfile() {
         <MagicHoverSurface className="section-magic-surface">
           <section className="section-panel profile-section">
             <Title order={2}>Recently Scored</Title>
-            <Text c="dimmed" size="sm">Settled calls with score verdicts shown once available.</Text>
+            <Text c="dimmed" size="sm">Settled predictions with score verdicts shown once available.</Text>
             {recentPredictions.length === 0 ? (
               <Text c="dimmed" size="sm">No scored predictions yet.</Text>
             ) : (

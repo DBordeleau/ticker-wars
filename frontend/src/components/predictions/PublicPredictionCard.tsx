@@ -61,7 +61,7 @@ export default function PublicPredictionCard({ prediction, tickerLogos = {}, onS
       <div className="public-prediction-stats">
         <PredictionStat label="Reference" value={formatCurrency(prediction.reference_close)} />
         <PredictionStat
-          label={prediction.status === "scored" ? "Predicted" : "Call"}
+          label="Predicted"
           value={
             hasPublicValue ? (
               <span>
