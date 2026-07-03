@@ -381,7 +381,7 @@ function buildChartResult({
   }
 
   if (displayPrice) {
-    const timestamp = Date.parse(displayPrice.asOf);
+    const timestamp = chartTimestamp(displayPrice.asOf);
     const x = displayPrice.source === "close" ? displayPrice.asOf : displayPrice.asOf;
     rows.set(x, {
       x,
@@ -677,6 +677,10 @@ function dateTimestamp(value: string) {
   return Date.parse(`${value}T16:00:00Z`);
 }
 
+function chartTimestamp(value: string) {
+  return isIsoDateOnly(value) ? dateTimestamp(value) : Date.parse(value);
+}
+
 function formatAxisDate(value: string | number) {
   const date = parseChartDate(value);
   if (Number.isNaN(date.getTime())) {
@@ -718,12 +722,20 @@ function parseChartDate(value: string | number) {
     return new Date(value);
   }
 
+  if (isIsoDateOnly(value)) {
+    return new Date(`${value}T16:00:00Z`);
+  }
+
   const numericValue = Number(value);
   if (Number.isFinite(numericValue)) {
     return new Date(numericValue);
   }
 
   return new Date(value);
+}
+
+function isIsoDateOnly(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 function withPreferredDefaults(current: string[], models: string[]) {

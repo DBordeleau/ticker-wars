@@ -130,7 +130,11 @@ export function resolveTickerDisplayPrice(
   close: TickerCloseSnapshot | null,
   now = new Date(),
 ): TickerDisplayPrice | null {
-  if (live?.market_state === "regular" && isRegularMarketTime(now)) {
+  if (
+    live?.market_state === "regular" &&
+    isRegularMarketTime(now) &&
+    isSameEasternMarketDate(live.as_of, now)
+  ) {
     const staleAt = new Date(live.stale_after).getTime();
     const isFresh = Number.isFinite(staleAt) && staleAt >= now.getTime();
     const fallbackClose = live.previous_close ?? close?.close ?? null;
@@ -232,6 +236,28 @@ export function isRegularMarketTime(now = new Date()) {
   }
   const totalMinutes = hour * 60 + minute;
   return totalMinutes >= 9 * 60 + 30 && totalMinutes < 16 * 60;
+}
+
+function isSameEasternMarketDate(value: string, now: Date) {
+  const timestamp = new Date(value);
+  if (!Number.isFinite(timestamp.getTime())) {
+    return false;
+  }
+
+  return easternDateKey(timestamp) === easternDateKey(now);
+}
+
+function easternDateKey(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : null;
 }
 
 function normalizeLivePriceSnapshot(row: Record<string, unknown>): LivePriceSnapshot | null {

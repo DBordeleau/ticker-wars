@@ -29,6 +29,7 @@ from pipeline.ingestion.logos import fetch_ticker_logos
 from pipeline.ingestion.market_data import fetch_daily_prices, fetch_incremental_daily_prices
 from pipeline.ingestion.ticker_universe import MVP_TICKERS
 from pipeline.models.chronos_model import generate_chronos_predictions
+from pipeline.models.historical import normalize_model_slugs, seed_predictions_for_target_window
 from pipeline.models.timesfm_model import generate_timesfm_predictions
 from pipeline.models.training import train_and_predict
 from pipeline.models.warren_buffbot import generate_warren_buffbot_predictions
@@ -147,6 +148,43 @@ def build_parser() -> argparse.ArgumentParser:
         "predict-horizons",
         help="Train enabled models and upsert horizon-aware predictions.",
     )
+    seed_predictions = subparsers.add_parser(
+        "seed-model-predictions",
+        help="Generate historical as-of model predictions for a target-date window.",
+    )
+    seed_predictions.add_argument(
+        "--target-start",
+        required=True,
+        help="First target date to seed in YYYY-MM-DD format.",
+    )
+    seed_predictions.add_argument(
+        "--target-end",
+        required=True,
+        help="Last target date to seed in YYYY-MM-DD format.",
+    )
+    seed_predictions.add_argument(
+        "--tickers",
+        default=None,
+        help="Optional comma-separated ticker list. Defaults to the prediction universe.",
+    )
+    seed_predictions.add_argument(
+        "--models",
+        default=None,
+        help=(
+            "Optional comma-separated model slugs/names. Defaults to baseline, "
+            "linear-regression, random-forest, TimesFM if enabled, and Chronos-2 if enabled."
+        ),
+    )
+    seed_predictions.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Log expected writes without upserting predictions.",
+    )
+    seed_predictions.add_argument(
+        "--include-latest",
+        action="store_true",
+        help="Run the normal latest-as-of predict-horizons step after seeding.",
+    )
     subparsers.add_parser("score", help="Score matured predictions.")
     subparsers.add_parser("refresh-dashboard", help="Refresh dashboard tables.")
     subparsers.add_parser("export-snapshot", help="Export dashboard JSON snapshots.")
@@ -223,6 +261,16 @@ def main(argv: list[str] | None = None) -> int:
         if used_deprecated_train_predict:
             return run_train_predict_alias()
         return run_predict_horizons()
+
+    if args.command == "seed-model-predictions":
+        return run_seed_model_predictions(
+            target_start=args.target_start,
+            target_end=args.target_end,
+            tickers=_parse_ticker_arg(args.tickers),
+            model_slugs=normalize_model_slugs(args.models),
+            dry_run=args.dry_run,
+            include_latest=args.include_latest,
+        )
 
     if args.command == "score":
         return run_score()
@@ -590,6 +638,113 @@ def run_predict_horizons() -> int:
             LOGGER.warning("...and %s more skips.", len(training_result.skipped) - 10)
 
     return 0
+
+
+def run_seed_model_predictions(
+    *,
+    target_start: str,
+    target_end: str,
+    tickers: tuple[str, ...] | None = None,
+    model_slugs: tuple[str, ...] | None = None,
+    dry_run: bool = False,
+    include_latest: bool = False,
+) -> int:
+    start_date = parse_date(target_start)
+    end_date = parse_date(target_end)
+    if end_date < start_date:
+        LOGGER.error("target-end must be on or after target-start.")
+        return 1
+
+    settings = load_settings()
+    database = SupabaseDatabase.from_settings(settings)
+    if database is None:
+        LOGGER.info(
+            "Historical prediction seeding skipped because Supabase credentials are not configured."
+        )
+        return 0
+
+    target_tickers = tickers or _daily_prediction_tickers()
+    feature_start, price_start = _seed_fetch_start_dates(start_date, settings)
+    LOGGER.info(
+        "Fetching seed features from %s through %s for %s tickers.",
+        feature_start,
+        target_end,
+        len(target_tickers),
+    )
+    feature_rows = database.fetch_features(
+        start_date=feature_start,
+        end_date=target_end,
+        tickers=target_tickers,
+    )
+    LOGGER.info(
+        "Fetching seed prices from %s through %s for %s tickers.",
+        price_start,
+        target_end,
+        len(target_tickers),
+    )
+    price_rows = database.fetch_prices(
+        start_date=price_start,
+        end_date=target_end,
+        tickers=target_tickers,
+    )
+    if not feature_rows or not price_rows:
+        LOGGER.warning(
+            "Historical prediction seeding skipped because features or prices are missing."
+        )
+        return 0
+
+    result = seed_predictions_for_target_window(
+        feature_rows=feature_rows,
+        price_rows=price_rows,
+        settings=settings,
+        target_start=start_date,
+        target_end=end_date,
+        tickers=target_tickers,
+        model_slugs=model_slugs,
+    )
+    if dry_run:
+        written = 0
+        LOGGER.info(
+            "Historical prediction seeding dry run produced %s prediction rows.",
+            len(result.prediction_rows),
+        )
+    else:
+        written = database.upsert_predictions(result.prediction_rows)
+        LOGGER.info("Historical prediction seeding wrote %s predictions.", written)
+
+    if result.prediction_rows:
+        LOGGER.info(
+            "Seeded target date range: %s -> %s.",
+            min(str(row["target_date"]) for row in result.prediction_rows),
+            max(str(row["target_date"]) for row in result.prediction_rows),
+        )
+        LOGGER.info(
+            "Seeded prediction date range: %s -> %s.",
+            min(str(row["prediction_date"]) for row in result.prediction_rows),
+            max(str(row["prediction_date"]) for row in result.prediction_rows),
+        )
+    if result.skipped:
+        LOGGER.warning("Historical prediction seeding skipped %s rows/pairs.", len(result.skipped))
+        for message in result.skipped[:10]:
+            LOGGER.warning(message)
+        if len(result.skipped) > 10:
+            LOGGER.warning("...and %s more skips.", len(result.skipped) - 10)
+
+    if dry_run:
+        return 0
+    if include_latest:
+        latest_status = run_predict_horizons()
+        if latest_status != 0:
+            return latest_status
+
+    return 0
+
+
+def _seed_fetch_start_dates(start_date, settings) -> tuple[str, str]:
+    feature_start = start_date - timedelta(days=1500)
+    max_context_length = max(settings.timesfm_context_length, settings.chronos_context_length)
+    price_start = start_date - timedelta(days=365 + max(2200, max_context_length * 2))
+    return feature_start.isoformat(), price_start.isoformat()
 
 
 def run_score() -> int:

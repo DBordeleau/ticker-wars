@@ -39,6 +39,35 @@ class CliSmokeTest(unittest.TestCase):
             self.assertEqual(main(["predict-horizons"]), 0)
         run_predict.assert_called_once_with()
 
+    def test_seed_model_predictions_command_forwards_options(self) -> None:
+        with patch("pipeline.cli.run_seed_model_predictions", return_value=0) as run_seed:
+            self.assertEqual(
+                main(
+                    [
+                        "seed-model-predictions",
+                        "--target-start",
+                        "2026-07-01",
+                        "--target-end",
+                        "2026-07-02",
+                        "--tickers",
+                        "aapl, gme",
+                        "--models",
+                        "Baseline,TimesFM",
+                        "--dry-run",
+                        "--include-latest",
+                    ]
+                ),
+                0,
+            )
+        run_seed.assert_called_once_with(
+            target_start="2026-07-01",
+            target_end="2026-07-02",
+            tickers=("AAPL", "GME"),
+            model_slugs=("baseline", "timesfm"),
+            dry_run=True,
+            include_latest=True,
+        )
+
     def test_train_predict_alias_runs_prediction_step(self) -> None:
         with patch("pipeline.cli.run_predict_horizons", return_value=0) as run_predict:
             self.assertEqual(main(["train-predict"]), 0)
