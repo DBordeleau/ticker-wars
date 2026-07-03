@@ -145,7 +145,16 @@ export default function ModelDetail() {
         <SectionPanel
           title="Model Limits"
           subtitle="What this model can and cannot know."
-          action={<RulesLink section="models" compact>Model rules</RulesLink>}
+          action={
+            <RulesLink
+              section="models"
+              compact
+              iconOnly
+              tooltipLabel="Learn more about how the ML models make predictions."
+            >
+              Model rules
+            </RulesLink>
+          }
         >
           <Text size="sm" c="dimmed">
             {modelLimitCopy(info.type)}
