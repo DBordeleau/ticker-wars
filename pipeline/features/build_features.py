@@ -4,6 +4,7 @@ import math
 from datetime import UTC, datetime
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from pipeline.features.indicators import rsi
@@ -84,6 +85,7 @@ def build_feature_rows(
         features[list(MARKET_FEATURE_COLUMNS)] = features[list(MARKET_FEATURE_COLUMNS)].fillna(0.0)
         features = _add_relative_market_features(features)
         features = features.fillna({column: 0.0 for column in _relative_market_columns()})
+        features = features.replace([np.inf, -np.inf], np.nan)
         features = features.dropna(subset=FEATURE_COLUMNS)
 
         for row in features.reset_index().to_dict("records"):

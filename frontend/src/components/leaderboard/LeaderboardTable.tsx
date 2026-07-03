@@ -82,7 +82,7 @@ export default function LeaderboardTable({
     <SectionPanel
       title="Leaderboard"
       className="leaderboard-panel"
-      action={<RulesLink section="leaderboards" compact>Leaderboard rules</RulesLink>}
+      action={<RulesLink section="scoring" compact>Leaderboard rules</RulesLink>}
     >
       <div className="leaderboard-horizon-control">
         <DashboardViewToggle value={view} onChange={onViewChange} label="Leaderboard view" />

@@ -213,7 +213,7 @@ function PredictionsBody({
             subtitle="Open calls awaiting maturity. Editable until 7 days before they settle."
             action={
               <Group gap="xs">
-                <RulesLink section="editing" compact>Editing</RulesLink>
+                <RulesLink section="predictions" compact>Editing</RulesLink>
                 <CountBadge count={active.length} label="open" />
               </Group>
             }
@@ -409,15 +409,15 @@ function SettledPredictionsTable({ rows, tickerLogos, highlightId }: SettledTabl
             className="prediction-table user-predictions-table"
           >
             <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Ticker</Table.Th>
-                  <Table.Th className="prediction-table-center">Horizon</Table.Th>
-                  <Table.Th className="prediction-table-center">Predicted</Table.Th>
-                  <Table.Th className="prediction-table-center">Actual</Table.Th>
-                  <Table.Th className="prediction-table-center">Error</Table.Th>
-                  <Table.Th className="prediction-table-center">Verdict</Table.Th>
-                  <Table.Th className="prediction-table-center">Matured On</Table.Th>
-                </Table.Tr>
+              <Table.Tr>
+                <Table.Th>Ticker</Table.Th>
+                <Table.Th className="prediction-table-center">Horizon</Table.Th>
+                <Table.Th className="prediction-table-center">Predicted</Table.Th>
+                <Table.Th className="prediction-table-center">Actual</Table.Th>
+                <Table.Th className="prediction-table-center">Error</Table.Th>
+                <Table.Th className="prediction-table-center">Verdict</Table.Th>
+                <Table.Th className="prediction-table-center">Matured On</Table.Th>
+              </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {rows.map((row) => (

@@ -61,20 +61,27 @@ class SupabaseDatabase:
 
         return written
 
-    def fetch_prices(self, batch_size: int = 1000) -> list[dict[str, Any]]:
+    def fetch_prices(
+        self,
+        batch_size: int = 1000,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        tickers: tuple[str, ...] | None = None,
+    ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         start = 0
 
         while True:
             end = start + batch_size - 1
-            response = (
-                self._client.table("prices")
-                .select("*")
-                .order("ticker")
-                .order("date")
-                .range(start, end)
-                .execute()
-            )
+            query = self._client.table("prices").select("*").order("ticker").order("date")
+            if start_date is not None:
+                query = query.gte("date", start_date)
+            if end_date is not None:
+                query = query.lte("date", end_date)
+            if tickers is not None:
+                query = query.in_("ticker", list(tickers))
+
+            response = query.range(start, end).execute()
             batch = response.data or []
             rows.extend(batch)
 
@@ -178,20 +185,27 @@ class SupabaseDatabase:
 
         return written
 
-    def fetch_features(self, batch_size: int = 1000) -> list[dict[str, Any]]:
+    def fetch_features(
+        self,
+        batch_size: int = 1000,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        tickers: tuple[str, ...] | None = None,
+    ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         start = 0
 
         while True:
             end = start + batch_size - 1
-            response = (
-                self._client.table("features")
-                .select("*")
-                .order("ticker")
-                .order("date")
-                .range(start, end)
-                .execute()
-            )
+            query = self._client.table("features").select("*").order("ticker").order("date")
+            if start_date is not None:
+                query = query.gte("date", start_date)
+            if end_date is not None:
+                query = query.lte("date", end_date)
+            if tickers is not None:
+                query = query.in_("ticker", list(tickers))
+
+            response = query.range(start, end).execute()
             batch = response.data or []
             rows.extend(batch)
 
