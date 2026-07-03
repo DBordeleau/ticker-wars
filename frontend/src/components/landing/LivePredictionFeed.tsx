@@ -3,10 +3,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { MetricHorizon } from "../../api/dashboardData";
+import type { ScoreVerdict } from "../../api/gamification";
 import { avatarOptionsFromSeed, buildDiceBearAvatarUrl } from "../../auth/avatar";
+import type { AvatarOptions } from "../../auth/types";
 import { formatSignedPercent } from "../../utils/format";
 import { modelTypeColor, type ModelType } from "../../utils/models";
-import EntityHoverCard from "../cards/EntityHoverCard";
+import EntityHoverCard, { type FakeUserHoverProfile } from "../cards/EntityHoverCard";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
 import TickerLogoMark from "../tickers/TickerLogoMark";
 import ModelAvatar from "./ModelAvatar";
@@ -20,6 +22,7 @@ const MotionPresence = AnimatePresence as unknown as ComponentType<{
 
 type Props = {
   tickerLogos: Record<string, string | null>;
+  onUserProfileClick?: (username: string) => void;
 };
 
 type FeedItem = {
@@ -29,6 +32,7 @@ type FeedItem = {
   modelSlug?: string;
   modelType?: ModelType;
   avatarUrl?: string;
+  fakeUser?: FakeUser;
   ticker: string;
   horizon: MetricHorizon;
   predictedReturn: number;
@@ -54,10 +58,26 @@ const USERNAMES = [
   "BlackEspio", "crashcoot", "quadrillionaire", "BedBathAndBankrupt", "thequantqt", "Darktruth", "jaromirj"
 ];
 
-type FakeUser = { name: string; avatarUrl: string };
+type FakeUser = {
+  name: string;
+  avatarUrl: string;
+  hoverProfile: FakeUserHoverProfile;
+};
 const USER_POOL: FakeUser[] = USERNAMES.map((name, index) => {
   const seed = `tw-${name}-${index}`;
-  return { name, avatarUrl: buildDiceBearAvatarUrl(seed, avatarOptionsFromSeed(seed)) };
+  const avatarOptions = avatarOptionsFromSeed(seed) as AvatarOptions;
+  return {
+    name,
+    avatarUrl: buildDiceBearAvatarUrl(seed, avatarOptions),
+    hoverProfile: {
+      avatarSeed: seed,
+      avatarOptions,
+      level: (index % 18) + 1,
+      activePredictionCount: 1 + (index % 7),
+      settledPredictionCount: 6 + ((index * 3) % 42),
+      verdictCounts: fakeVerdictCounts(index),
+    },
+  };
 });
 
 // Fisher-Yates shuffle so the no-repeat order differs between visits.
@@ -100,7 +120,7 @@ function makeItem(previousKind?: FeedItem["kind"]): FeedItem {
   };
   if (isUser) {
     const user = nextUser();
-    return { ...base, name: user.name, avatarUrl: user.avatarUrl };
+    return { ...base, name: user.name, avatarUrl: user.avatarUrl, fakeUser: user };
   }
   const model = pick(MODEL_POOL);
   return { ...base, name: model.name, modelSlug: model.slug, modelType: model.type };
@@ -118,7 +138,7 @@ function makeInitialItems(count: number): FeedItem[] {
   return items;
 }
 
-export default function LivePredictionFeed({ tickerLogos }: Props) {
+export default function LivePredictionFeed({ tickerLogos, onUserProfileClick }: Props) {
   const [items, setItems] = useState<FeedItem[]>(() => makeInitialItems(VISIBLE));
   const pausedRef = useRef(false);
 
@@ -180,6 +200,15 @@ export default function LivePredictionFeed({ tickerLogos }: Props) {
                     <EntityHoverCard kind="model" slug={item.modelSlug} name={item.name}>
                       {actor}
                     </EntityHoverCard>
+                  ) : item.kind === "user" && item.fakeUser ? (
+                    <EntityHoverCard
+                      kind="user"
+                      username={item.name}
+                      fakeUser={item.fakeUser.hoverProfile}
+                      onProfileClick={onUserProfileClick}
+                    >
+                      {actor}
+                    </EntityHoverCard>
                   ) : (
                     actor
                   )}
@@ -205,4 +234,20 @@ export default function LivePredictionFeed({ tickerLogos }: Props) {
       </section>
     </MagicHoverSurface>
   );
+}
+
+function fakeVerdictCounts(index: number): Partial<Record<ScoreVerdict, number>> {
+  const called = index % 4 === 0 ? 1 : 0;
+  const close = 1 + (index % 3);
+  const zone = index % 5;
+  const miss = index % 2 === 0 ? 1 : 2;
+  const wayOff = index % 6 === 0 ? 1 : 0;
+  const counts: Partial<Record<ScoreVerdict, number>> = {
+    close_call: close,
+    in_the_zone: zone,
+    miss,
+  };
+  if (called > 0) counts.called_it = called;
+  if (wayOff > 0) counts.way_off = wayOff;
+  return counts;
 }

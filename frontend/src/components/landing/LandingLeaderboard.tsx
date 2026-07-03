@@ -13,6 +13,7 @@ type Props = {
   modelRows: LeaderboardRow[];
   userRows: UserLeaderboardRow[];
   loading: boolean;
+  onUserProfileClick?: (username: string) => void;
 };
 
 type CombinedRow = {
@@ -33,7 +34,7 @@ function directionalValue(row: { directional: number | null }) {
   return row.directional ?? -1;
 }
 
-export default function LandingLeaderboard({ modelRows, userRows, loading }: Props) {
+export default function LandingLeaderboard({ modelRows, userRows, loading, onUserProfileClick }: Props) {
   const combined = useMemo<CombinedRow[]>(() => {
     const models: CombinedRow[] = modelRows
       .filter((row) => row.window === "all" && row.prediction_horizon === "all")
@@ -111,17 +112,23 @@ export default function LandingLeaderboard({ modelRows, userRows, loading }: Pro
                     </div>
                   </EntityHoverCard>
                 ) : (
-                  <div className="landing-leaderboard-name">
-                    <AvatarImage
-                      profile={{
-                        display_username: row.username ?? row.name,
-                        avatar_seed: row.avatarSeed ?? row.name,
-                        avatar_options: row.avatarOptions as AvatarOptions,
-                      }}
-                      size={34}
-                    />
-                    <span className="landing-competitor-name">{row.name}</span>
-                  </div>
+                  <EntityHoverCard
+                    kind="user"
+                    username={row.username ?? row.name}
+                    onProfileClick={onUserProfileClick}
+                  >
+                    <div className="landing-leaderboard-name">
+                      <AvatarImage
+                        profile={{
+                          display_username: row.username ?? row.name,
+                          avatar_seed: row.avatarSeed ?? row.name,
+                          avatar_options: row.avatarOptions as AvatarOptions,
+                        }}
+                        size={34}
+                      />
+                      <span className="landing-competitor-name">{row.name}</span>
+                    </div>
+                  </EntityHoverCard>
                 )}
                 <div className="landing-leaderboard-acc">
                   <Progress.Root size="lg" className="landing-acc-bar">

@@ -59,7 +59,7 @@ export default function ChallengePromptPanel() {
   return (
     <SectionPanel
       title="Daily Challenges"
-      subtitle="Small prompts that make the next prediction session feel purposeful."
+      subtitle="Challenges refresh ~7:30 PM ET."
       className="competition-panel"
     >
       {loading ? (

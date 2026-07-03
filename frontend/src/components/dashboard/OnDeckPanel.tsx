@@ -34,16 +34,10 @@ export default function OnDeckPanel({ tickerLogos }: Props) {
       title="On Deck"
       subtitle={items.length > 0 ? onDeckSubtitle(items) : "No active calls waiting to mature."}
       action={
-        <Button
-          component={Link}
-          to="/me/predictions"
-          size="xs"
-          variant="subtle"
-          color="green"
-          rightSection={<FiArrowRight />}
-        >
+        <Link to="/me/predictions" className="dashboard-inline-cta">
           My predictions
-        </Button>
+          <FiArrowRight aria-hidden />
+        </Link>
       }
     >
       {visibleItems.length > 0 ? (

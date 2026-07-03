@@ -16,6 +16,7 @@ import EntityHoverCard from "../cards/EntityHoverCard";
 import LeaderboardMovementBadge from "../competition/LeaderboardMovementBadge";
 import type { DashboardView } from "../dashboard/DashboardViewToggle";
 import DashboardViewToggle from "../dashboard/DashboardViewToggle";
+import RulesLink from "../help/RulesLink";
 import SectionPanel from "../layout/SectionPanel";
 import AvatarImage from "../users/AvatarImage";
 import HorizonSelector from "./HorizonSelector";
@@ -81,6 +82,7 @@ export default function LeaderboardTable({
     <SectionPanel
       title="Leaderboard"
       className="leaderboard-panel"
+      action={<RulesLink section="leaderboards" compact>Leaderboard rules</RulesLink>}
     >
       <div className="leaderboard-horizon-control">
         <DashboardViewToggle value={view} onChange={onViewChange} label="Leaderboard view" />
@@ -136,6 +138,7 @@ export default function LeaderboardTable({
             <Table.Tbody>
               {visibleRows.map((row, index) => {
                 const isModelRow = "model_slug" in row;
+                const displayRank = index + 1;
                 return (
                   <motion.tr
                     key={`${row.window}-${row.prediction_horizon}-${isModelRow ? row.model_slug : row.user_id}`}
@@ -147,7 +150,7 @@ export default function LeaderboardTable({
                   >
                     <Table.Td className="leaderboard-table-center">
                       <Group gap="xs" justify="center" wrap="nowrap">
-                        <Text fw={800}>{row.rank ? `#${row.rank}` : "Pending"}</Text>
+                        <Text fw={800}>{row.rank ? `#${displayRank}` : "Pending"}</Text>
                         {!isModelRow ? (
                           <LeaderboardMovementBadge movement={movementByUserId.get((row as UserLeaderboardRow).user_id)} />
                         ) : null}
