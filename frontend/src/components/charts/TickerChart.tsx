@@ -12,7 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import type { LatestPrediction, MetricHorizon, TickerHistoryRow } from "../../api/dashboardData";
-import { resolveTickerDisplayPrice } from "../../api/livePrices";
+import { resolveTickerDisplayPrice, type LivePriceSnapshot } from "../../api/livePrices";
 import { useLiveTickerPrice } from "../../hooks/useLiveTickerPrice";
 import { useTickerCloseSnapshot } from "../../hooks/useTickerCloseSnapshot";
 import { useTickerPriceSeries } from "../../hooks/useTickerPriceSeries";
@@ -146,6 +146,7 @@ export default function TickerChart({
       buildChartResult({
         daily: priceSeries.daily,
         displayPrice,
+        liveSnapshot: livePrice.data,
         predictions: chartPredictions,
         selectedHorizon,
         fallbackHistory: history.filter((row) => row.ticker === normalizedTicker),
@@ -334,12 +335,14 @@ export default function TickerChart({
 function buildChartResult({
   daily,
   displayPrice,
+  liveSnapshot,
   predictions,
   selectedHorizon,
   fallbackHistory,
 }: {
   daily: { date: string; close: number }[];
   displayPrice: ReturnType<typeof resolveTickerDisplayPrice>;
+  liveSnapshot: LivePriceSnapshot | null;
   predictions: LatestPrediction[];
   selectedHorizon: PredictionHorizon;
   fallbackHistory: TickerHistoryRow[];
@@ -363,6 +366,19 @@ function buildChartResult({
       actual: point.close,
     });
   });
+
+  const previousClosePoint = previousClosePointFromLive(liveSnapshot);
+  if (previousClosePoint) {
+    const timestamp = dateTimestamp(previousClosePoint.date);
+    if (timestamp >= lookbackStart && !rows.has(previousClosePoint.date)) {
+      rows.set(previousClosePoint.date, {
+        x: previousClosePoint.date,
+        timestamp,
+        kind: "close",
+        actual: previousClosePoint.close,
+      });
+    }
+  }
 
   if (displayPrice) {
     const timestamp = Date.parse(displayPrice.asOf);
@@ -606,6 +622,49 @@ function latestActualTimestamp(
     displayPrice ? Date.parse(displayPrice.asOf) : NaN,
   ].filter(Number.isFinite);
   return values.length > 0 ? Math.max(...values) : Date.now();
+}
+
+function previousClosePointFromLive(live: LivePriceSnapshot | null): { date: string; close: number } | null {
+  if (!live || live.previous_close == null || !Number.isFinite(live.previous_close)) {
+    return null;
+  }
+
+  const currentMarketDate = marketDateFromTimestamp(live.as_of);
+  if (!currentMarketDate) {
+    return null;
+  }
+
+  return {
+    date: previousWeekdayIsoDate(currentMarketDate),
+    close: live.previous_close,
+  };
+}
+
+function marketDateFromTimestamp(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : null;
+}
+
+function previousWeekdayIsoDate(value: string) {
+  const date = new Date(`${value}T12:00:00Z`);
+  do {
+    date.setUTCDate(date.getUTCDate() - 1);
+  } while (date.getUTCDay() === 0 || date.getUTCDay() === 6);
+
+  return date.toISOString().slice(0, 10);
 }
 
 function latestActualRow(rows: Map<string, ChartRow>) {
