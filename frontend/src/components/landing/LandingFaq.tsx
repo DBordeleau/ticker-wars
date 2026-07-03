@@ -1,5 +1,6 @@
 import { Accordion, Text } from "@mantine/core";
 import type { RunMetadata } from "../../api/dashboardData";
+import RulesLink from "../help/RulesLink";
 import DashboardFooter from "../layout/DashboardFooter";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
 
@@ -15,7 +16,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How are predictions scored?",
-    a: "Once a prediction's target date arrives and the real closing price is known, we score it against the actual close using error and directional-accuracy metrics.",
+    a: "Once a prediction's target date arrives and the real closing price is known, we score it against the official close using percent error, horizon, and direction.",
   },
   {
     q: "Can I really compete against the models?",
@@ -53,6 +54,9 @@ export default function LandingFaq({ metadata, loading }: Props) {
           ))}
         </Accordion>
       </MagicHoverSurface>
+      <div className="landing-rules-link-row">
+        <RulesLink section="quick-start">Read the full rules</RulesLink>
+      </div>
       <DashboardFooter metadata={metadata} loading={loading} />
     </div>
   );

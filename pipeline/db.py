@@ -462,6 +462,10 @@ class SupabaseDatabase:
             "predicted_direction",
             "actual_direction",
             "direction_correct",
+            "score_verdict",
+            "score_verdict_rank",
+            "score_verdict_color",
+            "xp_awarded",
             "scored_at",
         }
         written = 0
@@ -477,6 +481,50 @@ class SupabaseDatabase:
             written += len(cleaned_batch)
 
         return written
+
+    def grant_scored_prediction_rewards(self, prediction_ids: list[str]) -> int:
+        if not prediction_ids:
+            return 0
+
+        granted = 0
+        for prediction_id in prediction_ids:
+            response = self._client.rpc(
+                "grant_scored_prediction_reward",
+                {"p_prediction_id": prediction_id},
+            ).execute()
+            if response.data:
+                granted += 1
+
+        return granted
+
+    def refresh_public_user_profiles(self) -> int:
+        response = self._client.rpc("refresh_public_user_profiles", {}).execute()
+        return int(response.data or 0)
+
+    def refresh_competitive_depth(self) -> dict[str, Any]:
+        response = self._client.rpc("refresh_competitive_depth", {}).execute()
+        data = response.data or {}
+        return data if isinstance(data, dict) else {}
+
+    def snapshot_user_leaderboard_ranks(self) -> int:
+        response = self._client.rpc("snapshot_user_leaderboard_ranks", {}).execute()
+        return int(response.data or 0)
+
+    def refresh_user_leaderboard_movement(self) -> int:
+        response = self._client.rpc("refresh_user_leaderboard_movement", {}).execute()
+        return int(response.data or 0)
+
+    def evaluate_public_competition_badges(self) -> int:
+        response = self._client.rpc("evaluate_public_competition_badges", {}).execute()
+        return int(response.data or 0)
+
+    def refresh_nearby_rivals(self) -> int:
+        response = self._client.rpc("refresh_nearby_rivals", {}).execute()
+        return int(response.data or 0)
+
+    def refresh_user_ticker_specialties(self) -> int:
+        response = self._client.rpc("refresh_user_ticker_specialties", {}).execute()
+        return int(response.data or 0)
 
     def fetch_user_prediction_scores(
         self,

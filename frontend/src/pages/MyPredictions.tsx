@@ -1,15 +1,18 @@
 import { Alert, Badge, Button, Card, Group, Skeleton, Table, Text, Title } from "@mantine/core";
 import { FiAlertTriangle, FiLogIn } from "react-icons/fi";
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import AnimatedSection from "../components/layout/AnimatedSection";
 import BackToDashboardButton from "../components/layout/BackToDashboardButton";
+import RulesLink from "../components/help/RulesLink";
 import MagicHoverSurface from "../components/layout/MagicHoverSurface";
 import SectionPanel from "../components/layout/SectionPanel";
 import EntityHoverCard from "../components/cards/EntityHoverCard";
 import TickerLogoMark from "../components/tickers/TickerLogoMark";
 import UserPredictionButton from "../components/predictions/UserPredictionButton";
+import ScoreBreakdownDrawer from "../components/predictions/ScoreBreakdownDrawer";
+import ScoreVerdictBadge from "../components/predictions/ScoreVerdictBadge";
 import SignInModal from "../components/users/SignInModal";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { useUserPredictions } from "../hooks/useUserPredictions";
@@ -17,6 +20,7 @@ import {
   formatCurrency,
   formatDate,
   formatHorizon,
+  formatPercent,
   formatSignedPercent,
 } from "../utils/format";
 import {
@@ -28,8 +32,10 @@ import {
 export default function MyPredictions() {
   const { user } = useAuth();
   const [signInOpen, setSignInOpen] = useState(false);
+  const [searchParams] = useSearchParams();
   const predictions = useUserPredictions();
   const dashboard = useDashboardData();
+  const highlightId = searchParams.get("highlight");
 
   const tickerLogos = useMemo(
     () =>
@@ -66,6 +72,21 @@ export default function MyPredictions() {
   const loading = predictions.loading || dashboard.loading;
   const showSummary = Boolean(user) && !loading && !predictions.error && rows.length > 0;
 
+  useEffect(() => {
+    if (loading || !highlightId) {
+      return;
+    }
+
+    const scrollId = window.setTimeout(() => {
+      document.querySelector<HTMLElement>(`[data-prediction-id="${highlightId}"]`)?.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+      });
+    }, 120);
+
+    return () => window.clearTimeout(scrollId);
+  }, [highlightId, loading, rows.length]);
+
   return (
     <main className="dashboard-shell detail-page">
       <AnimatedSection delay={0}>
@@ -80,6 +101,7 @@ export default function MyPredictions() {
           <Text className="predictions-header-lead">
             Track your active and settled calls across every horizon.
           </Text>
+          <RulesLink section="predictions">Prediction rules</RulesLink>
           {showSummary ? (
             <div className="predictions-summary">
               <SummaryStat value={String(activeRows.length)} label="Active" />
@@ -107,6 +129,7 @@ export default function MyPredictions() {
           latestPredictions={dashboard.latestPredictions}
           tickerLogos={tickerLogos}
           onChanged={predictions.refetch}
+          highlightId={highlightId}
         />
       ) : null}
       <SignInModal opened={signInOpen} onClose={() => setSignInOpen(false)} />
@@ -131,6 +154,7 @@ type BodyProps = {
   latestPredictions: ReturnType<typeof useDashboardData>["latestPredictions"];
   tickerLogos: Record<string, string | null>;
   onChanged: () => Promise<void>;
+  highlightId: string | null;
 };
 
 function PredictionsBody({
@@ -141,6 +165,7 @@ function PredictionsBody({
   latestPredictions,
   tickerLogos,
   onChanged,
+  highlightId,
 }: BodyProps) {
   if (loading) {
     return (
@@ -186,13 +211,19 @@ function PredictionsBody({
             className="my-predictions-panel"
             title="Active Predictions"
             subtitle="Open calls awaiting maturity. Editable until 7 days before they settle."
-            action={<CountBadge count={active.length} label="open" />}
+            action={
+              <Group gap="xs">
+                <RulesLink section="editing" compact>Editing</RulesLink>
+                <CountBadge count={active.length} label="open" />
+              </Group>
+            }
           >
             <ActivePredictionsTable
               rows={active}
               latestPredictions={latestPredictions}
               tickerLogos={tickerLogos}
               onChanged={onChanged}
+              highlightId={highlightId}
             />
           </SectionPanel>
         </AnimatedSection>
@@ -203,9 +234,14 @@ function PredictionsBody({
             className="my-predictions-panel"
             title="Settled Predictions"
             subtitle="Matured calls scored against the realized close."
-            action={<CountBadge count={settled.length} label="settled" />}
+            action={
+              <Group gap="xs">
+                <RulesLink section="verdicts" compact>Verdicts</RulesLink>
+                <CountBadge count={settled.length} label="settled" />
+              </Group>
+            }
           >
-            <SettledPredictionsTable rows={settled} tickerLogos={tickerLogos} />
+            <SettledPredictionsTable rows={settled} tickerLogos={tickerLogos} highlightId={highlightId} />
           </SectionPanel>
         </AnimatedSection>
       ) : null}
@@ -226,9 +262,10 @@ type ActiveTableProps = {
   latestPredictions: BodyProps["latestPredictions"];
   tickerLogos: Record<string, string | null>;
   onChanged: () => Promise<void>;
+  highlightId: string | null;
 };
 
-function ActivePredictionsTable({ rows, latestPredictions, tickerLogos, onChanged }: ActiveTableProps) {
+function ActivePredictionsTable({ rows, latestPredictions, tickerLogos, onChanged, highlightId }: ActiveTableProps) {
   return (
     <>
       <div className="desktop-table">
@@ -251,7 +288,11 @@ function ActivePredictionsTable({ rows, latestPredictions, tickerLogos, onChange
             </Table.Thead>
             <Table.Tbody>
               {rows.map((row) => (
-                <Table.Tr key={row.prediction_id}>
+                <Table.Tr
+                  key={row.prediction_id}
+                  className={row.prediction_id === highlightId ? "prediction-row-highlighted" : undefined}
+                  data-prediction-id={row.prediction_id}
+                >
                   <Table.Td className="prediction-row-action-cell">
                     {isPredictionEditable(row) ? (
                       <UserPredictionButton
@@ -275,9 +316,7 @@ function ActivePredictionsTable({ rows, latestPredictions, tickerLogos, onChange
                       {formatHorizon(row.prediction_horizon)}
                     </Badge>
                   </Table.Td>
-                  <Table.Td className="prediction-table-center">
-                    {formatCurrency(row.reference_close)}
-                  </Table.Td>
+                  <Table.Td className="prediction-table-center">{formatCurrency(row.reference_close)}</Table.Td>
                   <Table.Td className="prediction-table-center">
                     <PriceReturn close={row.predicted_close} ret={row.predicted_return} />
                   </Table.Td>
@@ -294,7 +333,11 @@ function ActivePredictionsTable({ rows, latestPredictions, tickerLogos, onChange
       <div className="mobile-cards">
         <div className="prediction-card-list">
           {rows.map((row) => (
-            <article className="prediction-card" key={row.prediction_id}>
+            <article
+              className={`prediction-card${row.prediction_id === highlightId ? " prediction-row-highlighted" : ""}`}
+              data-prediction-id={row.prediction_id}
+              key={row.prediction_id}
+            >
               <Group justify="space-between" align="flex-start" wrap="nowrap">
                 <TickerCell ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} card />
                 <Badge variant="light" color="green">
@@ -345,9 +388,17 @@ function ActivePredictionsTable({ rows, latestPredictions, tickerLogos, onChange
 type SettledTableProps = {
   rows: UserPrediction[];
   tickerLogos: Record<string, string | null>;
+  highlightId: string | null;
 };
 
-function SettledPredictionsTable({ rows, tickerLogos }: SettledTableProps) {
+function SettledPredictionsTable({ rows, tickerLogos, highlightId }: SettledTableProps) {
+  const [selectedPrediction, setSelectedPrediction] = useState<UserPrediction | null>(null);
+  const openPrediction = (prediction: UserPrediction) => {
+    if (prediction.score) {
+      setSelectedPrediction(prediction);
+    }
+  };
+
   return (
     <>
       <div className="desktop-table">
@@ -358,19 +409,32 @@ function SettledPredictionsTable({ rows, tickerLogos }: SettledTableProps) {
             className="prediction-table user-predictions-table"
           >
             <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Ticker</Table.Th>
-                <Table.Th className="prediction-table-center">Horizon</Table.Th>
-                <Table.Th className="prediction-table-center">Predicted</Table.Th>
-                <Table.Th className="prediction-table-center">Actual</Table.Th>
-                <Table.Th className="prediction-table-center">Error</Table.Th>
-                <Table.Th className="prediction-table-center">Direction</Table.Th>
-                <Table.Th className="prediction-table-center">Matured On</Table.Th>
-              </Table.Tr>
+                <Table.Tr>
+                  <Table.Th>Ticker</Table.Th>
+                  <Table.Th className="prediction-table-center">Horizon</Table.Th>
+                  <Table.Th className="prediction-table-center">Predicted</Table.Th>
+                  <Table.Th className="prediction-table-center">Actual</Table.Th>
+                  <Table.Th className="prediction-table-center">Error</Table.Th>
+                  <Table.Th className="prediction-table-center">Verdict</Table.Th>
+                  <Table.Th className="prediction-table-center">Matured On</Table.Th>
+                </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {rows.map((row) => (
-                <Table.Tr key={row.prediction_id}>
+                <Table.Tr
+                  key={row.prediction_id}
+                  className={`settled-prediction-row${row.prediction_id === highlightId ? " prediction-row-highlighted" : ""}`}
+                  data-prediction-id={row.prediction_id}
+                  tabIndex={row.score ? 0 : undefined}
+                  aria-label={row.score ? `Open score breakdown for ${row.ticker}` : undefined}
+                  onClick={() => openPrediction(row)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openPrediction(row);
+                    }
+                  }}
+                >
                   <Table.Td>
                     <TickerCell ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} />
                   </Table.Td>
@@ -386,10 +450,10 @@ function SettledPredictionsTable({ rows, tickerLogos }: SettledTableProps) {
                     <ActualValue score={row.score} />
                   </Table.Td>
                   <Table.Td className="prediction-table-center">
-                    {row.score ? formatCurrency(row.score.absolute_error) : "—"}
+                    {row.score ? formatPercent(row.score.absolute_pct_error, 2) : "—"}
                   </Table.Td>
                   <Table.Td className="prediction-table-center">
-                    <DirectionBadge score={row.score} />
+                    <ScoreVerdictBadge score={row.score} onClick={() => setSelectedPrediction(row)} />
                   </Table.Td>
                   <Table.Td className="prediction-table-center">{formatDate(row.target_date)}</Table.Td>
                 </Table.Tr>
@@ -401,17 +465,42 @@ function SettledPredictionsTable({ rows, tickerLogos }: SettledTableProps) {
       <div className="mobile-cards">
         <div className="prediction-card-list">
           {rows.map((row) => (
-            <article className="prediction-card" key={row.prediction_id}>
+            <article
+              className={`prediction-card settled-prediction-card${row.prediction_id === highlightId ? " prediction-row-highlighted" : ""}`}
+              data-prediction-id={row.prediction_id}
+              key={row.prediction_id}
+              role={row.score ? "button" : undefined}
+              tabIndex={row.score ? 0 : undefined}
+              aria-label={row.score ? `Open score breakdown for ${row.ticker}` : undefined}
+              onClick={() => openPrediction(row)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openPrediction(row);
+                }
+              }}
+            >
               <Group justify="space-between" align="flex-start" wrap="nowrap">
                 <TickerCell ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} card />
                 <Group gap={6} wrap="nowrap">
                   <Badge variant="light" color="green">
                     {formatHorizon(row.prediction_horizon)}
                   </Badge>
-                  <DirectionBadge score={row.score} />
                 </Group>
               </Group>
               <Group mt="sm" justify="space-between">
+                <Text size="xs" c="dimmed">
+                  Verdict
+                </Text>
+                <ScoreVerdictBadge score={row.score} onClick={() => setSelectedPrediction(row)} />
+              </Group>
+              <Group mt="sm" justify="space-between">
+                <Text size="xs" c="dimmed">
+                  Reference
+                </Text>
+                <Text fw={800}>{formatCurrency(row.reference_close)}</Text>
+              </Group>
+              <Group mt={6} justify="space-between">
                 <Text size="xs" c="dimmed">
                   Predicted
                 </Text>
@@ -427,7 +516,7 @@ function SettledPredictionsTable({ rows, tickerLogos }: SettledTableProps) {
                 <Text size="xs" c="dimmed">
                   Error
                 </Text>
-                <Text size="sm">{row.score ? formatCurrency(row.score.absolute_error) : "—"}</Text>
+                <Text size="sm">{row.score ? formatPercent(row.score.absolute_pct_error, 2) : "—"}</Text>
               </Group>
               <Group mt={6} justify="space-between">
                 <Text size="xs" c="dimmed">
@@ -439,6 +528,11 @@ function SettledPredictionsTable({ rows, tickerLogos }: SettledTableProps) {
           ))}
         </div>
       </div>
+      <ScoreBreakdownDrawer
+        prediction={selectedPrediction}
+        opened={Boolean(selectedPrediction)}
+        onClose={() => setSelectedPrediction(null)}
+      />
     </>
   );
 }
@@ -453,7 +547,12 @@ function TickerCell({
   card?: boolean;
 }) {
   const link = (
-    <Group gap="xs" wrap="nowrap" className={card ? "ticker-card-heading" : "ticker-cell-link"}>
+    <Group
+      gap="xs"
+      wrap="nowrap"
+      className={card ? "ticker-card-heading" : "ticker-cell-link"}
+      onClick={(event) => event.stopPropagation()}
+    >
       <TickerLogoMark ticker={ticker} logoUrl={logoUrl} />
       <Text component={Link} to={`/tickers/${ticker}`} fw={800} className="plain-link">
         {ticker}
@@ -519,20 +618,4 @@ function ActualValue({
     );
   }
   return <PriceReturn close={score.actual_close} ret={score.actual_return} inline={inline} />;
-}
-
-function DirectionBadge({ score }: { score: UserPredictionScore | null | undefined }) {
-  if (!score) {
-    return (
-      <Badge variant="light" color="gray">
-        —
-      </Badge>
-    );
-  }
-  const correct = score.direction_correct === 1;
-  return (
-    <Badge variant="light" color={correct ? "green" : "red"}>
-      {correct ? "Correct" : "Miss"}
-    </Badge>
-  );
 }

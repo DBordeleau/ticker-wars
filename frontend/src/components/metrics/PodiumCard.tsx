@@ -31,8 +31,7 @@ export default function PodiumCard({ tier, view, row, loading }: Props) {
   const meta = tierMeta[tier];
   const Medal = meta.icon;
   const cardClass = `metric-card podium-card podium-card--${meta.variant}${row ? "" : " podium-card--open"}`;
-
-  return (
+  const card = (
     <MagicHoverSurface className="metric-magic-surface">
       <Card className={cardClass}>
         {loading ? (
@@ -56,6 +55,20 @@ export default function PodiumCard({ tier, view, row, loading }: Props) {
         )}
       </Card>
     </MagicHoverSurface>
+  );
+
+  if (!row || loading) {
+    return card;
+  }
+
+  return view === "models" ? (
+    <EntityHoverCard kind="model" slug={(row as LeaderboardRow).model_slug} name={(row as LeaderboardRow).model_name}>
+      <div className="podium-hover-target">{card}</div>
+    </EntityHoverCard>
+  ) : (
+    <EntityHoverCard kind="user" username={(row as UserLeaderboardRow).username}>
+      <div className="podium-hover-target">{card}</div>
+    </EntityHoverCard>
   );
 }
 
@@ -81,9 +94,10 @@ function Identity({ view, row }: { view: DashboardView; row: LeaderboardRow | Us
         {isModel ? (
           <ModelName row={row as LeaderboardRow} />
         ) : (
-          <span className="podium-name">
+          <Link className="podium-name podium-name--link" to={`/users/${(row as UserLeaderboardRow).username}`}>
             <span>{(row as UserLeaderboardRow).username}</span>
-          </span>
+            <FiExternalLink aria-hidden />
+          </Link>
         )}
         {isModel ? (
           <ModelTypeBadge row={row as LeaderboardRow} />
@@ -117,16 +131,14 @@ function OpenIdentity({ view }: { view: DashboardView }) {
 
 function ModelName({ row }: { row: LeaderboardRow }) {
   return (
-    <EntityHoverCard kind="model" slug={row.model_slug} name={row.model_name}>
-      <Text
-        component={Link}
-        to={`/models/${row.model_slug}`}
-        className="podium-name podium-name--link"
-      >
-        <span>{row.model_name}</span>
-        <FiExternalLink aria-hidden />
-      </Text>
-    </EntityHoverCard>
+    <Text
+      component={Link}
+      to={`/models/${row.model_slug}`}
+      className="podium-name podium-name--link"
+    >
+      <span>{row.model_name}</span>
+      <FiExternalLink aria-hidden />
+    </Text>
   );
 }
 

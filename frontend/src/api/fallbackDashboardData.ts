@@ -339,6 +339,17 @@ export const fallbackTickerProfiles: Record<string, TickerProfile> = {
     as_of_date: "2026-06-22",
     source: "fallback",
   },
+  SPY: {
+    ticker: "SPY",
+    company_name: "SPDR S&P 500 ETF Trust",
+    logo_data_url: null,
+    sector: "ETF",
+    industry: "Large Blend",
+    business_summary:
+      "SPY is an exchange-traded fund designed to track the S&P 500 Index, giving broad exposure to large-cap U.S. equities.",
+    as_of_date: "2026-06-22",
+    source: "fallback",
+  },
 };
 
 export const fallbackTickerCloseSnapshots: Record<string, TickerCloseSnapshot> = {
@@ -359,6 +370,15 @@ export const fallbackTickerCloseSnapshots: Record<string, TickerCloseSnapshot> =
     previous_close: 145.02,
     change: -0.71,
     change_percent: -0.004895876430837109,
+  },
+  SPY: {
+    ticker: "SPY",
+    date: "2026-06-22",
+    close: 548.72,
+    previous_date: "2026-06-21",
+    previous_close: 546.39,
+    change: 2.33,
+    change_percent: 0.004264354220429457,
   },
 };
 

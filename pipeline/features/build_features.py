@@ -37,18 +37,10 @@ FEATURE_COLUMNS: tuple[str, ...] = (
     "spy_return_1m",
     "spy_return_3m",
     "spy_return_1y",
-    "qqq_return_1w",
-    "qqq_return_1m",
-    "qqq_return_3m",
-    "qqq_return_1y",
     "relative_spy_return_1w",
     "relative_spy_return_1m",
     "relative_spy_return_3m",
     "relative_spy_return_1y",
-    "relative_qqq_return_1w",
-    "relative_qqq_return_1m",
-    "relative_qqq_return_3m",
-    "relative_qqq_return_1y",
 )
 
 TARGET_RETURN_COLUMNS: dict[ForecastHorizon, str] = {
@@ -65,16 +57,12 @@ TARGET_DATE_COLUMNS: dict[ForecastHorizon, str] = {
     "1y": "target_date_1y",
 }
 
-MARKET_TICKERS: tuple[str, ...] = ("SPY", "QQQ")
+MARKET_TICKERS: tuple[str, ...] = ()
 MARKET_FEATURE_COLUMNS: tuple[str, ...] = (
     "spy_return_1w",
     "spy_return_1m",
     "spy_return_3m",
     "spy_return_1y",
-    "qqq_return_1w",
-    "qqq_return_1m",
-    "qqq_return_3m",
-    "qqq_return_1y",
 )
 
 
@@ -91,9 +79,6 @@ def build_feature_rows(
     feature_rows: list[dict[str, Any]] = []
 
     for ticker, ticker_prices in prices.groupby("ticker", sort=True):
-        if ticker in MARKET_TICKERS or ticker == market_ticker:
-            continue
-
         features = _build_ticker_features(ticker_prices)
         features = features.join(market_features, how="left")
         features[list(MARKET_FEATURE_COLUMNS)] = features[list(MARKET_FEATURE_COLUMNS)].fillna(0.0)
@@ -186,9 +171,7 @@ def _build_market_features(prices: pd.DataFrame, market_ticker: str) -> pd.DataF
 
 
 def _build_all_market_features(prices: pd.DataFrame, market_ticker: str) -> pd.DataFrame:
-    tickers = tuple(dict.fromkeys((market_ticker, "QQQ")))
-    market_frames = [_build_market_features(prices, ticker) for ticker in tickers]
-    market_features = pd.concat(market_frames, axis=1)
+    market_features = _build_market_features(prices, market_ticker)
 
     for column in MARKET_FEATURE_COLUMNS:
         if column not in market_features:
@@ -208,17 +191,13 @@ def _add_relative_market_features(features: pd.DataFrame) -> pd.DataFrame:
         features[f"relative_spy_return_{suffix}"] = (
             features[ticker_return] - features[f"spy_return_{suffix}"]
         )
-        features[f"relative_qqq_return_{suffix}"] = (
-            features[ticker_return] - features[f"qqq_return_{suffix}"]
-        )
 
     return features
 
 
 def _relative_market_columns() -> tuple[str, ...]:
     return tuple(
-        f"relative_{market}_return_{suffix}"
-        for market in ("spy", "qqq")
+        f"relative_spy_return_{suffix}"
         for suffix in ("1w", "1m", "3m", "1y")
     )
 

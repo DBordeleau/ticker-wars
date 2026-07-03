@@ -1,12 +1,18 @@
 import { Button } from "@mantine/core";
 import { FiArrowLeft } from "react-icons/fi";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { previousPathname } from "../../utils/navigationHistory";
 
 export default function BackToDashboardButton() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleClick = () => {
+    if (location.pathname === "/rules") {
+      navigate("/dashboard");
+      return;
+    }
+
     if (previousPathname() === "/dashboard") {
       // The dashboard is the immediately previous history entry: POP back so the
       // ScrollManager restores the dashboard's saved scroll position.

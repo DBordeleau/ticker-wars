@@ -32,7 +32,7 @@ DEFAULT_RUNTIME_BENCHMARK_PATH = "data_exports/runtime_benchmark.json"
 DEFAULT_PRICE_DAYS = 760
 DEFAULT_SIMPLE_TICKERS = 25
 DEFAULT_ADAPTER_TICKERS = 3
-MARKET_TICKERS = ("SPY", "QQQ")
+MARKET_TICKERS: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

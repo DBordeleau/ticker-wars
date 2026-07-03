@@ -1,7 +1,9 @@
 import { Badge, Group, Progress, Skeleton, Table, Text, Tooltip } from "@mantine/core";
 import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
 import { FiExternalLink } from "react-icons/fi";
 import { Link } from "react-router-dom";
+import { fetchLeaderboardMovement, type LeaderboardMovementRow } from "../../api/competition";
 import type {
   LeaderboardRow,
   MetricHorizon,
@@ -11,8 +13,10 @@ import type {
 import { formatMetric, formatPercent } from "../../utils/format";
 import { modelTypeColor, normalizeModelType } from "../../utils/models";
 import EntityHoverCard from "../cards/EntityHoverCard";
+import LeaderboardMovementBadge from "../competition/LeaderboardMovementBadge";
 import type { DashboardView } from "../dashboard/DashboardViewToggle";
 import DashboardViewToggle from "../dashboard/DashboardViewToggle";
+import RulesLink from "../help/RulesLink";
 import SectionPanel from "../layout/SectionPanel";
 import AvatarImage from "../users/AvatarImage";
 import HorizonSelector from "./HorizonSelector";
@@ -40,19 +44,45 @@ export default function LeaderboardTable({
   onHorizonChange,
   loading,
 }: Props) {
+  const [movementRows, setMovementRows] = useState<LeaderboardMovementRow[]>([]);
   const sourceRows: DisplayLeaderboardRow[] = view === "models" ? rows : userRows;
   const visibleRows = sourceRows
     .filter((row) => row.window === window && row.prediction_horizon === horizon)
     .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+  const movementByUserId = useMemo(
+    () => new Map(movementRows.map((row) => [row.user_id, row])),
+    [movementRows],
+  );
   const emptyMessage =
     horizon === "1y"
       ? "1Y rows need a full year to mature. Rankings will appear once those target closes arrive."
       : "No scored predictions yet for this horizon. Leaderboard rows will appear after target closes arrive.";
 
+  useEffect(() => {
+    let active = true;
+    if (view !== "users") {
+      setMovementRows([]);
+      return undefined;
+    }
+
+    fetchLeaderboardMovement(window, horizon)
+      .then((nextRows) => {
+        if (active) setMovementRows(nextRows);
+      })
+      .catch(() => {
+        if (active) setMovementRows([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [horizon, view, window]);
+
   return (
     <SectionPanel
       title="Leaderboard"
       className="leaderboard-panel"
+      action={<RulesLink section="leaderboards" compact>Leaderboard rules</RulesLink>}
     >
       <div className="leaderboard-horizon-control">
         <DashboardViewToggle value={view} onChange={onViewChange} label="Leaderboard view" />
@@ -108,6 +138,7 @@ export default function LeaderboardTable({
             <Table.Tbody>
               {visibleRows.map((row, index) => {
                 const isModelRow = "model_slug" in row;
+                const displayRank = index + 1;
                 return (
                   <motion.tr
                     key={`${row.window}-${row.prediction_horizon}-${isModelRow ? row.model_slug : row.user_id}`}
@@ -118,23 +149,32 @@ export default function LeaderboardTable({
                     className={`leaderboard-row ${isModelRow && row.model_slug === "baseline" ? "baseline-row" : ""}`}
                   >
                     <Table.Td className="leaderboard-table-center">
-                      <Text fw={800}>{row.rank ? `#${row.rank}` : "Pending"}</Text>
+                      <Group gap="xs" justify="center" wrap="nowrap">
+                        <Text fw={800}>{row.rank ? `#${displayRank}` : "Pending"}</Text>
+                        {!isModelRow ? (
+                          <LeaderboardMovementBadge movement={movementByUserId.get((row as UserLeaderboardRow).user_id)} />
+                        ) : null}
+                      </Group>
                     </Table.Td>
                     <Table.Td>
                       {isModelRow ? (
                         <ModelIdentity row={row} />
                       ) : (
-                        <Group gap="xs" wrap="nowrap">
-                          <AvatarImage
-                            profile={{
-                              display_username: row.username,
-                              avatar_seed: row.avatar_seed,
-                              avatar_options: row.avatar_options,
-                            }}
-                            size={38}
-                          />
-                          <Text fw={800}>{row.username}</Text>
-                        </Group>
+                        <EntityHoverCard kind="user" username={row.username}>
+                          <Group gap="xs" wrap="nowrap" className="user-cell-link">
+                            <AvatarImage
+                              profile={{
+                                display_username: row.username,
+                                avatar_seed: row.avatar_seed,
+                                avatar_options: row.avatar_options,
+                              }}
+                              size={38}
+                            />
+                            <Text component={Link} to={`/users/${row.username}`} fw={800} className="plain-link">
+                              {row.username}
+                            </Text>
+                          </Group>
+                        </EntityHoverCard>
                       )}
                     </Table.Td>
                     <Table.Td className="leaderboard-table-center">{formatMetric(row.mae)}</Table.Td>

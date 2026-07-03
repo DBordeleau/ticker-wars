@@ -4,7 +4,10 @@ import type { ComponentType, ReactNode } from "react";
 import { FiChevronDown } from "react-icons/fi";
 import type { MetricHorizon, MetricWindow } from "../api/dashboardData";
 import type { DashboardView } from "../components/dashboard/DashboardViewToggle";
+import OnDeckPanel from "../components/dashboard/OnDeckPanel";
+import SinceLastVisitPanel from "../components/dashboard/SinceLastVisitPanel";
 import TickerChart from "../components/charts/TickerChart";
+import ChallengePromptPanel from "../components/competition/ChallengePromptPanel";
 import AnimatedSection from "../components/layout/AnimatedSection";
 import DashboardFooter from "../components/layout/DashboardFooter";
 import DashboardTopBar from "../components/layout/DashboardTopBar";
@@ -48,6 +51,15 @@ export default function Dashboard() {
         <DashboardTopBar />
       </AnimatedSection>
       <AnimatedSection delay={0.08}>
+        <SinceLastVisitPanel />
+      </AnimatedSection>
+      <AnimatedSection delay={0.12}>
+        <OnDeckPanel tickerLogos={tickerLogos} />
+      </AnimatedSection>
+      <AnimatedSection delay={0.16}>
+        <ChallengePromptPanel />
+      </AnimatedSection>
+      <AnimatedSection delay={0.2}>
         <MetricStrip
           leaderboard={dashboard.leaderboard}
           userLeaderboard={dashboard.userLeaderboard}
@@ -57,7 +69,7 @@ export default function Dashboard() {
           loading={dashboard.loading}
         />
       </AnimatedSection>
-      <AnimatedSection delay={0.16}>
+      <AnimatedSection delay={0.28}>
         <LeaderboardTable
           rows={dashboard.leaderboard}
           userRows={dashboard.userLeaderboard}
@@ -69,7 +81,7 @@ export default function Dashboard() {
           loading={dashboard.loading}
         />
       </AnimatedSection>
-      <AnimatedSection delay={0.24}>
+      <AnimatedSection delay={0.36}>
         <TickerChart
           history={dashboard.tickerHistory}
           predictions={dashboard.latestPredictions}
@@ -78,7 +90,7 @@ export default function Dashboard() {
           loading={dashboard.historyLoading || dashboard.loading}
         />
       </AnimatedSection>
-      <AnimatedSection delay={0.36}>
+      <AnimatedSection delay={0.46}>
         <MagicHoverSurface className="section-magic-surface">
           <section className="section-panel prediction-collapsible-panel">
             <button
@@ -136,7 +148,7 @@ export default function Dashboard() {
           </section>
         </MagicHoverSurface>
       </AnimatedSection>
-      <AnimatedSection delay={0.42}>
+      <AnimatedSection delay={0.52}>
         <DashboardFooter metadata={dashboard.metadata} loading={dashboard.loading} />
       </AnimatedSection>
     </DashboardShell>

@@ -7,8 +7,9 @@ from pipeline.models.baseline import predict_zero_return
 
 
 class ProjectScaffoldTest(unittest.TestCase):
-    def test_mvp_universe_has_25_tickers(self) -> None:
-        self.assertEqual(len(MVP_TICKERS), 25)
+    def test_mvp_universe_has_26_tickers_including_spy(self) -> None:
+        self.assertEqual(len(MVP_TICKERS), 26)
+        self.assertIn("SPY", MVP_TICKERS)
 
     def test_provider_ticker_normalization(self) -> None:
         self.assertEqual(to_yfinance_symbol("BRK-B"), "BRK-B")

@@ -4,6 +4,7 @@ import {
   fallbackTickerCloseSnapshots,
   fallbackTickerProfiles,
 } from "./fallbackDashboardData";
+import { isRemovedTicker } from "./tickerUniverse";
 import type { AvatarOptions } from "../auth/types";
 
 export type LeaderboardRow = {
@@ -79,8 +80,9 @@ export type LatestUserPrediction = {
   prediction_horizon: MetricHorizon;
   ticker: string;
   reference_close: number;
-  predicted_return: number;
-  predicted_close: number;
+  predicted_return: number | null;
+  predicted_close: number | null;
+  hide_details_until_scored?: boolean;
 };
 
 export type TickerHistoryRow = {
@@ -225,16 +227,20 @@ export async function fetchLatestPredictions(): Promise<LatestPrediction[]> {
       throw error;
     }
 
-    const batch = data ?? [];
+    const rawBatch = data ?? [];
+    const batch = rawBatch.filter((row) => !isRemovedTicker(row.ticker));
     rows.push(...batch);
 
-    if (batch.length < dashboardPageSize) {
+    if (rawBatch.length < dashboardPageSize) {
       break;
     }
     start += dashboardPageSize;
   }
 
-  return rows.map(normalizeLatestPredictionRow).filter(isVisibleModelRow);
+  return rows
+    .map(normalizeLatestPredictionRow)
+    .filter((row) => !isRemovedTicker(row.ticker))
+    .filter(isVisibleModelRow);
 }
 
 export async function fetchUserLeaderboard(): Promise<UserLeaderboardRow[]> {
@@ -278,7 +284,9 @@ export async function fetchUserTickerLeaderboard(): Promise<UserTickerLeaderboar
     throw error;
   }
 
-  return (data ?? []).map(normalizeUserTickerLeaderboardRow);
+  return (data ?? [])
+    .map(normalizeUserTickerLeaderboardRow)
+    .filter((row) => !isRemovedTicker(row.ticker));
 }
 
 export async function fetchLatestUserPredictions(): Promise<LatestUserPrediction[]> {
@@ -307,19 +315,26 @@ export async function fetchLatestUserPredictions(): Promise<LatestUserPrediction
       throw error;
     }
 
-    const batch = data ?? [];
+    const rawBatch = data ?? [];
+    const batch = rawBatch.filter((row) => !isRemovedTicker(row.ticker));
     rows.push(...batch);
 
-    if (batch.length < dashboardPageSize) {
+    if (rawBatch.length < dashboardPageSize) {
       break;
     }
     start += dashboardPageSize;
   }
 
-  return rows.map(normalizeLatestUserPredictionRow);
+  return rows
+    .map(normalizeLatestUserPredictionRow)
+    .filter((row) => !isRemovedTicker(row.ticker));
 }
 
 export async function fetchTickerHistory(ticker: string): Promise<TickerHistoryRow[]> {
+  if (isRemovedTicker(ticker)) {
+    return [];
+  }
+
   if (!supabase) {
     return fallbackDashboardData.tickerHistory.filter((row) => row.ticker === ticker);
   }
@@ -343,6 +358,9 @@ export async function fetchTickerProfile(ticker: string): Promise<TickerProfile 
   if (!normalizedTicker) {
     return null;
   }
+  if (isRemovedTicker(normalizedTicker)) {
+    return null;
+  }
 
   if (!supabase) {
     return fallbackTickerProfiles[normalizedTicker] ?? null;
@@ -358,7 +376,7 @@ export async function fetchTickerProfile(ticker: string): Promise<TickerProfile 
 
   if (error) {
     if (error.code === "42P01" || error.message.includes("fundamentals")) {
-      return null;
+      return fallbackTickerProfiles[normalizedTicker] ?? null;
     }
     throw error;
   }
@@ -373,7 +391,9 @@ export async function fetchTickerProfile(ticker: string): Promise<TickerProfile 
     throw assetError;
   }
 
-  return data ? normalizeTickerProfileRow(data, assetData ?? null) : null;
+  return data
+    ? withFallbackTickerProfile(normalizeTickerProfileRow(data, assetData ?? null))
+    : fallbackTickerProfiles[normalizedTicker] ?? null;
 }
 
 export async function fetchTickerAssets(): Promise<TickerAsset[]> {
@@ -393,12 +413,17 @@ export async function fetchTickerAssets(): Promise<TickerAsset[]> {
     throw error;
   }
 
-  return (data ?? []).map(normalizeTickerAssetRow);
+  return (data ?? [])
+    .map(normalizeTickerAssetRow)
+    .filter((row) => !isRemovedTicker(row.ticker));
 }
 
 export async function fetchTickerCloseSnapshot(ticker: string): Promise<TickerCloseSnapshot | null> {
   const normalizedTicker = ticker.trim().toUpperCase();
   if (!normalizedTicker) {
+    return null;
+  }
+  if (isRemovedTicker(normalizedTicker)) {
     return null;
   }
 
@@ -500,6 +525,9 @@ export async function fetchTickerPriceChanges(): Promise<Record<string, TickerPr
   const latestCloses = closesByDate.get(latestDate) ?? new Map<string, number>();
   const result: Record<string, TickerPriceChange> = {};
   latestCloses.forEach((close, ticker) => {
+    if (isRemovedTicker(ticker)) {
+      return;
+    }
     const changes: Partial<Record<PriceChangeHorizon, number>> = {};
     horizons.forEach((horizon) => {
       const horizonDate = horizonDates.get(horizon);
@@ -744,8 +772,9 @@ function normalizeLatestUserPredictionRow(
     prediction_horizon: row.prediction_horizon ?? "1w",
     ticker: row.ticker ?? "",
     reference_close: row.reference_close ?? 0,
-    predicted_return: row.predicted_return ?? 0,
-    predicted_close: row.predicted_close ?? 0,
+    predicted_return: row.predicted_return ?? null,
+    predicted_close: row.predicted_close ?? null,
+    hide_details_until_scored: Boolean(row.hide_details_until_scored),
   };
 }
 
@@ -785,6 +814,21 @@ function normalizeTickerProfileRow(
     business_summary: cleanString(raw.longBusinessSummary) ?? null,
     as_of_date: cleanString(row.as_of_date),
     source: cleanString(row.source),
+  };
+}
+
+function withFallbackTickerProfile(profile: TickerProfile): TickerProfile {
+  const fallback = fallbackTickerProfiles[profile.ticker];
+  if (!fallback) {
+    return profile;
+  }
+
+  return {
+    ...profile,
+    company_name: profile.company_name ?? fallback.company_name,
+    sector: profile.sector ?? fallback.sector,
+    industry: profile.industry ?? fallback.industry,
+    business_summary: profile.business_summary ?? fallback.business_summary,
   };
 }
 

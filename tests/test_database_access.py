@@ -17,9 +17,30 @@ class FakeSupabaseClient:
     def __init__(self) -> None:
         self.data: dict[str, list[dict[str, Any]]] = {}
         self.operations: list[dict[str, Any]] = []
+        self.rpc_results: dict[str, Any] = {}
 
     def table(self, name: str) -> FakeTable:
         return FakeTable(self, name)
+
+    def rpc(self, name: str, params: dict[str, Any]) -> FakeRpc:
+        return FakeRpc(self, name, params)
+
+
+class FakeRpc:
+    def __init__(self, client: FakeSupabaseClient, name: str, params: dict[str, Any]) -> None:
+        self.client = client
+        self.name = name
+        self.params = params
+
+    def execute(self) -> FakeResponse:
+        self.client.operations.append(
+            {
+                "action": "rpc",
+                "rpc": self.name,
+                "params": self.params,
+            }
+        )
+        return FakeResponse(self.client.rpc_results.get(self.name, ["event-id"]))
 
 
 class FakeTable:
@@ -338,6 +359,10 @@ class DatabaseAccessTest(unittest.TestCase):
                 "predicted_direction": 1,
                 "actual_direction": 1,
                 "direction_correct": 1,
+                "score_verdict": "called_it",
+                "score_verdict_rank": 1,
+                "score_verdict_color": "yellow",
+                "xp_awarded": 295,
                 "scored_at": "2026-01-08T12:00:00+00:00",
                 "transient_pipeline_field": "do not persist",
             }
@@ -350,6 +375,8 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertEqual(client.operations[0]["action"], "upsert")
         self.assertEqual(client.operations[0]["on_conflict"], "prediction_id")
         self.assertNotIn("transient_pipeline_field", client.operations[0]["rows"][0])
+        self.assertEqual(client.operations[0]["rows"][0]["score_verdict"], "called_it")
+        self.assertEqual(client.operations[0]["rows"][0]["xp_awarded"], 295)
 
     def test_fetch_user_predictions_can_filter_by_status(self) -> None:
         database, client = _database_with_fake_client()
@@ -375,6 +402,69 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertIn(
             ("in", "prediction_id", ["prediction-1", "prediction-2"]),
             client.operations[0]["filters"],
+        )
+
+    def test_grant_scored_prediction_rewards_calls_rpc_once_per_prediction(self) -> None:
+        database, client = _database_with_fake_client()
+
+        granted = database.grant_scored_prediction_rewards(["prediction-1", "prediction-2"])
+
+        self.assertEqual(granted, 2)
+        self.assertEqual(
+            [operation["rpc"] for operation in client.operations],
+            ["grant_scored_prediction_reward", "grant_scored_prediction_reward"],
+        )
+        self.assertEqual(
+            client.operations[0]["params"],
+            {"p_prediction_id": "prediction-1"},
+        )
+
+    def test_refresh_public_user_profiles_calls_projection_rpc(self) -> None:
+        database, client = _database_with_fake_client()
+        client.rpc_results["refresh_public_user_profiles"] = 3
+
+        refreshed = database.refresh_public_user_profiles()
+
+        self.assertEqual(refreshed, 3)
+        self.assertEqual(client.operations[0]["rpc"], "refresh_public_user_profiles")
+        self.assertEqual(client.operations[0]["params"], {})
+
+    def test_refresh_competitive_depth_calls_projection_rpc(self) -> None:
+        database, client = _database_with_fake_client()
+        client.rpc_results["refresh_competitive_depth"] = {"movement": 2, "rivals": 4}
+
+        refreshed = database.refresh_competitive_depth()
+
+        self.assertEqual(refreshed, {"movement": 2, "rivals": 4})
+        self.assertEqual(client.operations[0]["rpc"], "refresh_competitive_depth")
+        self.assertEqual(client.operations[0]["params"], {})
+
+    def test_competition_projection_wrappers_call_expected_rpcs(self) -> None:
+        database, client = _database_with_fake_client()
+        client.rpc_results.update(
+            {
+                "snapshot_user_leaderboard_ranks": 1,
+                "refresh_user_leaderboard_movement": 2,
+                "evaluate_public_competition_badges": 3,
+                "refresh_nearby_rivals": 4,
+                "refresh_user_ticker_specialties": 5,
+            }
+        )
+
+        self.assertEqual(database.snapshot_user_leaderboard_ranks(), 1)
+        self.assertEqual(database.refresh_user_leaderboard_movement(), 2)
+        self.assertEqual(database.evaluate_public_competition_badges(), 3)
+        self.assertEqual(database.refresh_nearby_rivals(), 4)
+        self.assertEqual(database.refresh_user_ticker_specialties(), 5)
+        self.assertEqual(
+            [operation["rpc"] for operation in client.operations],
+            [
+                "snapshot_user_leaderboard_ranks",
+                "refresh_user_leaderboard_movement",
+                "evaluate_public_competition_badges",
+                "refresh_nearby_rivals",
+                "refresh_user_ticker_specialties",
+            ],
         )
 
 
