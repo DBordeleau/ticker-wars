@@ -792,6 +792,19 @@ function renderActualDot(props: unknown) {
   if (dot.cx == null || dot.cy == null || !dot.payload) {
     return <g />;
   }
+  if (dot.payload.kind === "history") {
+    return (
+      <circle
+        cx={dot.cx}
+        cy={dot.cy}
+        r={2.5}
+        fill="#f4f7f5"
+        stroke="#06110b"
+        strokeWidth={1.4}
+        opacity={0.58}
+      />
+    );
+  }
   if (dot.payload.kind === "close") {
     return <circle cx={dot.cx} cy={dot.cy} r={2.8} fill="#f4f7f5" opacity={0.72} />;
   }
@@ -815,7 +828,7 @@ function renderActualActiveDot(props: unknown) {
   if (dot.cx == null || dot.cy == null || !dot.payload) {
     return <g />;
   }
-  if (dot.payload.kind !== "close" && dot.payload.kind !== "current") {
+  if (dot.payload.kind === "edge" || dot.payload.kind === "forecast") {
     return <g />;
   }
   return (
