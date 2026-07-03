@@ -6,6 +6,7 @@ import { FiArrowUpRight } from "react-icons/fi";
 import { useParams } from "react-router-dom";
 import type { MetricHorizon } from "../api/dashboardData";
 import WarrenBuffbotPanel from "../components/buffbot/WarrenBuffbotPanel";
+import RulesLink from "../components/help/RulesLink";
 import AnimatedSection from "../components/layout/AnimatedSection";
 import BackToDashboardButton from "../components/layout/BackToDashboardButton";
 import DashboardFooter from "../components/layout/DashboardFooter";
@@ -141,6 +142,18 @@ export default function ModelDetail() {
       </AnimatedSection>
 
       <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.24 : 0.16}>
+        <SectionPanel
+          title="Model Limits"
+          subtitle="What this model can and cannot know."
+          action={<RulesLink section="models" compact>Model rules</RulesLink>}
+        >
+          <Text size="sm" c="dimmed">
+            {modelLimitCopy(info.type)}
+          </Text>
+        </SectionPanel>
+      </AnimatedSection>
+
+      <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.32 : 0.24}>
         <SectionPanel title="Metrics By Horizon" subtitle="Same model across prediction horizons.">
           {dashboard.loading ? (
             <Skeleton height={180} radius="sm" />
@@ -179,7 +192,7 @@ export default function ModelDetail() {
         </SectionPanel>
       </AnimatedSection>
 
-      <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.32 : 0.24}>
+      <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.4 : 0.32}>
         <PredictionTable
           rows={latestForModel}
           loading={dashboard.loading}
@@ -188,9 +201,19 @@ export default function ModelDetail() {
         />
       </AnimatedSection>
 
-      <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.4 : 0.32}>
+      <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.48 : 0.4}>
         <DashboardFooter metadata={dashboard.metadata} loading={dashboard.loading} />
       </AnimatedSection>
     </main>
   );
+}
+
+function modelLimitCopy(type: string) {
+  if (type === "Toy (LLM)") {
+    return "This is a toy LLM personality model. It reasons over the structured context the pipeline provides, but it should not be treated as an investment adviser and does not reliably know breaking news or current events.";
+  }
+  if (type === "Benchmark") {
+    return "The benchmark is intentionally simple: it assumes price stays near the reference close. It is useful as a comparison point, not as a claim about where the market should go.";
+  }
+  return "This model uses structured market data available to the pipeline. It does not read breaking news or current events unless those signals are already represented in its inputs. Ranges and predictions are not guarantees.";
 }
