@@ -3269,6 +3269,21 @@ h2,
   margin: 0;
 }
 
+/* The predict button is lifted out of flow into the hero's top-right corner so
+   it stays put and the description below can run the FULL width (wrapping under
+   where the button sits) instead of being trapped in a narrow column beside a
+   tall reserved empty block. */
+.ticker-hero-top {
+  position: relative;
+}
+
+.ticker-hero-predict {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+}
+
 .ticker-hero-main {
   min-width: 0;
   flex: 1 1 auto;
@@ -3276,6 +3291,11 @@ h2,
 
 .ticker-hero-identity {
   min-width: 0;
+  /* Reserve room for the absolute button so the identity row clears it; the
+     summary below is a full-width sibling and ignores this inset. min-height
+     keeps the summary starting below the button even without badges. */
+  min-height: 48px;
+  padding-right: 124px;
 }
 
 .ticker-logo-frame {
@@ -3330,7 +3350,7 @@ h2,
 }
 
 .ticker-company-summary {
-  max-width: 760px;
+  max-width: none;
   color: rgba(219, 230, 223, 0.76);
   line-height: 1.55;
 }
@@ -3338,7 +3358,7 @@ h2,
 .ticker-company-summary-block {
   display: grid;
   gap: 6px;
-  max-width: 820px;
+  max-width: none;
 }
 
 .ticker-summary-toggle {
@@ -7474,5 +7494,274 @@ tr.prediction-row-highlighted {
 
   .public-prediction-stats {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ===========================================================================
+   DETAIL PAGES — MOBILE PASS (ticker + model detail)
+   Everything here is gated behind the phone breakpoint or only rendered inside
+   `.mobile-cards` (hidden until <=760px), so desktop is untouched. Goals:
+   - break up the "wall of text" with tighter spacing + smaller body copy
+   - keep the ticker logo beside the name, truncate long company names
+   - give the predict button a stable, full-width home in the ticker hero
+   - turn sideways-scrolling metric/leaderboard tables into stacked cards
+=========================================================================== */
+
+/* Shared stacked-card look for the metric + leaderboard mobile views. These
+   only ever render inside `.mobile-cards`, so they are inherently phone-only. */
+.leaderboard-card-list,
+.model-metrics-card-list {
+  display: grid;
+  gap: 10px;
+}
+
+.leaderboard-card,
+.model-metrics-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 13px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+/* Top-three cards get a faint medal-tinted border/glow so the podium reads at a
+   glance instead of every card being an identical gray slab. */
+.leaderboard-card--rank-1,
+.model-metrics-card--rank-1 {
+  border-color: rgba(245, 158, 11, 0.44);
+  background:
+    linear-gradient(180deg, rgba(245, 158, 11, 0.12), rgba(255, 255, 255, 0.02));
+}
+
+.leaderboard-card--rank-2,
+.model-metrics-card--rank-2 {
+  border-color: rgba(148, 163, 184, 0.44);
+  background:
+    linear-gradient(180deg, rgba(148, 163, 184, 0.12), rgba(255, 255, 255, 0.02));
+}
+
+.leaderboard-card--rank-3,
+.model-metrics-card--rank-3 {
+  border-color: rgba(208, 138, 82, 0.42);
+  background:
+    linear-gradient(180deg, rgba(208, 138, 82, 0.12), rgba(255, 255, 255, 0.02));
+}
+
+.leaderboard-card-head,
+.model-metrics-card-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.model-metrics-card-head {
+  justify-content: space-between;
+}
+
+/* Rank chips reuse the podium gold/silver/bronze language so the top three
+   pop instead of reading as another gray box. */
+.leaderboard-card-rank,
+.model-metrics-card-rank {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  color: #f4f7f5;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard-card-rank--1,
+.model-metrics-card-rank--1 {
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+  color: #1f1300;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.28);
+}
+
+.leaderboard-card-rank--2,
+.model-metrics-card-rank--2 {
+  background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+  color: #15202b;
+  box-shadow: 0 4px 14px rgba(148, 163, 184, 0.24);
+}
+
+.leaderboard-card-rank--3,
+.model-metrics-card-rank--3 {
+  background: linear-gradient(135deg, #fcd9b6, #d08a52);
+  color: #2a1605;
+  box-shadow: 0 4px 14px rgba(208, 138, 82, 0.24);
+}
+
+.leaderboard-card-identity {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 9px;
+  min-width: 0;
+}
+
+/* Flat two-column stat grid — no per-cell boxes, just a divider under the
+   header, so the card stops looking like nested gray blocks. */
+.leaderboard-card-stats,
+.model-metrics-card-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 18px;
+  margin: 11px 0 0;
+  padding-top: 11px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.leaderboard-card-stats > div,
+.model-metrics-card-stats > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.leaderboard-card-stats dt,
+.model-metrics-card-stats dt {
+  color: rgba(219, 230, 223, 0.6);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.leaderboard-card-stats dd,
+.model-metrics-card-stats dd {
+  margin: 0;
+  color: #ffffff;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mobile prediction cards: the predict button now lives in the header row, so
+   the data rows just need consistent spacing under it. */
+.prediction-card-stats {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* Desktop keeps the icon-only rules link; its visible label only appears on
+   phones (media block below), so it stays hidden here. */
+.rules-link--icon .rules-link-icon-label {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  /* Wall-of-text relief: tighter rhythm + calmer body copy. */
+  .detail-page {
+    gap: 14px;
+  }
+
+  .detail-page .section-panel {
+    padding: 14px;
+  }
+
+  .detail-page .model-hero {
+    padding: 16px;
+  }
+
+  .model-description {
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+
+  /* The absolute-button / full-width-summary hero layout now lives in the base
+     rules (shared with desktop); mobile just keeps the logo locked beside the
+     name and shrinks the pieces to fit a phone. */
+  .detail-page .ticker-hero-identity {
+    flex-wrap: nowrap;
+    gap: 12px;
+  }
+
+  .detail-page .ticker-logo-frame {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .detail-page .ticker-identity {
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    min-width: 0;
+  }
+
+  .detail-page .ticker-identity .mantine-Title-root {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 1.4rem;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* The sector was rendering as a bare text line beside a styled industry badge,
+     which read as a "broken" second tag. Give it a matching outline chip so the
+     two tags look intentional. */
+  .detail-page .ticker-sector-text {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    margin-top: 2px;
+    padding: 2px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    color: rgba(219, 230, 223, 0.82);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  /* Breathing room so the last mobile card never kisses the load-more /
+     pagination control below it. */
+  .mobile-cards {
+    margin-bottom: 14px;
+  }
+
+  /* The static hover tooltip is pinned top-right; keep it off most of the plot
+     on a narrow screen. */
+  .chart-static-tooltip {
+    max-width: 62%;
+  }
+
+  /* Touch has no hover, so the icon-only rules link becomes a labeled pill with
+     its short section name visible instead of hidden behind a tooltip. */
+  .rules-link--icon {
+    width: auto;
+    height: auto;
+    padding: 6px 12px;
+    gap: 7px;
+    border-radius: 999px;
+  }
+
+  .rules-link--icon .rules-link-icon-label {
+    display: inline;
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  /* Help icons sitting inline inside a sentence keep their compact circle — the
+     surrounding copy already explains them, and a pill mid-paragraph reads as
+     clutter. They still tap straight through to the rules section. */
+  .rules-link--icon.prediction-inline-rule-icon {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    gap: 0;
+  }
+
+  .rules-link--icon.prediction-inline-rule-icon .rules-link-icon-label {
+    display: none;
   }
 }

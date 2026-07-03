@@ -34,6 +34,9 @@ type Props = {
   embedded?: boolean;
   onPredictionSaved?: (prediction: UserPrediction) => void;
   tickerLogos?: Record<string, string | null>;
+  // Set on single-model pages (ModelDetail) so mobile cards can drop the
+  // redundant model name.
+  singleModel?: boolean;
 };
 
 const predictionPreviewSize = 5;
@@ -49,6 +52,7 @@ export default function PredictionTable({
   embedded = false,
   onPredictionSaved,
   tickerLogos = {},
+  singleModel = false,
 }: Props) {
   const [tickerQuery, setTickerQuery] = useState("");
   const [model, setModel] = useState<string | null>(null);
@@ -286,6 +290,7 @@ export default function PredictionTable({
           latestPredictions={rows}
           onPredictionSaved={onPredictionSaved}
           tickerLogos={tickerLogos}
+          hideModel={singleModel}
         />
       </div>
       {!isPaged && visibleRows.length > predictionPreviewSize ? (

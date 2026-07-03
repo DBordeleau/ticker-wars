@@ -39,7 +39,13 @@ export default function RulesLink({
   const link = (
     <Link to={href} className={classes} aria-label={accessibleLabel}>
       <FiHelpCircle aria-hidden />
-      {iconOnly ? null : <span>{children}</span>}
+      {iconOnly ? (
+        // Hidden on desktop (icon-only), shown on touch/mobile where the hover
+        // tooltip is unavailable, so the link stays self-explanatory.
+        <span className="rules-link-icon-label">{children}</span>
+      ) : (
+        <span>{children}</span>
+      )}
     </Link>
   );
 

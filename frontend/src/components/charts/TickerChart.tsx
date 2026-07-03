@@ -1,4 +1,5 @@
 import { Group, Select, Skeleton, Text } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -92,6 +93,18 @@ export default function TickerChart({
   showTickerSelect = true,
 }: Props) {
   const normalizedTicker = selectedTicker?.trim().toUpperCase() ?? "";
+  // Phones get a shorter plot, a slimmer Y axis, tighter margins, and fewer X
+  // ticks so the line has room to breathe instead of reading as a squished
+  // portrait column. Desktop keeps its original sizing.
+  const isCompact = useMediaQuery("(max-width: 767px)");
+  const chartHeight = isCompact ? 430 : 590;
+  const yAxisWidth = isCompact ? 42 : 64;
+  const xAxisMinTickGap = isCompact ? 46 : 28;
+  // Only override tick styling on phones; desktop keeps Recharts' defaults.
+  const axisTick = isCompact ? { fontSize: 11 } : undefined;
+  const chartMargin = isCompact
+    ? { top: 28, right: 8, bottom: 10, left: 0 }
+    : { top: 34, right: 18, bottom: 12, left: 6 };
   const tickers = useMemo(
     () => Array.from(new Set(predictions.map((row) => row.ticker))).sort(),
     [predictions],
@@ -242,10 +255,10 @@ export default function TickerChart({
                 <ChartTooltip label={tooltip.label} payload={tooltip.payload} />
               </div>
             ) : null}
-            <ResponsiveContainer width="100%" height={590}>
+            <ResponsiveContainer width="100%" height={chartHeight}>
               <ComposedChart
                 data={chartData}
-                margin={{ top: 34, right: 18, bottom: 12, left: 6 }}
+                margin={chartMargin}
                 onMouseMove={handleChartMouseMove}
                 onMouseLeave={() => setTooltip(null)}
               >
@@ -256,16 +269,18 @@ export default function TickerChart({
                   scale="time"
                   domain={chartResult.domain}
                   stroke="#b8c6bf"
+                  tick={axisTick}
                   tickLine={true}
                   axisLine={true}
-                  minTickGap={28}
+                  minTickGap={xAxisMinTickGap}
                   tickFormatter={(value) => formatAxisDate(value)}
                 />
                 <YAxis
                   stroke="#b8c6bf"
+                  tick={axisTick}
                   tickLine={true}
                   axisLine={true}
-                  width={64}
+                  width={yAxisWidth}
                   domain={chartResult.yDomain}
                   allowDataOverflow
                   tickFormatter={(value) => formatYAxisPrice(value)}

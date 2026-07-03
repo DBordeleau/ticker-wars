@@ -171,32 +171,75 @@ export default function ModelDetail() {
               This model does not have scored leaderboard rows yet.
             </Text>
           ) : (
-            <Table.ScrollContainer minWidth={520}>
-              <Table verticalSpacing="sm" className="model-metrics-table">
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Horizon</Table.Th>
-                    <Table.Th className="model-metrics-center">Rank</Table.Th>
-                    <Table.Th className="model-metrics-center">MAE</Table.Th>
-                    <Table.Th className="model-metrics-center">Directional</Table.Th>
-                    <Table.Th className="model-metrics-center">Winkler</Table.Th>
-                    <Table.Th className="model-metrics-center score-column">Scored</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
+            <>
+              <div className="desktop-table">
+                <Table.ScrollContainer minWidth={520}>
+                  <Table verticalSpacing="sm" className="model-metrics-table">
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Horizon</Table.Th>
+                        <Table.Th className="model-metrics-center">Rank</Table.Th>
+                        <Table.Th className="model-metrics-center">MAE</Table.Th>
+                        <Table.Th className="model-metrics-center">Directional</Table.Th>
+                        <Table.Th className="model-metrics-center">Winkler</Table.Th>
+                        <Table.Th className="model-metrics-center score-column">Scored</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {horizonMetricsForModel.map((row) => (
+                        <Table.Tr key={row.prediction_horizon}>
+                          <Table.Td>{formatHorizon(row.prediction_horizon)}</Table.Td>
+                          <Table.Td className="model-metrics-center">{row.rank ? `#${row.rank}` : "Pending"}</Table.Td>
+                          <Table.Td className="model-metrics-center">{formatMetric(row.mae)}</Table.Td>
+                          <Table.Td className="model-metrics-center">{formatPercent(row.directional_accuracy)}</Table.Td>
+                          <Table.Td className="model-metrics-center">{formatMetric(row.winkler_score)}</Table.Td>
+                          <Table.Td className="model-metrics-center score-column">{row.prediction_count.toLocaleString()}</Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+              </div>
+              <div className="mobile-cards">
+                <div className="model-metrics-card-list">
                   {horizonMetricsForModel.map((row) => (
-                    <Table.Tr key={row.prediction_horizon}>
-                      <Table.Td>{formatHorizon(row.prediction_horizon)}</Table.Td>
-                      <Table.Td className="model-metrics-center">{row.rank ? `#${row.rank}` : "Pending"}</Table.Td>
-                      <Table.Td className="model-metrics-center">{formatMetric(row.mae)}</Table.Td>
-                      <Table.Td className="model-metrics-center">{formatPercent(row.directional_accuracy)}</Table.Td>
-                      <Table.Td className="model-metrics-center">{formatMetric(row.winkler_score)}</Table.Td>
-                      <Table.Td className="model-metrics-center score-column">{row.prediction_count.toLocaleString()}</Table.Td>
-                    </Table.Tr>
+                    <article
+                      className={`model-metrics-card${row.rank && row.rank <= 3 ? ` model-metrics-card--rank-${row.rank}` : ""}`}
+                      key={row.prediction_horizon}
+                    >
+                      <div className="model-metrics-card-head">
+                        <Badge variant="light" color="green" size="lg">
+                          {formatHorizon(row.prediction_horizon)}
+                        </Badge>
+                        <span
+                          className={`model-metrics-card-rank${row.rank && row.rank <= 3 ? ` model-metrics-card-rank--${row.rank}` : ""}`}
+                        >
+                          {row.rank ? `#${row.rank}` : "—"}
+                        </span>
+                      </div>
+                      <dl className="model-metrics-card-stats">
+                        <div>
+                          <dt>MAE</dt>
+                          <dd>{formatMetric(row.mae)}</dd>
+                        </div>
+                        <div>
+                          <dt>Directional</dt>
+                          <dd>{formatPercent(row.directional_accuracy)}</dd>
+                        </div>
+                        <div>
+                          <dt>Winkler</dt>
+                          <dd>{formatMetric(row.winkler_score)}</dd>
+                        </div>
+                        <div>
+                          <dt>Scored</dt>
+                          <dd>{row.prediction_count.toLocaleString()}</dd>
+                        </div>
+                      </dl>
+                    </article>
                   ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
+                </div>
+              </div>
+            </>
           )}
         </SectionPanel>
       </AnimatedSection>
@@ -207,6 +250,7 @@ export default function ModelDetail() {
           loading={dashboard.loading}
           onPredictionSaved={() => void dashboard.refetch()}
           tickerLogos={tickerLogos}
+          singleModel
         />
       </AnimatedSection>
 

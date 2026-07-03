@@ -135,7 +135,7 @@ export default function TickerDetail() {
               <Skeleton height={140} radius="sm" />
             ) : (
               <>
-                <Group justify="space-between" align="flex-start" gap="md">
+                <Group justify="space-between" align="flex-start" gap="md" className="ticker-hero-top">
                   <Stack gap="sm" className="ticker-hero-main">
                     <Group gap="md" align="flex-start" className="ticker-hero-identity">
                       {visibleLogoUrl ? (
@@ -192,13 +192,15 @@ export default function TickerDetail() {
                       <Skeleton height={36} maw={760} radius="sm" />
                     ) : null}
                   </Stack>
-                  <UserPredictionButton
-                    ticker={ticker}
-                    latestPredictions={dashboard.latestPredictions}
-                    onSaved={() => void dashboard.refetch()}
-                  />
+                  <div className="ticker-hero-predict">
+                    <UserPredictionButton
+                      ticker={ticker}
+                      latestPredictions={dashboard.latestPredictions}
+                      onSaved={() => void dashboard.refetch()}
+                    />
+                  </div>
                 </Group>
-                <Group mt="md" gap="lg">
+                <Group mt="md" gap="lg" className="ticker-hero-price-row">
                   <div>
                     <Text c="dimmed" size="xs" fw={700} className="ticker-price-label">
                       {priceLabel}

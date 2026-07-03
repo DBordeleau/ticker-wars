@@ -80,28 +80,66 @@ export default function TickerLeaderboard({ ticker, history, userRows, loading }
 
 function TickerLeaderboardTable({ rows }: { rows: ModelTickerRow[] }) {
   return (
-    <Table.ScrollContainer minWidth={720}>
-      <Table verticalSpacing="md" className="leaderboard-table ticker-leaderboard-table">
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th className="leaderboard-table-center">Rank</Table.Th>
-            <Table.Th>Model</Table.Th>
-            <Table.Th className="leaderboard-table-center">MAE</Table.Th>
-            <Table.Th className="leaderboard-table-center">Directional</Table.Th>
-            <Table.Th className="leaderboard-table-center">Winkler</Table.Th>
-            <Table.Th className="leaderboard-table-center score-column">Scored</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
+    <>
+      <div className="desktop-table">
+        <Table.ScrollContainer minWidth={720}>
+          <Table verticalSpacing="md" className="leaderboard-table ticker-leaderboard-table">
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th className="leaderboard-table-center">Rank</Table.Th>
+                <Table.Th>Model</Table.Th>
+                <Table.Th className="leaderboard-table-center">MAE</Table.Th>
+                <Table.Th className="leaderboard-table-center">Directional</Table.Th>
+                <Table.Th className="leaderboard-table-center">Winkler</Table.Th>
+                <Table.Th className="leaderboard-table-center score-column">Scored</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.map((row) => {
+                const modelType = getModelInfo(row.model_slug, row.model_name).type;
+                return (
+                  <Table.Tr key={`${row.prediction_horizon}-${row.model_slug}`}>
+                    <Table.Td className="leaderboard-table-center">
+                      <Text fw={800}>#{row.rank}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Group gap="xs">
+                        <EntityHoverCard kind="model" slug={row.model_slug} name={row.model_name}>
+                          <Text component={Link} to={`/models/${row.model_slug}`} fw={800} className="leaderboard-model-link">
+                            <span>{row.model_name}</span>
+                            <FiExternalLink aria-hidden />
+                          </Text>
+                        </EntityHoverCard>
+                        <Badge color={modelTypeColor(modelType)}>{modelType}</Badge>
+                      </Group>
+                    </Table.Td>
+                    <Table.Td className="leaderboard-table-center">{formatMetric(row.mae)}</Table.Td>
+                    <Table.Td className="leaderboard-table-center">
+                      <DirectionalMeter value={row.directional_accuracy} />
+                    </Table.Td>
+                    <Table.Td className="leaderboard-table-center">{formatMetric(row.winkler_score)}</Table.Td>
+                    <Table.Td className="leaderboard-table-center score-column">{row.prediction_count}</Table.Td>
+                  </Table.Tr>
+                );
+              })}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      </div>
+      <div className="mobile-cards">
+        <div className="leaderboard-card-list">
           {rows.map((row) => {
             const modelType = getModelInfo(row.model_slug, row.model_name).type;
             return (
-              <Table.Tr key={`${row.prediction_horizon}-${row.model_slug}`}>
-                <Table.Td className="leaderboard-table-center">
-                  <Text fw={800}>#{row.rank}</Text>
-                </Table.Td>
-                <Table.Td>
-                  <Group gap="xs">
+              <article
+                className={`leaderboard-card${row.rank <= 3 ? ` leaderboard-card--rank-${row.rank}` : ""}`}
+                key={`${row.prediction_horizon}-${row.model_slug}`}
+              >
+                <div className="leaderboard-card-head">
+                  <span className={`leaderboard-card-rank${row.rank <= 3 ? ` leaderboard-card-rank--${row.rank}` : ""}`}>
+                    #{row.rank}
+                  </span>
+                  <div className="leaderboard-card-identity">
                     <EntityHoverCard kind="model" slug={row.model_slug} name={row.model_name}>
                       <Text component={Link} to={`/models/${row.model_slug}`} fw={800} className="leaderboard-model-link">
                         <span>{row.model_name}</span>
@@ -109,67 +147,126 @@ function TickerLeaderboardTable({ rows }: { rows: ModelTickerRow[] }) {
                       </Text>
                     </EntityHoverCard>
                     <Badge color={modelTypeColor(modelType)}>{modelType}</Badge>
-                  </Group>
-                </Table.Td>
-                <Table.Td className="leaderboard-table-center">{formatMetric(row.mae)}</Table.Td>
-                <Table.Td className="leaderboard-table-center">
-                  <DirectionalMeter value={row.directional_accuracy} />
-                </Table.Td>
-                <Table.Td className="leaderboard-table-center">{formatMetric(row.winkler_score)}</Table.Td>
-                <Table.Td className="leaderboard-table-center score-column">{row.prediction_count}</Table.Td>
-              </Table.Tr>
+                  </div>
+                </div>
+                <dl className="leaderboard-card-stats">
+                  <div>
+                    <dt>MAE</dt>
+                    <dd>{formatMetric(row.mae)}</dd>
+                  </div>
+                  <div>
+                    <dt>Directional</dt>
+                    <dd>{formatPercent(row.directional_accuracy)}</dd>
+                  </div>
+                  <div>
+                    <dt>Winkler</dt>
+                    <dd>{formatMetric(row.winkler_score)}</dd>
+                  </div>
+                  <div>
+                    <dt>Scored</dt>
+                    <dd>{row.prediction_count}</dd>
+                  </div>
+                </dl>
+              </article>
             );
           })}
-        </Table.Tbody>
-      </Table>
-    </Table.ScrollContainer>
+        </div>
+      </div>
+    </>
   );
 }
 
 function TickerUserLeaderboardTable({ rows }: { rows: UserTickerLeaderboardRow[] }) {
   return (
-    <Table.ScrollContainer minWidth={660}>
-      <Table verticalSpacing="md" className="leaderboard-table ticker-leaderboard-table">
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th className="leaderboard-table-center">Rank</Table.Th>
-            <Table.Th>User</Table.Th>
-            <Table.Th className="leaderboard-table-center">MAE</Table.Th>
-            <Table.Th className="leaderboard-table-center">Directional</Table.Th>
-            <Table.Th className="leaderboard-table-center score-column">Scored</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
+    <>
+      <div className="desktop-table">
+        <Table.ScrollContainer minWidth={660}>
+          <Table verticalSpacing="md" className="leaderboard-table ticker-leaderboard-table">
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th className="leaderboard-table-center">Rank</Table.Th>
+                <Table.Th>User</Table.Th>
+                <Table.Th className="leaderboard-table-center">MAE</Table.Th>
+                <Table.Th className="leaderboard-table-center">Directional</Table.Th>
+                <Table.Th className="leaderboard-table-center score-column">Scored</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.map((row) => (
+                <Table.Tr key={`${row.ticker}-${row.prediction_horizon}-${row.user_id}`}>
+                  <Table.Td className="leaderboard-table-center">
+                    <Text fw={800}>{row.rank ? `#${row.rank}` : "Pending"}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap="xs" wrap="nowrap">
+                      <AvatarImage
+                        profile={{
+                          display_username: row.username,
+                          avatar_seed: row.avatar_seed,
+                          avatar_options: row.avatar_options,
+                        }}
+                        size={38}
+                      />
+                      <Text fw={800}>{row.username}</Text>
+                    </Group>
+                  </Table.Td>
+                  <Table.Td className="leaderboard-table-center">{formatMetric(row.mae)}</Table.Td>
+                  <Table.Td className="leaderboard-table-center">
+                    <DirectionalMeter value={row.directional_accuracy} />
+                  </Table.Td>
+                  <Table.Td className="leaderboard-table-center score-column">
+                    {row.prediction_count.toLocaleString()}
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      </div>
+      <div className="mobile-cards">
+        <div className="leaderboard-card-list">
           {rows.map((row) => (
-            <Table.Tr key={`${row.ticker}-${row.prediction_horizon}-${row.user_id}`}>
-              <Table.Td className="leaderboard-table-center">
-                <Text fw={800}>{row.rank ? `#${row.rank}` : "Pending"}</Text>
-              </Table.Td>
-              <Table.Td>
-                <Group gap="xs" wrap="nowrap">
+            <article
+              className={`leaderboard-card${row.rank && row.rank <= 3 ? ` leaderboard-card--rank-${row.rank}` : ""}`}
+              key={`${row.ticker}-${row.prediction_horizon}-${row.user_id}`}
+            >
+              <div className="leaderboard-card-head">
+                <span
+                  className={`leaderboard-card-rank${row.rank && row.rank <= 3 ? ` leaderboard-card-rank--${row.rank}` : ""}`}
+                >
+                  {row.rank ? `#${row.rank}` : "—"}
+                </span>
+                <div className="leaderboard-card-identity">
                   <AvatarImage
                     profile={{
                       display_username: row.username,
                       avatar_seed: row.avatar_seed,
                       avatar_options: row.avatar_options,
                     }}
-                    size={38}
+                    size={34}
                   />
                   <Text fw={800}>{row.username}</Text>
-                </Group>
-              </Table.Td>
-              <Table.Td className="leaderboard-table-center">{formatMetric(row.mae)}</Table.Td>
-              <Table.Td className="leaderboard-table-center">
-                <DirectionalMeter value={row.directional_accuracy} />
-              </Table.Td>
-              <Table.Td className="leaderboard-table-center score-column">
-                {row.prediction_count.toLocaleString()}
-              </Table.Td>
-            </Table.Tr>
+                </div>
+              </div>
+              <dl className="leaderboard-card-stats">
+                <div>
+                  <dt>MAE</dt>
+                  <dd>{formatMetric(row.mae)}</dd>
+                </div>
+                <div>
+                  <dt>Directional</dt>
+                  <dd>{formatPercent(row.directional_accuracy)}</dd>
+                </div>
+                <div>
+                  <dt>Scored</dt>
+                  <dd>{row.prediction_count.toLocaleString()}</dd>
+                </div>
+              </dl>
+            </article>
           ))}
-        </Table.Tbody>
-      </Table>
-    </Table.ScrollContainer>
+        </div>
+      </div>
+    </>
   );
 }
 
