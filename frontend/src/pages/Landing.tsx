@@ -63,7 +63,7 @@ export default function Landing() {
               />
             }
           />
-          <LivePredictionFeed tickerLogos={tickerLogos} />
+          <LivePredictionFeed tickerLogos={tickerLogos} onUserProfileClick={openSignIn} />
         </div>
         <ScrollCue />
       </section>
@@ -73,6 +73,7 @@ export default function Landing() {
           modelRows={dashboard.leaderboard}
           userRows={dashboard.userLeaderboard}
           loading={dashboard.loading}
+          onUserProfileClick={openSignIn}
         />
       </SectionShell>
 

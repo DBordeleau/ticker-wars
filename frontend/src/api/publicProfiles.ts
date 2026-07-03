@@ -26,6 +26,7 @@ export type PublicUserProfile = {
   active_prediction_count: number;
   called_it_count: number;
   close_call_or_better_count: number;
+  verdict_counts?: Partial<Record<ScoreVerdict, number>>;
   directional_accuracy: number | null;
   average_absolute_pct_error: number | null;
   signature_ticker: string | null;

@@ -15,6 +15,7 @@ import Landing from "./pages/Landing";
 import ModelDetail from "./pages/ModelDetail";
 import MyPredictions from "./pages/MyPredictions";
 import Onboarding from "./pages/Onboarding";
+import Rules from "./pages/Rules";
 import TickerDetail from "./pages/TickerDetail";
 import TickerUniverse from "./pages/TickerUniverse";
 import UserProfile, { MyProfileRedirect } from "./pages/UserProfile";
@@ -67,6 +68,7 @@ export default function App() {
               }
             />
             <Route path="/models/:modelSlug" element={<ModelDetail />} />
+            <Route path="/rules" element={<Rules />} />
             <Route path="/tickers" element={<TickerUniverse />} />
             <Route path="/tickers/:ticker" element={<TickerDetail />} />
             <Route path="/users/:username" element={<UserProfile />} />

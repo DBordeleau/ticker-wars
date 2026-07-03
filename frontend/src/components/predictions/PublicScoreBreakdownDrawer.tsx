@@ -1,6 +1,6 @@
 import { Badge, Drawer, Group, Stack, Text, Title } from "@mantine/core";
 import { isScoreVerdict, verdictForScore, VERDICT_LABELS } from "../../api/gamification";
-import type { UserPrediction } from "../../api/userPredictions";
+import type { PublicProfilePrediction } from "../../api/publicProfiles";
 import {
   formatCurrency,
   formatDate,
@@ -13,13 +13,21 @@ import RulesLink from "../help/RulesLink";
 import ScoreVerdictBadge from "./ScoreVerdictBadge";
 
 type Props = {
-  prediction: UserPrediction | null;
+  prediction: PublicProfilePrediction | null;
   opened: boolean;
   onClose: () => void;
 };
 
-export default function ScoreBreakdownDrawer({ prediction, opened, onClose }: Props) {
-  const score = prediction?.score ?? null;
+export default function PublicScoreBreakdownDrawer({ prediction, opened, onClose }: Props) {
+  const score =
+    prediction && prediction.status === "scored"
+      ? {
+          absolute_pct_error: prediction.absolute_pct_error ?? 0,
+          prediction_horizon: prediction.prediction_horizon,
+          direction_correct: prediction.direction_correct ?? undefined,
+          score_verdict: prediction.score_verdict,
+        }
+      : null;
   const verdict = score
     ? verdictForScore({
         absolutePctError: score.absolute_pct_error,
@@ -28,9 +36,9 @@ export default function ScoreBreakdownDrawer({ prediction, opened, onClose }: Pr
       }) ?? score.score_verdict
     : null;
   const verdictLabel = isScoreVerdict(verdict) ? VERDICT_LABELS[verdict] : "Scored";
-  const directionHit = score?.direction_correct === 1;
-  const directionCopy = !score ? "Pending" : directionHit ? "Direction hit" : "Direction miss";
-  const xpAwarded = score?.xp_awarded ?? 0;
+  const directionHit = prediction?.direction_correct === 1;
+  const directionCopy = !prediction ? "Pending" : directionHit ? "Direction hit" : "Direction miss";
+  const xpAwarded = prediction?.xp_awarded ?? 0;
 
   return (
     <Drawer
@@ -58,12 +66,25 @@ export default function ScoreBreakdownDrawer({ prediction, opened, onClose }: Pr
           </div>
 
           <div className="score-breakdown-grid">
-            <BreakdownStat label="Predicted" value={formatCurrency(prediction.predicted_close)} detail={formatSignedPercent(prediction.predicted_return)} />
-            <BreakdownStat label="Actual" value={formatCurrency(score.actual_close)} detail={formatSignedPercent(score.actual_return)} />
-            <BreakdownStat label="Percent error" value={formatPercent(score.absolute_pct_error, 2)} />
-            <BreakdownStat label="Price error" value={formatCurrency(score.absolute_error)} />
-            <BreakdownStat label="Reference" value={formatCurrency(prediction.reference_close)} detail={prediction.reference_source === "live_price" ? "Live reference" : "Daily close"} />
-            <BreakdownStat label="Scored" value={formatDateTime(score.scored_at)} />
+            <BreakdownStat
+              label="Predicted"
+              value={prediction.predicted_close == null ? "Hidden" : formatCurrency(prediction.predicted_close)}
+              detail={
+                prediction.predicted_return == null ? undefined : formatSignedPercent(prediction.predicted_return)
+              }
+            />
+            <BreakdownStat
+              label="Actual"
+              value={prediction.actual_close == null ? "-" : formatCurrency(prediction.actual_close)}
+              detail={prediction.actual_return == null ? undefined : formatSignedPercent(prediction.actual_return)}
+            />
+            <BreakdownStat label="Percent error" value={formatPercent(prediction.absolute_pct_error, 2)} />
+            <BreakdownStat
+              label="Price error"
+              value={prediction.absolute_error == null ? "-" : formatCurrency(prediction.absolute_error)}
+            />
+            <BreakdownStat label="Reference" value={formatCurrency(prediction.reference_close)} />
+            <BreakdownStat label="Scored" value={formatDateTime(prediction.scored_at)} />
           </div>
 
           <Group gap="xs">
@@ -78,18 +99,11 @@ export default function ScoreBreakdownDrawer({ prediction, opened, onClose }: Pr
             </Badge>
           </Group>
 
-          {prediction.edit_count > 0 ? (
-            <Text size="sm" c="dimmed">
-              Edited {prediction.edit_count} time{prediction.edit_count === 1 ? "" : "s"}. The latest edit
-              reset the prediction date, target date, reference price, and scoring context.
-            </Text>
-          ) : null}
-
           <Text size="sm" className="score-breakdown-explanation">
-            You were {formatPercent(score.absolute_pct_error, 2)} away from the final close on a{" "}
-            {formatHorizon(prediction.prediction_horizon)} horizon. The stock moved{" "}
-            {directionName(score.actual_direction)} and you predicted{" "}
-            {directionName(score.predicted_direction)}, so this was a{" "}
+            This call was {formatPercent(prediction.absolute_pct_error, 2)} away from the final
+            close on a {formatHorizon(prediction.prediction_horizon)} horizon. The stock moved{" "}
+            {directionName(prediction.actual_return)} and the prediction called{" "}
+            {directionName(prediction.predicted_return)}, so this was a{" "}
             {directionHit ? "direction hit" : "direction miss"}. The final verdict combines
             percent error, horizon, and direction.{" "}
             <RulesLink section="verdicts" compact>Verdict rules</RulesLink>
@@ -122,12 +136,9 @@ function BreakdownStat({
   );
 }
 
-function directionName(value: number) {
-  if (value > 0) {
-    return "up";
+function directionName(value: number | null) {
+  if (value == null || value === 0) {
+    return "flat";
   }
-  if (value < 0) {
-    return "down";
-  }
-  return "flat";
+  return value > 0 ? "up" : "down";
 }

@@ -4,26 +4,55 @@ import { Link } from "react-router-dom";
 import type { PublicProfilePrediction } from "../../api/publicProfiles";
 import { formatCurrency, formatDate, formatHorizon, formatSignedPercent } from "../../utils/format";
 import ScoreVerdictBadge from "./ScoreVerdictBadge";
+import EntityHoverCard from "../cards/EntityHoverCard";
 import TickerLogoMark from "../tickers/TickerLogoMark";
 import PredictionPrivacyIndicator from "./PredictionPrivacyIndicator";
 
 type Props = {
   prediction: PublicProfilePrediction;
   tickerLogos?: Record<string, string | null>;
+  onScoreClick?: (prediction: PublicProfilePrediction) => void;
 };
 
-export default function PublicPredictionCard({ prediction, tickerLogos = {} }: Props) {
+export default function PublicPredictionCard({ prediction, tickerLogos = {}, onScoreClick }: Props) {
   const hasPublicValue = !prediction.public_details_hidden && prediction.predicted_close != null;
+  const logoUrl = tickerLogos[prediction.ticker];
+  const canOpenScore = prediction.status === "scored" && Boolean(onScoreClick);
+
+  const openScore = () => {
+    if (canOpenScore) {
+      onScoreClick?.(prediction);
+    }
+  };
 
   return (
-    <article className="public-prediction-card">
+    <article
+      className={`public-prediction-card${canOpenScore ? " public-prediction-card--clickable" : ""}`}
+      role={canOpenScore ? "button" : undefined}
+      tabIndex={canOpenScore ? 0 : undefined}
+      onClick={openScore}
+      onKeyDown={(event) => {
+        if (!canOpenScore) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openScore();
+        }
+      }}
+      aria-label={canOpenScore ? `Open score breakdown for ${prediction.ticker}` : undefined}
+    >
       <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Group gap="xs" wrap="nowrap">
-          <TickerLogoMark ticker={prediction.ticker} logoUrl={tickerLogos[prediction.ticker]} />
-          <Text component={Link} to={`/tickers/${prediction.ticker}`} fw={850} className="plain-link">
-            {prediction.ticker}
-          </Text>
-        </Group>
+        <EntityHoverCard kind="ticker" ticker={prediction.ticker} logoUrl={logoUrl}>
+          <Group
+            gap="xs"
+            wrap="nowrap"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <TickerLogoMark ticker={prediction.ticker} logoUrl={logoUrl} />
+            <Text component={Link} to={`/tickers/${prediction.ticker}`} fw={850} className="plain-link">
+              {prediction.ticker}
+            </Text>
+          </Group>
+        </EntityHoverCard>
         <Badge variant="light" color="green">
           {formatHorizon(prediction.prediction_horizon)}
         </Badge>
@@ -89,6 +118,13 @@ export default function PublicPredictionCard({ prediction, tickerLogos = {} }: P
               direction_correct: prediction.direction_correct ?? undefined,
               score_verdict: prediction.score_verdict,
             }}
+            onClick={
+              canOpenScore
+                ? () => {
+                    openScore();
+                  }
+                : undefined
+            }
           />
         ) : null}
       </Group>

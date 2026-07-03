@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import AnimatedSection from "../components/layout/AnimatedSection";
 import BackToDashboardButton from "../components/layout/BackToDashboardButton";
+import RulesLink from "../components/help/RulesLink";
 import MagicHoverSurface from "../components/layout/MagicHoverSurface";
 import SectionPanel from "../components/layout/SectionPanel";
 import EntityHoverCard from "../components/cards/EntityHoverCard";
@@ -100,6 +101,7 @@ export default function MyPredictions() {
           <Text className="predictions-header-lead">
             Track your active and settled calls across every horizon.
           </Text>
+          <RulesLink section="predictions">Prediction rules</RulesLink>
           {showSummary ? (
             <div className="predictions-summary">
               <SummaryStat value={String(activeRows.length)} label="Active" />
@@ -209,7 +211,12 @@ function PredictionsBody({
             className="my-predictions-panel"
             title="Active Predictions"
             subtitle="Open calls awaiting maturity. Editable until 7 days before they settle."
-            action={<CountBadge count={active.length} label="open" />}
+            action={
+              <Group gap="xs">
+                <RulesLink section="editing" compact>Editing</RulesLink>
+                <CountBadge count={active.length} label="open" />
+              </Group>
+            }
           >
             <ActivePredictionsTable
               rows={active}
@@ -227,7 +234,12 @@ function PredictionsBody({
             className="my-predictions-panel"
             title="Settled Predictions"
             subtitle="Matured calls scored against the realized close."
-            action={<CountBadge count={settled.length} label="settled" />}
+            action={
+              <Group gap="xs">
+                <RulesLink section="verdicts" compact>Verdicts</RulesLink>
+                <CountBadge count={settled.length} label="settled" />
+              </Group>
+            }
           >
             <SettledPredictionsTable rows={settled} tickerLogos={tickerLogos} highlightId={highlightId} />
           </SectionPanel>
@@ -306,9 +318,6 @@ function ActivePredictionsTable({ rows, latestPredictions, tickerLogos, onChange
                   </Table.Td>
                   <Table.Td className="prediction-table-center">{formatCurrency(row.reference_close)}</Table.Td>
                   <Table.Td className="prediction-table-center">
-                    {formatCurrency(row.reference_close)}
-                  </Table.Td>
-                  <Table.Td className="prediction-table-center">
                     <PriceReturn close={row.predicted_close} ret={row.predicted_return} />
                   </Table.Td>
                   <Table.Td className="prediction-table-center">{formatDate(row.target_date)}</Table.Td>
@@ -384,6 +393,11 @@ type SettledTableProps = {
 
 function SettledPredictionsTable({ rows, tickerLogos, highlightId }: SettledTableProps) {
   const [selectedPrediction, setSelectedPrediction] = useState<UserPrediction | null>(null);
+  const openPrediction = (prediction: UserPrediction) => {
+    if (prediction.score) {
+      setSelectedPrediction(prediction);
+    }
+  };
 
   return (
     <>
@@ -398,7 +412,6 @@ function SettledPredictionsTable({ rows, tickerLogos, highlightId }: SettledTabl
                 <Table.Tr>
                   <Table.Th>Ticker</Table.Th>
                   <Table.Th className="prediction-table-center">Horizon</Table.Th>
-                  <Table.Th className="prediction-table-center">Reference</Table.Th>
                   <Table.Th className="prediction-table-center">Predicted</Table.Th>
                   <Table.Th className="prediction-table-center">Actual</Table.Th>
                   <Table.Th className="prediction-table-center">Error</Table.Th>
@@ -410,8 +423,17 @@ function SettledPredictionsTable({ rows, tickerLogos, highlightId }: SettledTabl
               {rows.map((row) => (
                 <Table.Tr
                   key={row.prediction_id}
-                  className={row.prediction_id === highlightId ? "prediction-row-highlighted" : undefined}
+                  className={`settled-prediction-row${row.prediction_id === highlightId ? " prediction-row-highlighted" : ""}`}
                   data-prediction-id={row.prediction_id}
+                  tabIndex={row.score ? 0 : undefined}
+                  aria-label={row.score ? `Open score breakdown for ${row.ticker}` : undefined}
+                  onClick={() => openPrediction(row)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openPrediction(row);
+                    }
+                  }}
                 >
                   <Table.Td>
                     <TickerCell ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} />
@@ -444,9 +466,19 @@ function SettledPredictionsTable({ rows, tickerLogos, highlightId }: SettledTabl
         <div className="prediction-card-list">
           {rows.map((row) => (
             <article
-              className={`prediction-card${row.prediction_id === highlightId ? " prediction-row-highlighted" : ""}`}
+              className={`prediction-card settled-prediction-card${row.prediction_id === highlightId ? " prediction-row-highlighted" : ""}`}
               data-prediction-id={row.prediction_id}
               key={row.prediction_id}
+              role={row.score ? "button" : undefined}
+              tabIndex={row.score ? 0 : undefined}
+              aria-label={row.score ? `Open score breakdown for ${row.ticker}` : undefined}
+              onClick={() => openPrediction(row)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openPrediction(row);
+                }
+              }}
             >
               <Group justify="space-between" align="flex-start" wrap="nowrap">
                 <TickerCell ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} card />
@@ -515,7 +547,12 @@ function TickerCell({
   card?: boolean;
 }) {
   const link = (
-    <Group gap="xs" wrap="nowrap" className={card ? "ticker-card-heading" : "ticker-cell-link"}>
+    <Group
+      gap="xs"
+      wrap="nowrap"
+      className={card ? "ticker-card-heading" : "ticker-cell-link"}
+      onClick={(event) => event.stopPropagation()}
+    >
       <TickerLogoMark ticker={ticker} logoUrl={logoUrl} />
       <Text component={Link} to={`/tickers/${ticker}`} fw={800} className="plain-link">
         {ticker}

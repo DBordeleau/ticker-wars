@@ -17,6 +17,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useLiveTickerPrice } from "../../hooks/useLiveTickerPrice";
 import { useTickerCloseSnapshot } from "../../hooks/useTickerCloseSnapshot";
 import { formatCurrency, formatDate, formatHorizon } from "../../utils/format";
+import RulesLink from "../help/RulesLink";
 
 type Props = {
   ticker: string;
@@ -147,7 +148,12 @@ export default function UserPredictionForm({
           {error}
         </Alert>
       ) : null}
-      <Text fw={800}>Make a prediction</Text>
+      <Group justify="space-between" align="center" gap="sm">
+        <Text fw={800}>{existingPrediction ? "Edit prediction" : "Make a prediction"}</Text>
+        <RulesLink section={existingPrediction ? "editing" : "predictions"} compact>
+          {existingPrediction ? "Editing rules" : "Prediction rules"}
+        </RulesLink>
+      </Group>
       <div className="prediction-sentence">
         <span>I think {ticker} will be</span>
         <NumberInput
@@ -198,13 +204,19 @@ export default function UserPredictionForm({
       </Group>
       <Text size="xs" c="dimmed" className="prediction-rules-note">
         New predictions earn 10 XP now. Edits reset the prediction date, target date, reference
-        price, and scoring context. Final XP arrives after the official close is scored.
+        price, and scoring context. Final XP arrives after the official close is scored.{" "}
+        <RulesLink section="scoring" compact>Scoring guide</RulesLink>
       </Text>
       <Switch
         checked={hideDetailsUntilScored}
         onChange={(event) => setHideDetailsUntilScored(event.currentTarget.checked)}
         label="Hide prediction details until this prediction has matured."
-        description="Your profile can still show that you have an active call, but the predicted price and return stay hidden until it is scored."
+        description={
+          <>
+            Your profile can still show that you have an active call, but the predicted price and return stay hidden until it is scored.{" "}
+            <RulesLink section="privacy" compact>Privacy rules</RulesLink>
+          </>
+        }
         color="green"
         className="prediction-privacy-switch"
       />

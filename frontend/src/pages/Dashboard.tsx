@@ -8,7 +8,6 @@ import OnDeckPanel from "../components/dashboard/OnDeckPanel";
 import SinceLastVisitPanel from "../components/dashboard/SinceLastVisitPanel";
 import TickerChart from "../components/charts/TickerChart";
 import ChallengePromptPanel from "../components/competition/ChallengePromptPanel";
-import NearbyRivalsPanel from "../components/competition/NearbyRivalsPanel";
 import AnimatedSection from "../components/layout/AnimatedSection";
 import DashboardFooter from "../components/layout/DashboardFooter";
 import DashboardTopBar from "../components/layout/DashboardTopBar";
@@ -58,10 +57,7 @@ export default function Dashboard() {
         <OnDeckPanel tickerLogos={tickerLogos} />
       </AnimatedSection>
       <AnimatedSection delay={0.16}>
-        <div className="competition-dashboard-grid">
-          <NearbyRivalsPanel window={window} horizon={horizon} />
-          <ChallengePromptPanel />
-        </div>
+        <ChallengePromptPanel />
       </AnimatedSection>
       <AnimatedSection delay={0.2}>
         <MetricStrip

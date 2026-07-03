@@ -17,6 +17,7 @@ import {
   FiZap,
 } from "react-icons/fi";
 import type { BadgeDefinition } from "../../api/gamification";
+import { BADGE_FLAMES, BADGE_SPARKLES, getBadgeEffects } from "./badgeEffects";
 
 type BadgeLike = Pick<BadgeDefinition, "slug" | "name" | "description" | "rarity" | "icon_name"> & {
   title_unlock?: string | null;
@@ -51,11 +52,20 @@ const iconMap: Record<string, IconType> = {
 
 export default function BadgeToken({ badge, compact = false, featured = false, className }: Props) {
   const Icon = iconMap[badge.icon_name] ?? FiAward;
+  const effects = getBadgeEffects(badge);
+  const hasGlow = effects.includes("glow");
+  const hasSparkle = effects.includes("sparkle");
+  const hasHolo = effects.includes("holo");
+  const hasFlame = effects.includes("flame");
   const classes = [
     "badge-token",
     `badge-token--${badge.rarity}`,
     compact ? "badge-token--compact" : "",
     featured ? "badge-token--featured" : "",
+    hasGlow ? "badge-token--fx-glow" : "",
+    hasSparkle ? "badge-token--fx-sparkle" : "",
+    hasHolo ? "badge-token--fx-holo" : "",
+    hasFlame ? "badge-token--fx-flame" : "",
     className ?? "",
   ]
     .filter(Boolean)
@@ -72,6 +82,40 @@ export default function BadgeToken({ badge, compact = false, featured = false, c
             <span className="badge-token-name">{badge.name}</span>
           </span>
         )}
+        {hasHolo ? <span className="badge-token-holo" aria-hidden /> : null}
+        {hasFlame ? (
+          <span className="badge-token-flames" aria-hidden>
+            {BADGE_FLAMES.map((flame, index) => (
+              <span
+                key={index}
+                className="badge-token-flame"
+                style={{
+                  left: flame.left,
+                  width: flame.size,
+                  height: flame.size * 1.7,
+                  animationDelay: `${flame.delay}s`,
+                }}
+              />
+            ))}
+          </span>
+        ) : null}
+        {hasSparkle ? (
+          <span className="badge-token-sparkles" aria-hidden>
+            {BADGE_SPARKLES.map((sparkle, index) => (
+              <span
+                key={index}
+                className="badge-token-sparkle"
+                style={{
+                  top: sparkle.top,
+                  left: sparkle.left,
+                  width: sparkle.size,
+                  height: sparkle.size,
+                  animationDelay: `${sparkle.delay}s`,
+                }}
+              />
+            ))}
+          </span>
+        ) : null}
       </span>
     </Tooltip>
   );

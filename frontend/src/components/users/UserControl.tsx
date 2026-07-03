@@ -3,7 +3,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import { AnimatePresence as FramerAnimatePresence, motion, useScroll, useSpring, useTransform } from "framer-motion";
 import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
-import { FiEdit3, FiList, FiLogOut, FiTarget, FiUser } from "react-icons/fi";
+import { FiEdit3, FiHelpCircle, FiList, FiLogOut, FiTarget, FiUser } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "../../auth/authApi";
 import { useAuth } from "../../auth/AuthProvider";
@@ -95,8 +95,8 @@ export default function UserControl() {
             <RadialItem
               icon={<FiLogOut />}
               label="Log out"
-              x={compactMenu ? 0 : -180}
-              y={compactMenu ? -58 : -12}
+              x={compactMenu ? 0 : -184}
+              y={compactMenu ? -58 : -16}
               onClick={() => {
                 setMenuOpen(false);
                 void signOut();
@@ -105,37 +105,44 @@ export default function UserControl() {
             <RadialItem
               icon={<FiUser />}
               label="View profile"
-              x={compactMenu ? 0 : -166}
-              y={compactMenu ? -116 : -68}
+              x={compactMenu ? 0 : -178}
+              y={compactMenu ? -116 : -72}
               onClick={() => go(profile ? `/users/${profile.username}` : "/onboarding")}
             />
             <RadialItem
               icon={<FiEdit3 />}
               label="Edit profile"
-              x={compactMenu ? 0 : -138}
+              x={compactMenu ? 0 : -160}
               y={compactMenu ? -174 : -128}
               onClick={() => go("/onboarding")}
             />
             <RadialItem
               icon={<FiList />}
               label="My predictions"
-              x={compactMenu ? 0 : -84}
-              y={compactMenu ? -232 : -178}
+              x={compactMenu ? 0 : -126}
+              y={compactMenu ? -232 : -184}
               onClick={() => go("/me/predictions")}
             />
             <RadialItem
               icon={<FiTarget />}
               label="Make prediction"
-              x={compactMenu ? 0 : -18}
-              y={compactMenu ? -290 : -218}
+              x={compactMenu ? 0 : -74}
+              y={compactMenu ? -290 : -238}
               onClick={() => go("/tickers")}
+            />
+            <RadialItem
+              icon={<FiHelpCircle />}
+              label="Rules"
+              x={compactMenu ? 0 : -12}
+              y={compactMenu ? -348 : -292}
+              onClick={() => go("/rules")}
             />
             <motion.div
               className="user-progression-card"
               variants={{
                 open: {
                   x: compactMenu ? 0 : -214,
-                  y: compactMenu ? -350 : -242,
+                  y: compactMenu ? -408 : -350,
                   opacity: 1,
                   scale: 1,
                 },
