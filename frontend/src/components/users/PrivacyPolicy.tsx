@@ -14,6 +14,7 @@ const STORED_ITEMS = [
 ];
 const PARAGRAPHS = [
   "If you mark your profile as Private, your predictions won't be shown to other users or shared anywhere.",
+  "You can delete your account from your profile page. Account deletion removes your profile, predictions, scoring history, progression, badges, public profile projections, and sign-in account.",
   "We don't sell your data, and we don't build advertising profiles.",
 ];
 const FOOTER =

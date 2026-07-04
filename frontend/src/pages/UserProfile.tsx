@@ -1,14 +1,16 @@
-import { Alert, Button, Group, Loader, Select, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Alert, Button, Group, Loader, Modal, Select, SimpleGrid, Stack, Text, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useEffect, useMemo, useState } from "react";
-import { FiAlertTriangle, FiCheck } from "react-icons/fi";
-import { Navigate, useParams } from "react-router-dom";
+import { FiAlertTriangle, FiCheck, FiTrash2, FiX } from "react-icons/fi";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { fetchPublicUserProfile, updateOwnFeaturedBadges, type PublicProfilePrediction, type PublicUserBadge, type PublicUserProfileBundle } from "../api/publicProfiles";
 import { fetchUserTickerSpecialties, type TickerSpecialtyRow } from "../api/competition";
+import { resetDashboardCache } from "../api/dashboardStore";
 import { dispatchProgressionRefresh, isScoreVerdict, titleForLevel, verdictForScore } from "../api/gamification";
 import type { BadgeDefinition, ScoreVerdict } from "../api/gamification";
 import { fetchOwnUserPredictions, type UserPrediction } from "../api/userPredictions";
 import { useAuth } from "../auth/AuthProvider";
+import { clearLocalAuthSession, deleteOwnAccount } from "../auth/authApi";
 import type { UserProfile as OwnProfile } from "../auth/types";
 import BadgeToken from "../components/badges/BadgeToken";
 import TickerSpecialtyCard from "../components/competition/TickerSpecialtyCard";
@@ -26,6 +28,7 @@ import { useUserProgression } from "../hooks/useUserProgression";
 export default function UserProfile() {
   const { username = "" } = useParams();
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const dashboard = useDashboardData();
   const progression = useUserProgression();
   const [bundle, setBundle] = useState<PublicUserProfileBundle | null>(null);
@@ -276,7 +279,15 @@ export default function UserProfile() {
         opened={Boolean(selectedScore)}
         onClose={() => setSelectedScore(null)}
       />
-      <AnimatedSection delay={tickerSpecialties.length > 0 ? (isOwner ? 0.48 : 0.4) : (isOwner ? 0.4 : 0.32)}>
+      {isOwner ? (
+        <AnimatedSection delay={tickerSpecialties.length > 0 ? 0.48 : 0.4}>
+          <DeleteAccountControl
+            profile={profile}
+            onDeleted={() => navigate("/", { replace: true })}
+          />
+        </AnimatedSection>
+      ) : null}
+      <AnimatedSection delay={tickerSpecialties.length > 0 ? (isOwner ? 0.56 : 0.4) : (isOwner ? 0.48 : 0.32)}>
         <DashboardFooter metadata={dashboard.metadata} loading={dashboard.loading} />
       </AnimatedSection>
     </main>
@@ -378,6 +389,137 @@ function ProfileIdentityControls({
         </SimpleGrid>
       </section>
     </MagicHoverSurface>
+  );
+}
+
+function DeleteAccountControl({
+  profile,
+  onDeleted,
+}: {
+  profile: OwnProfile | null;
+  onDeleted: () => void;
+}) {
+  const { setProfile } = useAuth();
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const expectedUsername = profile?.display_username ?? profile?.username ?? "";
+  const deleteEnabled =
+    Boolean(expectedUsername) && deleteConfirmation.trim().toLowerCase() === expectedUsername.trim().toLowerCase();
+
+  const handleDelete = async () => {
+    if (!deleteEnabled) {
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteOwnAccount(deleteConfirmation);
+      resetDashboardCache();
+      dispatchProgressionRefresh();
+      setProfile(null);
+      await clearLocalAuthSession().catch(() => undefined);
+      notifications.show({
+        color: "green",
+        icon: <FiCheck />,
+        title: "Account deleted",
+        message: "Your profile, predictions, progression, and sign-in account were removed.",
+      });
+      onDeleted();
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "Unable to delete your account. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const closeModal = () => {
+    if (deleting) {
+      return;
+    }
+    setDeleteModalOpen(false);
+    setDeleteError(null);
+    setDeleteConfirmation("");
+  };
+
+  return (
+    <>
+      <div className="profile-delete-account-row">
+        <Button
+          color="red"
+          variant="subtle"
+          leftSection={<FiTrash2 />}
+          className="profile-delete-account-button"
+          onClick={() => setDeleteModalOpen(true)}
+        >
+          Delete account
+        </Button>
+      </div>
+
+      <Modal
+        opened={deleteModalOpen}
+        onClose={closeModal}
+        centered
+        className="auth-modal delete-account-modal"
+        withCloseButton={false}
+        padding={0}
+        radius="sm"
+        overlayProps={{ backgroundOpacity: 0.5, blur: 8 }}
+        transitionProps={{ transition: "pop", duration: 180 }}
+      >
+        <MagicHoverSurface className="auth-modal-surface delete-account-surface">
+          <button type="button" className="auth-modal-close" aria-label="Close delete account modal" onClick={closeModal}>
+            <FiX />
+          </button>
+          <Stack gap="md" className="delete-account-modal-body">
+            <div className="delete-account-modal-heading">
+              <span className="delete-account-icon" aria-hidden>
+                <FiTrash2 />
+              </span>
+              <div>
+                <Title order={2}>Delete account</Title>
+                <Text>
+                  This permanently removes your Ticker Wars account and all user-owned data.
+                </Text>
+              </div>
+            </div>
+            <div className="delete-account-impact">
+              <FiAlertTriangle aria-hidden />
+              <Text>
+                Your profile, avatar settings, predictions, scores, XP, badges, streaks, public profile,
+                leaderboard rows, ticker specialties, and sign-in account will be deleted.
+              </Text>
+            </div>
+            <Text className="delete-account-confirm-copy">
+              Type <strong>{expectedUsername}</strong> to confirm.
+            </Text>
+            <TextInput
+              label="Username"
+              value={deleteConfirmation}
+              disabled={deleting}
+              className="delete-account-confirm-input"
+              onChange={(event) => setDeleteConfirmation(event.currentTarget.value)}
+            />
+            {deleteError ? (
+              <div className="delete-account-error" role="alert">
+                <FiAlertTriangle aria-hidden />
+                <span>{deleteError}</span>
+              </div>
+            ) : null}
+            <Group justify="flex-end" className="delete-account-modal-actions">
+              <Button variant="subtle" disabled={deleting} onClick={closeModal}>
+                Cancel
+              </Button>
+              <Button color="red" loading={deleting} disabled={!deleteEnabled} onClick={() => void handleDelete()}>
+                Delete my account
+              </Button>
+            </Group>
+          </Stack>
+        </MagicHoverSurface>
+      </Modal>
+    </>
   );
 }
 
