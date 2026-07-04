@@ -33,6 +33,11 @@ export function getDashboardState(): DashboardStoreState {
   return state;
 }
 
+export function resetDashboardCache() {
+  inFlight = null;
+  setState({ data: null, loading: false, error: null });
+}
+
 // Force a fresh fetch and broadcast the result to every mounted consumer.
 export function refreshDashboard(): Promise<void> {
   if (inFlight) {
