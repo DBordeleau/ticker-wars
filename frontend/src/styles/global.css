@@ -1419,6 +1419,7 @@ h2,
 .chart-panel .mantine-Input-wrapper::after,
 .prediction-surface-card .mantine-Input-wrapper::after,
 .profile-owner-controls .mantine-Input-wrapper::after,
+.delete-account-confirm-input .mantine-Input-wrapper::after,
 .model-toggle::after {
   position: absolute;
   inset: 0;
@@ -1455,6 +1456,7 @@ h2,
 .section-magic-surface:hover .prediction-filters .mantine-Input-wrapper::after,
 .section-magic-surface:hover .chart-panel .mantine-Input-wrapper::after,
 .section-magic-surface:hover .profile-owner-controls .mantine-Input-wrapper::after,
+.delete-account-surface:hover .delete-account-confirm-input .mantine-Input-wrapper::after,
 .section-magic-surface:hover .model-toggle::after,
 .spotlight-control-wrap:hover::after {
   opacity: 1;
@@ -6190,6 +6192,170 @@ tr.prediction-row-highlighted {
 
 .section-magic-surface:hover .profile-owner-controls .mantine-Input-input {
   border-color: rgba(74, 222, 128, 0.26);
+}
+
+.profile-delete-account-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 2px 4px 0;
+}
+
+.profile-delete-account-button {
+  min-height: 38px;
+  border: 1px solid rgba(248, 113, 113, 0.22);
+  border-radius: 8px;
+  color: #fecaca;
+  background:
+    linear-gradient(180deg, rgba(248, 113, 113, 0.1), rgba(127, 29, 29, 0.08)),
+    rgba(9, 14, 12, 0.38);
+  font-weight: 820;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    background-color 160ms ease;
+}
+
+.profile-delete-account-button:hover,
+.profile-delete-account-button:focus-visible {
+  border-color: rgba(252, 165, 165, 0.48);
+  color: #fee2e2;
+  background:
+    linear-gradient(180deg, rgba(248, 113, 113, 0.16), rgba(127, 29, 29, 0.13)),
+    rgba(9, 14, 12, 0.5);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.24),
+    0 0 22px rgba(248, 113, 113, 0.13);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.delete-account-modal .mantine-Modal-body {
+  padding: 0;
+}
+
+.delete-account-surface {
+  border-color: rgba(248, 113, 113, 0.2);
+}
+
+.delete-account-surface::before {
+  background:
+    radial-gradient(420px circle at var(--magic-x) var(--magic-y),
+      rgba(248, 113, 113, 0.1),
+      rgba(45, 212, 191, 0.06) 38%,
+      transparent 70%);
+}
+
+.delete-account-surface::after {
+  background:
+    radial-gradient(360px circle at var(--magic-x) var(--magic-y),
+      rgba(248, 113, 113, 0.9),
+      rgba(74, 222, 128, 0.64) 32%,
+      rgba(34, 211, 238, 0.34) 52%,
+      transparent 74%);
+}
+
+.delete-account-modal-body {
+  padding: 30px;
+}
+
+.delete-account-modal-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding-right: 34px;
+}
+
+.delete-account-modal-heading h2 {
+  margin: 0 0 4px;
+  color: #fee2e2;
+  font-size: 1.36rem;
+  line-height: 1.16;
+}
+
+.delete-account-modal-heading p,
+.delete-account-confirm-copy {
+  color: rgba(244, 247, 245, 0.84);
+  line-height: 1.55;
+}
+
+.delete-account-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 8px;
+  color: #fecaca;
+  background:
+    linear-gradient(180deg, rgba(248, 113, 113, 0.16), rgba(127, 29, 29, 0.12)),
+    rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.delete-account-impact,
+.delete-account-error {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border: 1px solid rgba(248, 113, 113, 0.22);
+  border-radius: 8px;
+  color: #fee2e2;
+  background:
+    linear-gradient(180deg, rgba(248, 113, 113, 0.1), rgba(127, 29, 29, 0.08)),
+    rgba(255, 255, 255, 0.035);
+  padding: 12px;
+}
+
+.delete-account-impact svg,
+.delete-account-error svg {
+  margin-top: 3px;
+  color: #fca5a5;
+}
+
+.delete-account-impact p,
+.delete-account-error span {
+  color: rgba(254, 226, 226, 0.9);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.delete-account-confirm-copy {
+  margin: 0;
+  font-size: 0.93rem;
+}
+
+.delete-account-confirm-copy strong {
+  color: #bbf7d0;
+  font-weight: 860;
+}
+
+.delete-account-confirm-input .mantine-Input-wrapper {
+  --spotlight-child-x: 50%;
+  --spotlight-child-y: 50%;
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.delete-account-confirm-input .mantine-Input-input {
+  position: relative;
+  z-index: 1;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  background: rgba(5, 10, 8, 0.54);
+  font-weight: 760;
+}
+
+.delete-account-confirm-input .mantine-Input-input:focus {
+  border-color: rgba(248, 113, 113, 0.44);
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.12);
+}
+
+.delete-account-modal-actions {
+  padding-top: 2px;
 }
 
 .public-prediction-card {
