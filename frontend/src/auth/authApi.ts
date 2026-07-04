@@ -30,6 +30,63 @@ export async function signOut() {
   }
 }
 
+export async function clearLocalAuthSession() {
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase.auth.signOut({ scope: "local" });
+  if (error) {
+    throw error;
+  }
+}
+
+export async function deleteOwnAccount(confirmationUsername: string): Promise<Record<string, number>> {
+  if (!supabase) {
+    throw new Error("Supabase is not configured for this React build.");
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) {
+    throw sessionError;
+  }
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    throw new Error("You must be signed in to delete your account.");
+  }
+
+  const { data, error } = await supabase.functions.invoke("delete-user-account", {
+    body: { confirmationUsername },
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (error) {
+    throw await readableFunctionError(error);
+  }
+
+  return ((data as { deletion_counts?: Record<string, number> } | null)?.deletion_counts ?? {});
+}
+
+async function readableFunctionError(error: Error): Promise<Error> {
+  const context = (error as Error & { context?: Response }).context;
+  if (!context) {
+    return error;
+  }
+
+  try {
+    const data = await context.clone().json() as { error?: string };
+    if (data.error) {
+      return new Error(data.error);
+    }
+  } catch {
+    return error;
+  }
+
+  return error;
+}
+
 export async function fetchOwnProfile(userId: string): Promise<UserProfile | null> {
   if (!supabase) {
     return null;
