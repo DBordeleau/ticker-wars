@@ -5739,6 +5739,15 @@ tr.prediction-row-highlighted {
   padding: 30px;
 }
 
+/* On narrow phones the modal is tight enough that the centered label's first
+   line can run under the absolutely-positioned close button (top-right). Drop
+   the content below the close button there. Wider modals already clear it. */
+@media (max-width: 480px) {
+  .auth-modal-body {
+    padding-top: 52px;
+  }
+}
+
 /* Small privacy-policy link at the bottom of the sign-in view. */
 .auth-modal-privacy-link {
   align-self: center;
