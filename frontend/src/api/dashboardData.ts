@@ -37,6 +37,7 @@ export type UserLeaderboardRow = {
   avatar_seed: string;
   avatar_options: AvatarOptions;
   mae: number | null;
+  mape?: number | null;
   directional_accuracy: number | null;
   prediction_count: number;
   scored_count?: number;
@@ -140,6 +141,7 @@ export type ModelMetricRow = {
   model_name: string;
   model_slug: string;
   mae: number | null;
+  mape?: number | null;
   directional_accuracy: number | null;
   winkler_score?: number | null;
   prediction_count: number;
@@ -725,6 +727,7 @@ function normalizeUserLeaderboardRow(row: Partial<UserLeaderboardRow>): UserLead
       rotate: 0,
     },
     mae: row.mae ?? null,
+    mape: row.mape ?? null,
     directional_accuracy: row.directional_accuracy ?? null,
     prediction_count: predictionCount,
     rank: row.rank ?? null,
@@ -869,6 +872,7 @@ function normalizeModelMetricRow(row: Partial<ModelMetricRow>): ModelMetricRow {
     model_name: row.model_name ?? "",
     model_slug: row.model_slug ?? fallbackModelSlug(row.model_name),
     mae: row.mae ?? null,
+    mape: row.mape ?? null,
     directional_accuracy: row.directional_accuracy ?? null,
     prediction_count: predictionCount,
   };

@@ -13,7 +13,6 @@ import DashboardFooter from "../components/layout/DashboardFooter";
 import MagicHoverSurface from "../components/layout/MagicHoverSurface";
 import TickerLeaderboard from "../components/leaderboard/TickerLeaderboard";
 import SectionPanel from "../components/layout/SectionPanel";
-import PredictionHorizonSelector from "../components/predictions/PredictionHorizonSelector";
 import PredictionTable from "../components/predictions/PredictionTable";
 import UserPredictionTable from "../components/predictions/UserPredictionTable";
 import UserPredictionButton from "../components/predictions/UserPredictionButton";
@@ -31,7 +30,6 @@ import {
 
 export default function TickerDetail() {
   const { ticker = "" } = useParams();
-  const [agreementHorizon, setAgreementHorizon] = useState<MetricHorizon>("all");
   const [latestPredictionsView, setLatestPredictionsView] = useState<DashboardView>("models");
   const [latestUserHorizon, setLatestUserHorizon] = useState<MetricHorizon>("all");
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
@@ -52,14 +50,6 @@ export default function TickerDetail() {
   );
   const predictions = dashboard.latestPredictions.filter((row) => row.ticker === ticker);
   const userPredictions = dashboard.latestUserPredictions.filter((row) => row.ticker === ticker);
-  const directionalPredictions = predictions
-    .filter((row) => row.model_slug !== "baseline")
-    .filter((row) =>
-      agreementHorizon === "all" ? true : row.prediction_horizon === agreementHorizon,
-    );
-  const positive = directionalPredictions.filter((row) => row.predicted_return > 0).length;
-  const negative = directionalPredictions.filter((row) => row.predicted_return < 0).length;
-  const flat = directionalPredictions.length - positive - negative;
   const firstPrediction = predictions.find((row) => row.model_slug !== "baseline") ?? predictions[0];
   const companyName = tickerProfile.data?.company_name ?? ticker;
   const industryLabel = tickerProfile.data?.industry ?? tickerProfile.data?.sector;
@@ -229,38 +219,6 @@ export default function TickerDetail() {
       </AnimatedSection>
 
       <AnimatedSection delay={0.16}>
-        <SectionPanel
-          title="Directional Agreement"
-          subtitle="How latest non-benchmark model predictions split for this ticker."
-          action={
-            <PredictionHorizonSelector
-              value={agreementHorizon}
-              onChange={setAgreementHorizon}
-              label="Directional agreement horizon"
-            />
-          }
-        >
-          {directionalPredictions.length === 0 ? (
-            <Text c="dimmed" size="sm">
-              No non-benchmark predictions match this horizon yet.
-            </Text>
-          ) : (
-            <Group gap="xl">
-              <Text>
-                <strong>{positive}</strong> up
-              </Text>
-              <Text>
-                <strong>{negative}</strong> down
-              </Text>
-              <Text>
-                <strong>{flat}</strong> flat
-              </Text>
-            </Group>
-          )}
-        </SectionPanel>
-      </AnimatedSection>
-
-      <AnimatedSection delay={0.24}>
         <TickerChart
           history={tickerHistory.data}
           predictions={dashboard.latestPredictions}
@@ -268,9 +226,10 @@ export default function TickerDetail() {
           onTickerChange={() => undefined}
           loading={dashboard.loading || tickerHistory.loading}
           showTickerSelect={false}
+          showDirectionalAgreement
         />
       </AnimatedSection>
-      <AnimatedSection delay={0.32}>
+      <AnimatedSection delay={0.24}>
         {latestPredictionsView === "models" ? (
           <PredictionTable
             rows={predictions}
@@ -295,7 +254,7 @@ export default function TickerDetail() {
           />
         )}
       </AnimatedSection>
-      <AnimatedSection delay={0.4}>
+      <AnimatedSection delay={0.32}>
         <TickerLeaderboard
           ticker={ticker}
           history={tickerHistory.data}
@@ -304,7 +263,7 @@ export default function TickerDetail() {
         />
       </AnimatedSection>
       {tickerSpecialists.length > 0 ? (
-        <AnimatedSection delay={0.44}>
+        <AnimatedSection delay={0.4}>
           <SectionPanel
             title="Human Specialists"
             subtitle={`Public users with the strongest scored track record on ${ticker}.`}
@@ -318,7 +277,7 @@ export default function TickerDetail() {
           </SectionPanel>
         </AnimatedSection>
       ) : null}
-      <AnimatedSection delay={0.48}>
+      <AnimatedSection delay={0.44}>
         <DashboardFooter metadata={dashboard.metadata} loading={dashboard.loading} />
       </AnimatedSection>
     </main>

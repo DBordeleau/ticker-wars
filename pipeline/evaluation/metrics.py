@@ -168,6 +168,7 @@ def _rank_horizon_metrics(metrics: list[dict[str, Any]]) -> list[dict[str, Any]]
     ranked = sorted(
         metrics,
         key=lambda row: (
+            row["mape"],
             row["mae"],
             row["winkler_score"] if row["winkler_score"] is not None else math.inf,
             -row["directional_accuracy"],
@@ -184,6 +185,7 @@ def _rank_user_horizon_metrics(metrics: list[dict[str, Any]]) -> list[dict[str, 
     ranked = sorted(
         metrics,
         key=lambda row: (
+            row["mape"],
             row["mae"],
             -row["directional_accuracy"],
             -row["prediction_count"],

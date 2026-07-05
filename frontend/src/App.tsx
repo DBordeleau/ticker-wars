@@ -5,10 +5,10 @@ import { AuthProvider } from "./auth/AuthProvider";
 import AuthOnboardingRedirect from "./auth/AuthOnboardingRedirect";
 import RedirectIfAuthed from "./auth/RedirectIfAuthed";
 import RequireAuth from "./auth/RequireAuth";
+import AppNavigation from "./components/layout/AppNavigation";
 import AuroraBackground from "./components/layout/AuroraBackground";
 import ScrollManager from "./components/layout/ScrollManager";
 import GamificationToasts from "./components/users/GamificationToasts";
-import UserControl from "./components/users/UserControl";
 import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/Dashboard";
 import Landing from "./pages/Landing";
@@ -30,7 +30,7 @@ export default function App() {
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <ScrollManager />
           <AuthOnboardingRedirect />
-          <UserControl />
+          <AppNavigation />
           <GamificationToasts />
           <Routes>
             <Route

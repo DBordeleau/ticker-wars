@@ -3,6 +3,8 @@ import type { CSSProperties, MouseEvent, ReactNode } from "react";
 type Props = {
   children: ReactNode;
   className?: string;
+  as?: "div" | "nav";
+  "aria-label"?: string;
 };
 
 type SurfaceStyle = CSSProperties & {
@@ -20,9 +22,11 @@ const childSpotlightSelector = [
   ".prediction-surface-card .mantine-Input-wrapper",
   ".profile-owner-controls .mantine-Input-wrapper",
   ".badge-token",
+  ".app-nav-link",
+  ".app-nav-predict",
 ].join(",");
 
-export default function MagicHoverSurface({ children, className = "" }: Props) {
+export default function MagicHoverSurface({ children, className = "", as: Component = "div", "aria-label": ariaLabel }: Props) {
   const handlePointerMove = (event: MouseEvent<HTMLElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
     event.currentTarget.style.setProperty("--magic-x", `${event.clientX - bounds.left}px`);
@@ -41,8 +45,13 @@ export default function MagicHoverSurface({ children, className = "" }: Props) {
   };
 
   return (
-    <div className={`magic-hover-surface ${className}`} style={style} onMouseMove={handlePointerMove}>
+    <Component
+      aria-label={ariaLabel}
+      className={`magic-hover-surface ${className}`}
+      style={style}
+      onMouseMove={handlePointerMove}
+    >
       {children}
-    </div>
+    </Component>
   );
 }

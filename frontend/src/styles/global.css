@@ -2445,6 +2445,74 @@ h2,
   margin-top: 14px;
 }
 
+.ticker-direction-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 4;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: min(320px, calc(100% - 24px));
+  border: 1px solid rgba(244, 247, 245, 0.14);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #f4f7f5;
+  background: rgba(9, 12, 11, 0.72);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  pointer-events: none;
+}
+
+.ticker-direction-badge--up {
+  border-color: rgba(74, 222, 128, 0.3);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28), 0 0 24px rgba(34, 197, 94, 0.12);
+}
+
+.ticker-direction-badge--down {
+  border-color: rgba(248, 113, 113, 0.28);
+}
+
+.ticker-direction-badge--mixed,
+.ticker-direction-badge--flat {
+  border-color: rgba(96, 165, 250, 0.26);
+}
+
+.ticker-direction-eyebrow {
+  color: #a7b8af;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.ticker-direction-counts,
+.ticker-direction-empty {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: #f4f7f5;
+  font-size: 0.88rem;
+  font-weight: 720;
+  line-height: 1.2;
+}
+
+.ticker-direction-counts strong {
+  color: #86efac;
+  font-weight: 900;
+}
+
+.ticker-direction-badge--down .ticker-direction-counts strong {
+  color: #fca5a5;
+}
+
+.ticker-direction-badge--mixed .ticker-direction-counts strong,
+.ticker-direction-badge--flat .ticker-direction-counts strong {
+  color: #93c5fd;
+}
+
 .ticker-chart-actions {
   flex-wrap: wrap;
 }
@@ -3748,6 +3816,269 @@ h2,
   -webkit-backdrop-filter: blur(18px);
 }
 
+/* ---------------------------------------------------------------------------
+   Quick prediction modal (nav "Predict" CTA). Reuses the prediction glass
+   surface, adds a ticker picker that steps into the shared prediction form.
+--------------------------------------------------------------------------- */
+.quick-predict-modal .mantine-Modal-content,
+.quick-predict-modal .mantine-Modal-body {
+  overflow: visible;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.quick-predict-drawer .mantine-Drawer-content {
+  background: transparent;
+  box-shadow: none;
+}
+
+.quick-predict-drawer .mantine-Drawer-body {
+  padding: 0;
+}
+
+/* The surface fills the modal/drawer content (which is sized to match), and the
+   card fills the surface — so the magic border ring traces the visible card
+   exactly, with no wider parent bounds to highlight past the card edge. */
+.quick-predict-surface {
+  border-radius: 12px;
+}
+
+.quick-predict {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  overflow: hidden;
+}
+
+@media (max-width: 760px) {
+  .quick-predict-surface {
+    border-radius: 16px 16px 0 0;
+  }
+
+  .quick-predict {
+    border-radius: 16px 16px 0 0;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+}
+
+.quick-predict-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.quick-predict-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.quick-predict-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #6ee7a8;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.quick-predict-eyebrow svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.quick-predict-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+
+/* Matches the sign-in modal's close button (.auth-modal-close) hover/press. */
+.quick-predict-close {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(74, 222, 128, 0.32);
+  border-radius: 999px;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+  cursor: pointer;
+  transition:
+    color 170ms ease,
+    border-color 170ms ease,
+    background 170ms ease,
+    box-shadow 170ms ease,
+    transform 170ms ease;
+}
+
+.quick-predict-close:hover,
+.quick-predict-close:focus-visible {
+  color: #04130a;
+  border-color: rgba(134, 239, 172, 0.7);
+  background:
+    linear-gradient(135deg, rgba(74, 222, 128, 0.95), rgba(45, 212, 191, 0.85));
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.24),
+    0 0 22px rgba(34, 197, 94, 0.3);
+  outline: none;
+  transform: translateY(-1px) scale(1.06) rotate(8deg);
+}
+
+.quick-predict-close:active {
+  transform: translateY(1px) scale(0.94) rotate(0deg);
+}
+
+.quick-predict-close svg {
+  width: 17px;
+  height: 17px;
+}
+
+.quick-predict-step {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.quick-predict-search .mantine-Input-input {
+  color: #ffffff;
+  background: rgba(6, 10, 9, 0.6);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.quick-predict-search .mantine-Input-section {
+  color: #86efac;
+}
+
+.quick-predict-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 8px;
+  max-height: 308px;
+  overflow-y: auto;
+  /* Extra inner padding so the hover-lift on the top row (and the side glow on
+     the edge columns) is not clipped by this scroll container. */
+  padding: 9px 7px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(134, 239, 172, 0.3) transparent;
+}
+
+.quick-predict-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.quick-predict-grid::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: rgba(134, 239, 172, 0.3);
+}
+
+.quick-predict-ticker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #ffffff;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  cursor: pointer;
+  transition:
+    transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.quick-predict-ticker:hover,
+.quick-predict-ticker:focus-visible {
+  outline: none;
+  transform: translateY(-3px);
+  border-color: rgba(134, 239, 172, 0.5);
+  background: linear-gradient(180deg, rgba(74, 222, 128, 0.14), rgba(20, 184, 166, 0.06));
+  box-shadow:
+    0 12px 26px -12px rgba(34, 197, 94, 0.5),
+    0 0 18px -6px rgba(34, 197, 94, 0.4);
+}
+
+.quick-predict-ticker-symbol {
+  font-size: 0.86rem;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+}
+
+.quick-predict-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 120px;
+  color: rgba(219, 230, 223, 0.7);
+  font-weight: 700;
+  text-align: center;
+}
+
+.quick-predict-selected-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.quick-predict-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px 6px 10px;
+  color: rgba(219, 230, 223, 0.82);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.quick-predict-back:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.09);
+  transform: translateX(-2px);
+}
+
+.quick-predict-back svg {
+  width: 15px;
+  height: 15px;
+}
+
+.quick-predict-selected {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.quick-predict-selected-symbol {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+
 .user-prediction-form {
   min-width: 0;
 }
@@ -4178,40 +4509,292 @@ h2,
   -webkit-backdrop-filter: blur(12px);
 }
 
-.user-control {
+.app-nav-frame {
   position: fixed;
-  right: 56px;
-  bottom: 50px;
-  z-index: 80;
-  display: inline-grid;
-  place-items: center;
+  left: 0;
+  right: 0;
+  z-index: 88;
+  pointer-events: none;
 }
 
-/* Scroll-coupled drift wrapper — only the avatar lives in here, so the radial
-   menu (a sibling) stays anchored and does not float when the page scrolls. */
-.user-control-drift {
-  display: inline-grid;
-  place-items: center;
-  will-change: transform;
+.app-nav-frame--desktop {
+  top: 0;
 }
 
-.user-control-float {
-  display: inline-grid;
-  place-items: center;
-  /* Promote to its own compositor layer so the slow idle drift is rendered with
-     sub-pixel smoothness instead of snapping pixel-to-pixel (the "1fps" jitter). */
-  will-change: transform;
-  animation: user-control-idle 7s ease-in-out infinite;
+.app-nav-frame--mobile-top,
+.app-nav-frame--mobile-bottom {
+  display: none;
 }
 
-/* Signed-in floating portrait. The avatar fills a crisp circular frame with no
-   gap, wrapped by a slowly rotating gradient aura and a steady ambient glow. */
-.user-avatar-button {
+.app-nav-spacer {
+  height: 64px;
+}
+
+.mobile-app-nav-spacer {
+  display: none;
+}
+
+.app-nav {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  pointer-events: auto;
+  backdrop-filter: blur(18px) saturate(1.28);
+  -webkit-backdrop-filter: blur(18px) saturate(1.28);
+}
+
+/* Desktop command bar: fixed, full-width, flush to the top edge with a hairline
+   bottom border. Content is constrained to the same lane as .dashboard-shell.
+   This is a docked bar, not a floating pill. */
+.app-nav--desktop {
+  width: 100%;
+  min-height: 62px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 0;
+  padding: 9px max(32px, calc((100% - 1760px) / 2));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+    rgba(8, 13, 11, 0.74);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 30px -14px rgba(0, 0, 0, 0.6);
+}
+
+.app-nav::before,
+.mobile-app-nav::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  border-radius: inherit;
+  background:
+    radial-gradient(280px circle at var(--magic-x) var(--magic-y),
+      rgba(74, 222, 128, 0.16),
+      rgba(34, 211, 238, 0.09) 34%,
+      transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+/* Only the top and bottom edges highlight under the cursor — never the
+   left/right sides. Two 1px-tall mask strips (top + bottom) reveal the radial
+   glow along the horizontal borders only. */
+.app-nav::after,
+.mobile-app-nav::after {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  content: "";
+  background:
+    radial-gradient(300px circle at var(--magic-x) var(--magic-y),
+      rgba(34, 211, 238, 0.98),
+      rgba(74, 222, 128, 0.9) 30%,
+      rgba(163, 230, 53, 0.44) 50%,
+      transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% 1px no-repeat,
+    linear-gradient(#000 0 0) bottom / 100% 1px no-repeat;
+  mask:
+    linear-gradient(#000 0 0) top / 100% 1px no-repeat,
+    linear-gradient(#000 0 0) bottom / 100% 1px no-repeat;
+  transition: opacity 200ms ease;
+}
+
+.app-nav:hover::before,
+.app-nav:hover::after,
+.mobile-app-nav:hover::before,
+.mobile-app-nav:hover::after {
+  opacity: 1;
+}
+
+.app-nav>*,
+.mobile-app-nav>* {
+  position: relative;
+  z-index: 2;
+}
+
+.app-nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: max-content;
+  color: #f8fafc;
+  text-decoration: none;
+}
+
+.app-nav-brand-mark {
+  display: grid;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  color: #041008;
+  background: linear-gradient(135deg, #4ade80, #2dd4bf);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 4px 14px -4px rgba(45, 212, 191, 0.7);
+}
+
+.app-nav-brand-mark svg {
+  width: 18px;
+  height: 18px;
+}
+
+.app-nav-brand-word {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.app-nav-brand-word strong {
+  color: #86efac;
+  font-weight: 900;
+}
+
+.app-nav-divider {
+  width: 1px;
+  height: 26px;
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.app-nav-links {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.app-nav-link,
+.app-nav-predict {
+  --spotlight-child-x: 50%;
+  --spotlight-child-y: 50%;
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 9px 15px;
+  color: rgba(219, 230, 223, 0.74);
+  background: transparent;
+  font-size: 0.84rem;
+  font-weight: 780;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.app-nav-link svg,
+.app-nav-predict svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.app-nav-link::after,
+.app-nav-predict::after {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  content: "";
+  border-radius: inherit;
+  padding: 1px;
+  background:
+    radial-gradient(80px circle at var(--spotlight-child-x) var(--spotlight-child-y),
+      rgba(34, 211, 238, 0.98),
+      rgba(74, 222, 128, 0.9) 34%,
+      rgba(187, 247, 208, 0.4) 56%,
+      transparent 78%);
+  opacity: 0;
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  transition: opacity 200ms ease;
+}
+
+.app-nav:hover .app-nav-link::after,
+.app-nav:hover .app-nav-predict::after {
+  opacity: 1;
+}
+
+.app-nav-link:hover,
+.app-nav-link:focus-visible,
+.app-nav-predict:hover,
+.app-nav-predict:focus-visible {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.app-nav-link--active,
+.app-nav-link--active:hover,
+.app-nav-link--active:focus-visible {
+  border-color: rgba(134, 239, 172, 0.34);
+  color: #052014;
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.95), rgba(45, 212, 191, 0.85));
+  box-shadow:
+    0 0 20px -4px rgba(74, 222, 128, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.app-nav-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.app-nav-predict {
+  border-color: rgba(134, 239, 172, 0.26);
+  color: #f0fdf4;
+  background:
+    linear-gradient(180deg, rgba(34, 197, 94, 0.16), rgba(20, 184, 166, 0.08)),
+    rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 18px rgba(34, 197, 94, 0.12);
+}
+
+.app-nav-predict:hover,
+.app-nav-predict:focus-visible {
+  border-color: rgba(187, 247, 208, 0.46);
+  background:
+    linear-gradient(180deg, rgba(34, 197, 94, 0.22), rgba(20, 184, 166, 0.12)),
+    rgba(255, 255, 255, 0.06);
+}
+
+.app-nav-account {
   position: relative;
   isolation: isolate;
   display: grid;
-  width: 60px;
-  height: 60px;
+  width: 46px;
+  height: 46px;
   place-items: center;
   border: 0;
   border-radius: 999px;
@@ -4219,18 +4802,29 @@ h2,
   color: #ffffff;
   background: transparent;
   cursor: pointer;
-  will-change: transform;
   transition:
-    transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    filter 240ms ease;
+    transform 200ms ease,
+    filter 200ms ease;
 }
 
-.user-avatar-frame {
+.app-nav-account:disabled {
+  cursor: wait;
+  filter: saturate(0.85);
+  opacity: 0.72;
+}
+
+.app-nav-account:hover,
+.app-nav-account:focus-visible {
+  outline: none;
+  transform: translateY(-2px) scale(1.03);
+}
+
+.app-nav-avatar-frame {
   position: relative;
   z-index: 1;
   display: grid;
-  width: 100%;
-  height: 100%;
+  width: 42px;
+  height: 42px;
   place-items: center;
   overflow: hidden;
   border-radius: 999px;
@@ -4238,13 +4832,12 @@ h2,
   box-shadow:
     inset 0 0 0 1.5px rgba(255, 255, 255, 0.2),
     inset 0 2px 8px rgba(0, 0, 0, 0.34),
-    0 14px 30px rgba(0, 0, 0, 0.4);
-  transition: box-shadow 240ms ease;
+    0 10px 22px rgba(0, 0, 0, 0.34);
 }
 
-.user-avatar-xp-ring {
+.app-nav-avatar-ring {
   position: absolute;
-  inset: -7px;
+  inset: -4px;
   z-index: 2;
   border-radius: inherit;
   padding: 2px;
@@ -4266,248 +4859,271 @@ h2,
   mask-composite: exclude;
 }
 
-.user-level-badge {
+.app-nav-avatar.mantine-Avatar-root {
+  width: 42px;
+  height: 42px;
+}
+
+.app-nav-avatar-placeholder {
+  width: 20px;
+  height: 20px;
+  color: #bbf7d0;
+}
+
+.app-nav-level-badge {
   position: absolute;
   right: -8px;
-  bottom: -6px;
+  bottom: -5px;
   z-index: 4;
   display: inline-grid;
-  min-width: 24px;
-  height: 24px;
+  min-width: 22px;
+  height: 22px;
   place-items: center;
   border: 1px solid rgba(250, 204, 21, 0.82);
   border-radius: 999px;
   padding: 0 6px;
   color: #fef9c3;
-  background: linear-gradient(135deg, rgba(20, 83, 45, 0.96), rgba(21, 128, 61, 0.92));
+  background: linear-gradient(135deg, rgba(20, 83, 45, 0.98), rgba(21, 128, 61, 0.94));
   box-shadow:
     0 8px 18px rgba(0, 0, 0, 0.36),
     0 0 14px rgba(250, 204, 21, 0.28);
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 900;
   line-height: 1;
 }
 
-.user-avatar-portrait.mantine-Avatar-root {
-  width: 100%;
-  height: 100%;
-}
-
-.user-avatar-placeholder {
-  width: 24px;
-  height: 24px;
-  color: #bbf7d0;
-}
-
-/* Rotating gradient aura, masked to a ring. It is intentionally sized to tuck a
-   touch UNDER the portrait frame (which sits above it) so there is never a
-   hairline gap between the avatar and the ring. */
-.user-avatar-button::before {
-  position: absolute;
-  inset: -3px;
-  z-index: 0;
-  content: "";
-  border-radius: inherit;
-  padding: 4px;
-  background: conic-gradient(from 0deg,
-      rgba(34, 197, 94, 0.55) 0deg,
-      rgba(45, 212, 191, 0.95) 80deg,
-      rgba(187, 247, 208, 1) 150deg,
-      rgba(34, 211, 238, 0.98) 215deg,
-      rgba(74, 222, 128, 0.8) 290deg,
-      rgba(34, 197, 94, 0.55) 360deg);
-  opacity: 0.95;
-  pointer-events: none;
-  filter: drop-shadow(0 0 6px rgba(74, 222, 128, 0.45));
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  will-change: transform;
-  animation: user-avatar-aura-spin 9s linear infinite;
-  transition:
-    opacity 240ms ease,
-    filter 240ms ease;
-}
-
-/* Ambient glow behind the portrait. Steady but prominent at rest, blooms on
-   hover. No hard-edged pulsing ring. */
-.user-avatar-button::after {
-  position: absolute;
-  inset: -18px;
-  z-index: -1;
-  content: "";
-  border-radius: inherit;
-  background: radial-gradient(circle at 50% 50%,
-      rgba(74, 222, 128, 0.5),
-      rgba(34, 197, 94, 0.32) 40%,
-      rgba(34, 197, 94, 0) 72%);
-  opacity: 0.8;
-  pointer-events: none;
-  transition:
-    opacity 260ms ease,
-    transform 260ms ease;
-}
-
-.user-avatar-button:disabled {
-  cursor: wait;
-  filter: saturate(0.85);
-  opacity: 0.72;
-}
-
-.user-avatar-button:hover,
-.user-avatar-button:focus-visible {
-  transform: translateY(-4px) scale(1.07);
-  outline: none;
-}
-
-.user-avatar-button:hover::before,
-.user-avatar-button:focus-visible::before {
-  opacity: 1;
-  filter: drop-shadow(0 0 12px rgba(74, 222, 128, 0.7));
-}
-
-.user-avatar-button:hover::after,
-.user-avatar-button:focus-visible::after {
-  opacity: 1;
-  transform: scale(1.28);
-  background: radial-gradient(circle at 50% 50%,
-      rgba(134, 247, 178, 0.62),
-      rgba(34, 211, 238, 0.34) 42%,
-      rgba(34, 197, 94, 0) 74%);
-}
-
-.user-avatar-button:hover .user-avatar-frame,
-.user-avatar-button:focus-visible .user-avatar-frame {
-  box-shadow:
-    inset 0 0 0 1.5px rgba(187, 247, 208, 0.75),
-    inset 0 2px 8px rgba(0, 0, 0, 0.3),
-    0 18px 38px rgba(0, 0, 0, 0.44),
-    0 0 26px rgba(74, 222, 128, 0.4);
-}
-
-.user-avatar-button:active {
-  transform: translateY(-1px) scale(1.0);
-}
-
-@keyframes user-control-idle {
-
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-
-  50% {
-    transform: translate3d(0, -7px, 0);
-  }
-}
-
-@keyframes user-avatar-aura-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.user-radial-menu {
-  position: absolute;
-  right: 30px;
-  bottom: 30px;
-  z-index: 20;
-  width: 1px;
-  height: 1px;
-  transform-origin: center;
-}
-
-.user-radial-item {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  display: inline-flex;
-  min-width: 156px;
-  min-height: 42px;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 9px 14px;
-  color: rgba(248, 250, 252, 0.86);
-  background: rgba(8, 13, 11, 0.68);
-  box-shadow: none;
-  cursor: pointer;
-  white-space: nowrap;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  transition:
-    color 160ms ease,
-    background 160ms ease;
-}
-
-.user-radial-item:hover,
-.user-radial-item:focus-visible {
-  color: #bbf7d0;
-  background: transparent;
-  outline: none;
-}
-
-.user-radial-item:hover .user-radial-icon,
-.user-radial-item:focus-visible .user-radial-icon {
-  transform: translateX(3px);
-}
-
-.user-progression-card {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  display: grid;
-  width: 204px;
-  gap: 5px;
-  border: 1px solid rgba(134, 239, 172, 0.3);
+.app-account-popover {
+  overflow: hidden;
+  border: 1px solid rgba(134, 239, 172, 0.26);
   border-radius: 8px;
-  padding: 12px;
-  color: #ffffff;
-  background: rgba(8, 13, 11, 0.9);
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  padding: 0;
+  color: #f8fafc;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035)),
+    rgba(8, 13, 11, 0.94);
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
 }
 
-.user-progression-kicker,
-.user-progression-copy {
-  color: rgba(220, 252, 231, 0.68);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0;
+.app-account-menu {
+  display: grid;
+  width: min(320px, calc(100vw - 28px));
+  gap: 14px;
+  padding: 16px;
+  color: #f8fafc;
+}
+
+.app-account-summary {
+  display: grid;
+  gap: 3px;
+}
+
+.app-account-kicker {
+  color: rgba(187, 247, 208, 0.74);
+  font-size: 0.72rem;
+  font-weight: 850;
   text-transform: uppercase;
 }
 
-.user-progression-title {
+.app-account-summary strong {
   overflow: hidden;
-  font-size: 0.9rem;
+  color: #ffffff;
+  font-size: 1rem;
   font-weight: 900;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.user-progression-meter {
+.app-account-summary span:last-child {
+  color: rgba(219, 230, 223, 0.72);
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.app-account-progress {
+  display: grid;
+  gap: 7px;
+  color: rgba(220, 252, 231, 0.74);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.app-account-progress-track {
   display: block;
   width: 100%;
-  height: 6px;
+  height: 7px;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
 }
 
-.user-progression-meter span {
+.app-account-progress-track span {
   display: block;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #22c55e, #facc15);
   transition: width 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.app-account-actions {
+  display: grid;
+  gap: 4px;
+}
+
+.app-account-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: rgba(248, 250, 252, 0.86);
+  background: transparent;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.app-account-action span {
+  display: inline-grid;
+  place-items: center;
+  color: #86efac;
+}
+
+.app-account-action:hover,
+.app-account-action:focus-visible {
+  border-color: rgba(134, 239, 172, 0.24);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+}
+
+.app-account-action--danger span {
+  color: #fca5a5;
+}
+
+/* ---------------------------------------------------------------------------
+   Swipe-to-dismiss bottom sheets (mobile account menu + quick predict). The
+   Drawer content is transparent and content-height so the overlay above stays
+   tappable; the draggable panel carries the visible chrome.
+--------------------------------------------------------------------------- */
+.swipe-sheet-drawer .mantine-Drawer-content {
+  height: auto;
+  max-height: 92vh;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+
+.swipe-sheet-drawer .mantine-Drawer-body {
+  padding: 0;
+  overflow: visible;
+}
+
+.swipe-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  will-change: transform;
+}
+
+.swipe-sheet-grab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 9px 0 5px;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.swipe-sheet-grab:active {
+  cursor: grabbing;
+}
+
+.swipe-sheet-grabber {
+  width: 42px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(219, 230, 223, 0.42);
+  transition: background 160ms ease;
+}
+
+.swipe-sheet-grab:hover .swipe-sheet-grabber,
+.swipe-sheet-grab:active .swipe-sheet-grabber {
+  background: rgba(219, 230, 223, 0.72);
+}
+
+.swipe-sheet-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(74, 222, 128, 0.32);
+  border-radius: 999px;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+  cursor: pointer;
+  transition:
+    color 170ms ease,
+    border-color 170ms ease,
+    background 170ms ease,
+    transform 170ms ease;
+}
+
+.swipe-sheet-close:hover,
+.swipe-sheet-close:focus-visible {
+  color: #04130a;
+  border-color: rgba(134, 239, 172, 0.7);
+  background:
+    linear-gradient(135deg, rgba(74, 222, 128, 0.95), rgba(45, 212, 191, 0.85));
+  outline: none;
+  transform: scale(1.06) rotate(8deg);
+}
+
+.swipe-sheet-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Account sheet — the draggable panel now carries the glass surface. */
+.account-sheet {
+  border-radius: 18px 18px 0 0;
+  padding: 0 14px max(16px, env(safe-area-inset-bottom));
+  color: #f8fafc;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035)),
+    rgba(8, 13, 11, 0.96);
+  box-shadow: 0 -18px 54px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+}
+
+.account-sheet .app-account-menu {
+  width: 100%;
+  padding: 2px 2px 4px;
+}
+
+/* Quick predict sheet — the inner card provides its own glass, so the panel
+   stays bare (just the grab handle above the card). */
+.quick-predict-sheet {
+  align-items: stretch;
 }
 
 .prediction-rules-note {
@@ -5038,18 +5654,6 @@ tr.prediction-row-highlighted {
   transform: translateY(-2px);
 }
 
-.user-radial-icon {
-  display: inline-grid;
-  place-items: center;
-  color: #86efac;
-  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.user-radial-label {
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
 .auth-modal .mantine-Modal-content {
   position: relative;
   overflow: visible;
@@ -5564,9 +6168,306 @@ tr.prediction-row-highlighted {
     flex-direction: column;
   }
 
-  .user-control {
-    right: 26px;
-    bottom: 26px;
+  .app-nav-frame--desktop {
+    display: none;
+  }
+
+  .app-nav-frame--mobile-top {
+    top: 0;
+    display: block;
+  }
+
+  .app-nav-frame--mobile-bottom {
+    bottom: 0;
+    display: block;
+  }
+
+  .app-nav-spacer {
+    height: 55px;
+  }
+
+  /* This spacer renders before the routes in the flow, so giving it height only
+     pushes all content down from the top. The fixed bottom tab bar is cleared
+     with padding-bottom on the page shell instead. */
+  .mobile-app-nav-spacer {
+    display: none;
+  }
+
+  /* .app-nav-spacer already reserves the fixed top strip's height, so the shell
+     needs almost no top padding (content sits just under the header). The bottom
+     padding clears the fixed bottom tab bar. */
+  .dashboard-shell {
+    padding-top: 8px;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
+  .app-nav--mobile-top {
+    justify-content: space-between;
+    width: 100%;
+    min-height: 54px;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    padding: 8px 16px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+      rgba(8, 13, 11, 0.82);
+  }
+
+  .app-nav--mobile-top .app-nav-brand-word {
+    font-size: 0.96rem;
+  }
+
+  .app-nav--mobile-top .app-nav-account {
+    width: 42px;
+    height: 42px;
+  }
+
+  .app-nav--mobile-top .app-nav-avatar-frame,
+  .app-nav--mobile-top .app-nav-avatar.mantine-Avatar-root {
+    width: 38px;
+    height: 38px;
+  }
+
+  .app-nav-predict--public {
+    min-height: 36px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+
+  .mobile-app-nav {
+    position: relative;
+    /* visible so the raised Predict button can protrude above the bar */
+    overflow: visible;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+    width: 100%;
+    min-height: 60px;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    padding: 6px 8px max(6px, env(safe-area-inset-bottom));
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
+      rgba(8, 13, 11, 0.88);
+    box-shadow: 0 -12px 30px -14px rgba(0, 0, 0, 0.6);
+    pointer-events: auto;
+    backdrop-filter: blur(18px) saturate(1.28);
+    -webkit-backdrop-filter: blur(18px) saturate(1.28);
+  }
+
+  /* Disable the cursor-spotlight glow + border ring on the touch nav bars: on
+     touch it only flashes for a moment on tap, which reads as a glitch. Desktop
+     keeps the effect. */
+  .app-nav--mobile-top::before,
+  .app-nav--mobile-top::after,
+  .mobile-app-nav::before,
+  .mobile-app-nav::after {
+    display: none;
+  }
+
+  .mobile-app-nav-item {
+    display: grid;
+    min-width: 0;
+    min-height: 50px;
+    place-items: center;
+    gap: 3px;
+    /* The Predict tab is a <button>; kill its native chrome so no grey box or
+       tap flash shows behind/under it. */
+    appearance: none;
+    -webkit-appearance: none;
+    border: 0;
+    border-radius: 16px;
+    padding: 4px 2px;
+    color: rgba(219, 230, 223, 0.68);
+    background: transparent;
+    font-size: 0.68rem;
+    font-weight: 850;
+    line-height: 1;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      color 180ms ease,
+      transform 180ms ease;
+  }
+
+  .mobile-app-nav-item:hover,
+  .mobile-app-nav-item:focus-visible {
+    color: #ffffff;
+    outline: none;
+  }
+
+  .mobile-app-nav-icon {
+    display: grid;
+    width: 40px;
+    height: 26px;
+    place-items: center;
+    border-radius: 999px;
+    transition:
+      color 180ms ease,
+      background 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .mobile-app-nav-icon svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  /* Full labels (e.g. "My Predictions") wrap to two lines. A fixed two-line
+     height keeps every tab's icon and label baseline aligned regardless of
+     whether the label is one or two lines. */
+  .mobile-app-nav-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 2.05em;
+    overflow: hidden;
+    text-align: center;
+    line-height: 1.02;
+    font-size: 0.58rem;
+    white-space: normal;
+  }
+
+  .mobile-app-nav-item--active {
+    color: #86efac;
+  }
+
+  .mobile-app-nav-item--active .mobile-app-nav-icon {
+    color: #052014;
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.95), rgba(45, 212, 191, 0.85));
+    box-shadow:
+      0 0 18px -4px rgba(74, 222, 128, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  /* Raised, glossy circular FAB. The icon is absolutely positioned so its size
+     does not grow the bar; it protrudes above via top offset (needs the bar's
+     overflow: visible). The label stays bottom-aligned with the other tabs. */
+  .mobile-app-nav-item--predict {
+    position: relative;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    color: #86efac;
+  }
+
+  .mobile-app-nav-item--predict .mobile-app-nav-icon {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 52px;
+    height: 52px;
+    color: #052014;
+    border: 1px solid rgba(187, 247, 208, 0.42);
+    background:
+      radial-gradient(circle at 50% -12%, rgba(220, 252, 231, 0.6), transparent 58%),
+      linear-gradient(135deg, rgba(34, 197, 94, 0.98), rgba(20, 184, 166, 0.9));
+    box-shadow:
+      0 12px 26px -6px rgba(34, 197, 94, 0.65),
+      0 3px 8px rgba(0, 0, 0, 0.32),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+
+  .mobile-app-nav-item--predict .mobile-app-nav-icon {
+    transition:
+      transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 150ms ease,
+      filter 150ms ease;
+  }
+
+  .mobile-app-nav-item--predict:active .mobile-app-nav-icon {
+    transform: translateX(-50%) scale(0.93);
+    box-shadow:
+      0 6px 16px -6px rgba(34, 197, 94, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+
+  .mobile-app-nav-item--predict .mobile-app-nav-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Compact XP-ring avatar for the account tab in the bottom bar. */
+  .mobile-app-nav-account {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-account-avatar {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+  }
+
+  .mobile-account-avatar-ring {
+    position: absolute;
+    inset: -2px;
+    border-radius: 999px;
+    padding: 2px;
+    background:
+      conic-gradient(from -90deg,
+        rgba(250, 204, 21, 0.98) 0deg,
+        rgba(34, 197, 94, 0.98) var(--xp-progress, 0deg),
+        rgba(255, 255, 255, 0.12) var(--xp-progress, 0deg),
+        rgba(255, 255, 255, 0.12) 360deg);
+    pointer-events: none;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  .mobile-account-avatar-frame {
+    display: grid;
+    width: 26px;
+    height: 26px;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(5, 15, 9, 0.7);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.2);
+  }
+
+  .mobile-account-avatar-img.mantine-Avatar-root {
+    width: 26px;
+    height: 26px;
+  }
+
+  .mobile-account-avatar-placeholder {
+    width: 15px;
+    height: 15px;
+    color: #bbf7d0;
+  }
+
+  .mobile-account-avatar-level {
+    position: absolute;
+    right: -5px;
+    bottom: -4px;
+    display: inline-grid;
+    min-width: 16px;
+    height: 16px;
+    place-items: center;
+    padding: 0 4px;
+    border: 1px solid rgba(250, 204, 21, 0.82);
+    border-radius: 999px;
+    color: #fef9c3;
+    background: linear-gradient(135deg, rgba(20, 83, 45, 0.98), rgba(21, 128, 61, 0.94));
+    font-size: 0.56rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .mobile-app-nav-account:disabled {
+    opacity: 0.6;
+    cursor: wait;
   }
 
   .dashboard-header.hero-header {
@@ -5705,7 +6606,6 @@ tr.prediction-row-highlighted {
 @media (max-width: 620px) {
   .dashboard-shell {
     width: min(100% - 20px, 1760px);
-    padding-top: 18px;
   }
 
   .dashboard-shell.detail-page {
@@ -5768,10 +6668,6 @@ tr.prediction-row-highlighted {
     font-size: 0.76rem;
   }
 
-  .user-radial-item {
-    min-width: 124px;
-    font-size: 0.78rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -7782,8 +8678,8 @@ tr.prediction-row-highlighted {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.leaderboard-card-stats > div,
-.model-metrics-card-stats > div {
+.leaderboard-card-stats>div,
+.model-metrics-card-stats>div {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -7823,6 +8719,7 @@ tr.prediction-row-highlighted {
 }
 
 @media (max-width: 767px) {
+
   /* Wall-of-text relief: tighter rhythm + calmer body copy. */
   .detail-page {
     gap: 14px;

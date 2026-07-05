@@ -3,7 +3,8 @@ import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiEdit3, FiTarget } from "react-icons/fi";
+import { FiEdit3 } from "react-icons/fi";
+import { TbTargetArrow } from "react-icons/tb";
 import type { LatestPrediction } from "../../api/dashboardData";
 import type { UserPrediction } from "../../api/userPredictions";
 import { useAuth } from "../../auth/AuthProvider";
@@ -98,7 +99,7 @@ export default function UserPredictionButton({
   const controlClassName = `spotlight-control-wrap predict-control-wrap${compact ? " predict-control-compact" : ""}`;
   const buttonClassName = "spotlight-control-button predict-control-button";
   const buttonLabel = existingPrediction ? "Edit" : "Predict";
-  const ButtonIcon = existingPrediction ? FiEdit3 : FiTarget;
+  const ButtonIcon = existingPrediction ? FiEdit3 : TbTargetArrow;
   const pressMotion = {
     scale: 0.965,
     y: 1,
