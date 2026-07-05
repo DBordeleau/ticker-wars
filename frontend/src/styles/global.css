@@ -2337,6 +2337,7 @@ h2,
 }
 
 .leaderboard-panel>.mantine-Group-root:first-child {
+  align-items: center !important;
   justify-content: center;
   text-align: center;
 }
@@ -3006,8 +3007,31 @@ h2,
    reacts to the MagicHoverSurface spotlight exactly like the horizon and
    ML/Users selectors. The wrapper is the glass pill; the anchor is the inner
    control. */
-.model-learn-more-wrap {
+.model-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.model-learn-more-wrap {
+  flex: 0 0 auto;
+}
+
+.model-limits-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(720px, 100%);
+  color: rgba(219, 230, 223, 1);
+}
+
+.model-limits-inline-copy {
+  font-size: 0.8rem;
+  font-weight: 680;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 .model-learn-more.spotlight-control-button {
@@ -5739,6 +5763,15 @@ tr.prediction-row-highlighted {
   padding: 30px;
 }
 
+/* On narrow phones the modal is tight enough that the centered label's first
+   line can run under the absolutely-positioned close button (top-right). Drop
+   the content below the close button there. Wider modals already clear it. */
+@media (max-width: 480px) {
+  .auth-modal-body {
+    padding-top: 52px;
+  }
+}
+
 /* Small privacy-policy link at the bottom of the sign-in view. */
 .auth-modal-privacy-link {
   align-self: center;
@@ -8111,8 +8144,8 @@ tr.prediction-row-highlighted {
 
 .rules-link svg {
   flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
 }
 
 .rules-link:hover,
@@ -8128,31 +8161,26 @@ tr.prediction-row-highlighted {
 
 .rules-link--icon {
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid rgba(134, 239, 172, 0.24);
-  border-radius: 999px;
-  color: rgba(187, 247, 208, 0.86);
-  background: rgba(34, 197, 94, 0.08);
+  width: auto;
+  height: auto;
+  color: #86efac;
   text-decoration: none;
   transition:
     color 150ms ease,
-    border-color 150ms ease,
-    background 150ms ease,
-    box-shadow 150ms ease;
+    filter 150ms ease,
+    transform 150ms ease;
 }
 
 .rules-link--icon svg {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
 }
 
 .rules-link--icon:hover,
 .rules-link--icon:focus-visible {
-  border-color: rgba(187, 247, 208, 0.58);
   color: #f0fdf4;
-  background: rgba(34, 197, 94, 0.16);
-  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.1);
+  filter: drop-shadow(0 0 8px rgba(74, 222, 128, 0.42));
+  transform: translateY(-1px) scale(1.08);
   text-decoration: none;
   outline: none;
 }
@@ -8738,6 +8766,20 @@ tr.prediction-row-highlighted {
     line-height: 1.55;
   }
 
+  .model-hero-actions {
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .model-limits-inline {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .model-limits-inline-copy {
+    font-size: 0.78rem;
+  }
+
   /* The absolute-button / full-width-summary hero layout now lives in the base
      rules (shared with desktop); mobile just keeps the logo locked beside the
      name and shrinks the pieces to fit a phone. */
@@ -8797,34 +8839,4 @@ tr.prediction-row-highlighted {
     max-width: 62%;
   }
 
-  /* Touch has no hover, so the icon-only rules link becomes a labeled pill with
-     its short section name visible instead of hidden behind a tooltip. */
-  .rules-link--icon {
-    width: auto;
-    height: auto;
-    padding: 6px 12px;
-    gap: 7px;
-    border-radius: 999px;
-  }
-
-  .rules-link--icon .rules-link-icon-label {
-    display: inline;
-    font-size: 0.76rem;
-    font-weight: 800;
-    line-height: 1;
-  }
-
-  /* Help icons sitting inline inside a sentence keep their compact circle — the
-     surrounding copy already explains them, and a pill mid-paragraph reads as
-     clutter. They still tap straight through to the rules section. */
-  .rules-link--icon.prediction-inline-rule-icon {
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    gap: 0;
-  }
-
-  .rules-link--icon.prediction-inline-rule-icon .rules-link-icon-label {
-    display: none;
-  }
 }

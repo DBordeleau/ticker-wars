@@ -119,21 +119,37 @@ export default function ModelDetail() {
                       {info.description}
                     </Text>
                   </motion.div>
-                  {info.learnMore ? (
-                    <motion.div variants={heroItemVariants}>
-                      <div className="spotlight-control-wrap model-learn-more-wrap">
-                        <a
-                          className="spotlight-control-button model-learn-more"
-                          href={info.learnMore}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                  <motion.div variants={heroItemVariants}>
+                    <div className="model-hero-actions">
+                      {info.learnMore ? (
+                        <div className="spotlight-control-wrap model-learn-more-wrap">
+                          <a
+                            className="spotlight-control-button model-learn-more"
+                            href={info.learnMore}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <span className="model-learn-more-label">Learn more</span>
+                            <FiArrowUpRight className="model-learn-more-icon" aria-hidden />
+                          </a>
+                        </div>
+                      ) : null}
+                      <div className="model-limits-inline">
+                        <RulesLink
+                          section="models"
+                          compact
+                          iconOnly
+                          className="model-limits-help-button"
+                          tooltipLabel="Learn more about how the ML models make predictions."
                         >
-                          <span className="model-learn-more-label">Learn more</span>
-                          <FiArrowUpRight className="model-learn-more-icon" aria-hidden />
-                        </a>
+                          Model rules
+                        </RulesLink>
+                        <span className="model-limits-inline-copy">
+                          This model performs pure technical analysis. It is unaware of current events unless those signals are already represented in its inputs.
+                        </span>
                       </div>
-                    </motion.div>
-                  ) : null}
+                    </div>
+                  </motion.div>
                 </motion.div>
               )}
             </MotionPresence>
@@ -142,27 +158,6 @@ export default function ModelDetail() {
       </AnimatedSection>
 
       <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.24 : 0.16}>
-        <SectionPanel
-          title="Model Limits"
-          subtitle="What this model can and cannot know."
-          action={
-            <RulesLink
-              section="models"
-              compact
-              iconOnly
-              tooltipLabel="Learn more about how the ML models make predictions."
-            >
-              Model rules
-            </RulesLink>
-          }
-        >
-          <Text size="sm" c="dimmed">
-            {modelLimitCopy(info.type)}
-          </Text>
-        </SectionPanel>
-      </AnimatedSection>
-
-      <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.32 : 0.24}>
         <SectionPanel title="Metrics By Horizon" subtitle="Same model across prediction horizons.">
           {dashboard.loading ? (
             <Skeleton height={180} radius="sm" />
@@ -244,7 +239,7 @@ export default function ModelDetail() {
         </SectionPanel>
       </AnimatedSection>
 
-      <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.4 : 0.32}>
+      <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.32 : 0.24}>
         <PredictionTable
           rows={latestForModel}
           loading={dashboard.loading}
@@ -254,19 +249,10 @@ export default function ModelDetail() {
         />
       </AnimatedSection>
 
-      <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.48 : 0.4}>
+      <AnimatedSection delay={modelSlug === "warren-buffbot" ? 0.4 : 0.32}>
         <DashboardFooter metadata={dashboard.metadata} loading={dashboard.loading} />
       </AnimatedSection>
     </main>
   );
 }
 
-function modelLimitCopy(type: string) {
-  if (type === "Toy (LLM)") {
-    return "This is a toy LLM personality model. It reasons over the structured context the pipeline provides, but it should not be treated as an investment adviser and does not reliably know breaking news or current events.";
-  }
-  if (type === "Benchmark") {
-    return "The benchmark is intentionally simple: it assumes price stays near the reference close. It is useful as a comparison point, not as a claim about where the market should go.";
-  }
-  return "This model uses structured market data available to the pipeline. It does not read breaking news or current events unless those signals are already represented in its inputs. Ranges and predictions are not guarantees.";
-}
