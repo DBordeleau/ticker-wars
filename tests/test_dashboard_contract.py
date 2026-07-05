@@ -69,6 +69,7 @@ class DashboardContractTest(unittest.TestCase):
         self.assertEqual(horizons, {"1w", "1m", "3m", "1y", "all"})
         self.assertEqual(baseline_30d["scored_count"], 1)
         self.assertEqual(baseline_30d["rank"], 1)
+        self.assertEqual(baseline_30d["mape"], 0.0)
         self.assertEqual(baseline_30d["model_type"], "Benchmark")
 
     def test_dashboard_outputs_model_metrics_table(self) -> None:
@@ -90,6 +91,7 @@ class DashboardContractTest(unittest.TestCase):
         ][0]
 
         self.assertEqual(pooled_metric["model_slug"], "baseline")
+        self.assertEqual(pooled_metric["mape"], 0.0)
         self.assertEqual(pooled_metric["scored_count"], 1)
 
     def test_model_leaderboard_hides_removed_linear_variants(self) -> None:
@@ -221,7 +223,7 @@ class DashboardContractTest(unittest.TestCase):
             ["2026-01-02", "2026-01-01"],
         )
 
-    def test_user_leaderboard_ranks_public_users_by_mae(self) -> None:
+    def test_user_leaderboard_ranks_public_users_by_percent_error(self) -> None:
         ada_id = "11111111-1111-1111-1111-111111111111"
         grace_id = "22222222-2222-2222-2222-222222222222"
         tables = build_dashboard_tables(
@@ -231,8 +233,8 @@ class DashboardContractTest(unittest.TestCase):
             settings=Settings(),
             user_prediction_rows=[],
             user_score_rows=[
-                _user_score(ada_id, absolute_error=2.0),
-                _user_score(grace_id, absolute_error=1.0),
+                _user_score(ada_id, absolute_error=1.0, absolute_pct_error=0.04),
+                _user_score(grace_id, absolute_error=2.0, absolute_pct_error=0.02),
             ],
             user_profile_rows=[
                 _user_profile(ada_id, "Ada", is_public=True),
@@ -248,6 +250,7 @@ class DashboardContractTest(unittest.TestCase):
 
         self.assertEqual([row["username"] for row in leaderboard], ["Grace", "Ada"])
         self.assertEqual([row["rank"] for row in leaderboard], [1, 2])
+        self.assertEqual([row["mape"] for row in leaderboard], [0.02, 0.04])
 
     def test_user_ticker_leaderboard_ranks_within_each_ticker(self) -> None:
         ada_id = "11111111-1111-1111-1111-111111111111"
@@ -408,7 +411,13 @@ def _user_prediction(
     }
 
 
-def _user_score(user_id: str, *, absolute_error: float, ticker: str = "AAPL") -> dict:
+def _user_score(
+    user_id: str,
+    *,
+    absolute_error: float,
+    ticker: str = "AAPL",
+    absolute_pct_error: float | None = None,
+) -> dict:
     return {
         "prediction_id": f"{user_id}:{ticker}:score",
         "user_id": user_id,
@@ -420,7 +429,9 @@ def _user_score(user_id: str, *, absolute_error: float, ticker: str = "AAPL") ->
         "actual_return": 0.01,
         "absolute_error": absolute_error,
         "squared_error": absolute_error**2,
-        "absolute_pct_error": absolute_error / 101.0,
+        "absolute_pct_error": (
+            absolute_pct_error if absolute_pct_error is not None else absolute_error / 101.0
+        ),
         "predicted_direction": 1,
         "actual_direction": 1,
         "direction_correct": 1,

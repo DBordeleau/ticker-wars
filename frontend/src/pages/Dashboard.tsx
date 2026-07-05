@@ -47,9 +47,6 @@ export default function Dashboard() {
       hasSupabaseConfig={dashboard.hasSupabaseConfig}
       onRetry={dashboard.refetch}
     >
-      <AnimatedSection delay={0}>
-        <DashboardTopBar />
-      </AnimatedSection>
       <AnimatedSection delay={0.08}>
         <SinceLastVisitPanel />
       </AnimatedSection>
