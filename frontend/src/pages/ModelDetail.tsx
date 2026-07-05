@@ -65,6 +65,7 @@ export default function ModelDetail() {
     .sort((a, b) => horizonOrder[a.prediction_horizon] - horizonOrder[b.prediction_horizon]);
   const modelName = latestForModel[0]?.model_name ?? horizonMetricsForModel[0]?.model_name;
   const info = getModelInfo(modelSlug, modelName);
+  const isBaselineModel = info.slug === "baseline";
   const latestBuffbot = modelSlug === "warren-buffbot" ? latestForModel[0] : undefined;
 
   return (
@@ -186,7 +187,9 @@ export default function ModelDetail() {
                           <Table.Td>{formatHorizon(row.prediction_horizon)}</Table.Td>
                           <Table.Td className="model-metrics-center">{row.rank ? `#${row.rank}` : "Pending"}</Table.Td>
                           <Table.Td className="model-metrics-center">{formatMetric(row.mae)}</Table.Td>
-                          <Table.Td className="model-metrics-center">{formatPercent(row.directional_accuracy)}</Table.Td>
+                          <Table.Td className="model-metrics-center">
+                            {isBaselineModel ? "—" : formatPercent(row.directional_accuracy)}
+                          </Table.Td>
                           <Table.Td className="model-metrics-center">{formatMetric(row.winkler_score)}</Table.Td>
                           <Table.Td className="model-metrics-center score-column">{row.prediction_count.toLocaleString()}</Table.Td>
                         </Table.Tr>
@@ -219,7 +222,7 @@ export default function ModelDetail() {
                         </div>
                         <div>
                           <dt>Directional</dt>
-                          <dd>{formatPercent(row.directional_accuracy)}</dd>
+                          <dd>{isBaselineModel ? "—" : formatPercent(row.directional_accuracy)}</dd>
                         </div>
                         <div>
                           <dt>Winkler</dt>

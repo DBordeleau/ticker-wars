@@ -197,30 +197,34 @@ export default function LeaderboardTable({
                             </EntityHoverCard>
                           )}
                         </Table.Td>
-                        <Table.Td className="leaderboard-table-center">{formatAveragePctError(row)}</Table.Td>
-                        <Table.Td className="leaderboard-table-center">
-                          <Group gap="xs" wrap="nowrap" justify="center">
-                            <Progress.Root className="direction-progress" size="lg">
-                              <Progress.Section
-                                value={
-                                  row.directional_accuracy == null
-                                    ? 0
-                                    : row.directional_accuracy * 100
-                                }
-                                color="green"
-                              />
-                              <Progress.Section
-                                value={
-                                  row.directional_accuracy == null
-                                    ? 100
-                                    : Math.max(0, (1 - row.directional_accuracy) * 100)
-                                }
-                                color={row.directional_accuracy == null ? "dark.3" : "red"}
-                              />
-                            </Progress.Root>
-                            <Text size="sm">{formatPercent(row.directional_accuracy)}</Text>
-                          </Group>
-                        </Table.Td>
+                    <Table.Td className="leaderboard-table-center">{formatAveragePctError(row)}</Table.Td>
+                    <Table.Td className="leaderboard-table-center">
+                      {isBaselineModelRow(row) ? (
+                        <Text size="sm" c="dimmed">—</Text>
+                      ) : (
+                        <Group gap="xs" wrap="nowrap" justify="center">
+                          <Progress.Root className="direction-progress" size="lg">
+                            <Progress.Section
+                              value={
+                                row.directional_accuracy == null
+                                  ? 0
+                                  : row.directional_accuracy * 100
+                              }
+                              color="green"
+                            />
+                            <Progress.Section
+                              value={
+                                row.directional_accuracy == null
+                                  ? 100
+                                  : Math.max(0, (1 - row.directional_accuracy) * 100)
+                              }
+                              color={row.directional_accuracy == null ? "dark.3" : "red"}
+                            />
+                          </Progress.Root>
+                          <Text size="sm">{formatPercent(row.directional_accuracy)}</Text>
+                        </Group>
+                      )}
+                    </Table.Td>
                         <Table.Td className="leaderboard-table-center">
                           {isModelRow ? formatMetric(row.winkler_score) : "-"}
                         </Table.Td>
@@ -286,7 +290,7 @@ export default function LeaderboardTable({
                       </div>
                       <div>
                         <dt>Directional</dt>
-                        <dd>{formatPercent(row.directional_accuracy)}</dd>
+                        <dd>{isBaselineModelRow(row) ? "—" : formatPercent(row.directional_accuracy)}</dd>
                       </div>
                       <div>
                         <dt>Winkler</dt>
@@ -327,6 +331,10 @@ function ModelIdentity({ row }: { row: LeaderboardRow }) {
       <Badge color={modelTypeColor(modelType)}>{modelType}</Badge>
     </Group>
   );
+}
+
+function isBaselineModelRow(row: DisplayLeaderboardRow) {
+  return "model_slug" in row && row.model_slug === "baseline";
 }
 
 type MetricHeaderProps = {

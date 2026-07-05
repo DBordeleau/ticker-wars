@@ -115,7 +115,11 @@ function TickerLeaderboardTable({ rows }: { rows: ModelTickerRow[] }) {
                     </Table.Td>
                     <Table.Td className="leaderboard-table-center">{formatMetric(row.mae)}</Table.Td>
                     <Table.Td className="leaderboard-table-center">
-                      <DirectionalMeter value={row.directional_accuracy} />
+                      {isBaselineModelTickerRow(row) ? (
+                        <Text size="sm" c="dimmed">—</Text>
+                      ) : (
+                        <DirectionalMeter value={row.directional_accuracy} />
+                      )}
                     </Table.Td>
                     <Table.Td className="leaderboard-table-center">{formatMetric(row.winkler_score)}</Table.Td>
                     <Table.Td className="leaderboard-table-center score-column">{row.prediction_count}</Table.Td>
@@ -156,7 +160,7 @@ function TickerLeaderboardTable({ rows }: { rows: ModelTickerRow[] }) {
                   </div>
                   <div>
                     <dt>Directional</dt>
-                    <dd>{formatPercent(row.directional_accuracy)}</dd>
+                    <dd>{isBaselineModelTickerRow(row) ? "—" : formatPercent(row.directional_accuracy)}</dd>
                   </div>
                   <div>
                     <dt>Winkler</dt>
@@ -280,6 +284,10 @@ function DirectionalMeter({ value }: { value: number | null }) {
       <Text size="sm">{formatPercent(value)}</Text>
     </Group>
   );
+}
+
+function isBaselineModelTickerRow(row: ModelTickerRow) {
+  return row.model_slug === "baseline";
 }
 
 function buildModelTickerRows(history: TickerHistoryRow[]): ModelTickerRow[] {
