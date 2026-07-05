@@ -7,6 +7,7 @@ import type {
 } from "../../api/dashboardData";
 import type { DashboardView } from "../dashboard/DashboardViewToggle";
 import { formatHorizon } from "../../utils/format";
+import { compareLeaderboardAverageError } from "../../utils/leaderboardMetrics";
 import PodiumCard from "./PodiumCard";
 import type { PodiumTier } from "./PodiumCard";
 
@@ -43,7 +44,12 @@ export default function MetricStrip({
       : rows
   )
     .filter((row) => row.rank != null)
-    .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99))
+    .sort(
+      (a, b) =>
+        compareLeaderboardAverageError(a, b) ||
+        (b.directional_accuracy ?? -1) - (a.directional_accuracy ?? -1) ||
+        b.prediction_count - a.prediction_count,
+    )
     .slice(0, 3);
 
   const horizonLabel = horizon === "all" ? "All horizons" : formatHorizon(horizon);

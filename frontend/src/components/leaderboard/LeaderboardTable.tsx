@@ -11,6 +11,10 @@ import type {
   UserLeaderboardRow,
 } from "../../api/dashboardData";
 import { formatMetric, formatPercent } from "../../utils/format";
+import {
+  compareLeaderboardAverageError,
+  formatAveragePctError,
+} from "../../utils/leaderboardMetrics";
 import { modelTypeColor, normalizeModelType } from "../../utils/models";
 import EntityHoverCard from "../cards/EntityHoverCard";
 import LeaderboardMovementBadge from "../competition/LeaderboardMovementBadge";
@@ -48,7 +52,12 @@ export default function LeaderboardTable({
   const sourceRows: DisplayLeaderboardRow[] = view === "models" ? rows : userRows;
   const visibleRows = sourceRows
     .filter((row) => row.window === window && row.prediction_horizon === horizon)
-    .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+    .sort(
+      (a, b) =>
+        compareLeaderboardAverageError(a, b) ||
+        (b.directional_accuracy ?? -1) - (a.directional_accuracy ?? -1) ||
+        b.prediction_count - a.prediction_count,
+    );
   const movementByUserId = useMemo(
     () => new Map(movementRows.map((row) => [row.user_id, row])),
     [movementRows],
@@ -104,6 +113,8 @@ export default function LeaderboardTable({
           {emptyMessage}
         </Text>
       ) : (
+        <>
+          <div className="desktop-table">
         <Table.ScrollContainer minWidth={780}>
           <Table verticalSpacing="md" className="leaderboard-table">
             <Table.Thead>
@@ -111,8 +122,8 @@ export default function LeaderboardTable({
                 <Table.Th className="leaderboard-table-center">Rank</Table.Th>
                 <Table.Th>{view === "models" ? "Model" : "User"}</Table.Th>
                 <MetricHeader
-                  label="MAE"
-                  tooltip="Mean absolute error. Lower is better."
+                  label="Avg Error"
+                  tooltip="Average absolute percent error. Lower is better."
                   className="leaderboard-table-center"
                 />
                 <MetricHeader
@@ -186,7 +197,7 @@ export default function LeaderboardTable({
                         </EntityHoverCard>
                       )}
                     </Table.Td>
-                    <Table.Td className="leaderboard-table-center">{formatMetric(row.mae)}</Table.Td>
+                    <Table.Td className="leaderboard-table-center">{formatAveragePctError(row)}</Table.Td>
                     <Table.Td className="leaderboard-table-center">
                       <Group gap="xs" wrap="nowrap" justify="center">
                         <Progress.Root className="direction-progress" size="lg">
@@ -222,6 +233,76 @@ export default function LeaderboardTable({
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
+          </div>
+          <div className="mobile-cards">
+            <div className="leaderboard-card-list">
+              {visibleRows.map((row, index) => {
+                const isModelRow = "model_slug" in row;
+                const displayRank = index + 1;
+                const isBaseline = isModelRow && row.model_slug === "baseline";
+                const isMedal = !isBaseline && Boolean(row.rank) && displayRank <= 3;
+                return (
+                  <article
+                    key={`card-${row.window}-${row.prediction_horizon}-${isModelRow ? row.model_slug : row.user_id}`}
+                    className={`leaderboard-card${isMedal ? ` leaderboard-card--rank-${displayRank}` : ""}${isBaseline ? " baseline-row" : ""}`}
+                  >
+                    <div className="leaderboard-card-head">
+                      <span
+                        className={`leaderboard-card-rank${isMedal ? ` leaderboard-card-rank--${displayRank}` : ""}`}
+                      >
+                        {row.rank ? `#${displayRank}` : "Pending"}
+                      </span>
+                      <div className="leaderboard-card-identity">
+                        {isModelRow ? (
+                          <ModelIdentity row={row} />
+                        ) : (
+                          <EntityHoverCard kind="user" username={row.username}>
+                            <Group gap="xs" wrap="nowrap" className="user-cell-link">
+                              <AvatarImage
+                                profile={{
+                                  display_username: row.username,
+                                  avatar_seed: row.avatar_seed,
+                                  avatar_options: row.avatar_options,
+                                }}
+                                size={34}
+                              />
+                              <Text component={Link} to={`/users/${row.username}`} fw={800} className="plain-link">
+                                {row.username}
+                              </Text>
+                            </Group>
+                          </EntityHoverCard>
+                        )}
+                      </div>
+                      {!isModelRow ? (
+                        <LeaderboardMovementBadge
+                          movement={movementByUserId.get((row as UserLeaderboardRow).user_id)}
+                        />
+                      ) : null}
+                    </div>
+                    <dl className="leaderboard-card-stats">
+                      <div>
+                        <dt>Avg Error</dt>
+                        <dd>{formatAveragePctError(row)}</dd>
+                      </div>
+                      <div>
+                        <dt>Directional</dt>
+                        <dd>{formatPercent(row.directional_accuracy)}</dd>
+                      </div>
+                      <div>
+                        <dt>Winkler</dt>
+                        <dd>{isModelRow ? formatMetric(row.winkler_score) : "-"}</dd>
+                      </div>
+                      <div>
+                        <dt>Scored</dt>
+                        <dd>{row.prediction_count.toLocaleString()}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </>
       )}
     </SectionPanel>
   );

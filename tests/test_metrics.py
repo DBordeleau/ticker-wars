@@ -30,8 +30,8 @@ class MetricsTest(unittest.TestCase):
                 "scored_at": "2026-02-01T12:00:00+00:00",
                 "prediction_horizon": "1w",
                 "model_name": "Baseline",
-                "absolute_error": 2.0,
-                "squared_error": 4.0,
+                "absolute_error": 1.0,
+                "squared_error": 1.0,
                 "absolute_pct_error": 0.02,
                 "direction_correct": 1,
             },
@@ -40,8 +40,8 @@ class MetricsTest(unittest.TestCase):
                 "scored_at": "2026-02-01T12:00:00+00:00",
                 "prediction_horizon": "1w",
                 "model_name": "Linear Regression",
-                "absolute_error": 1.0,
-                "squared_error": 1.0,
+                "absolute_error": 2.0,
+                "squared_error": 4.0,
                 "absolute_pct_error": 0.01,
                 "direction_correct": 0,
             },
@@ -63,7 +63,8 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(len(pooled_window), 2)
         self.assertEqual(one_week_window[0]["model_name"], "Linear Regression")
         self.assertEqual(one_week_window[0]["rank"], 1)
-        self.assertEqual(one_week_window[0]["mae"], 1.0)
+        self.assertEqual(one_week_window[0]["mae"], 2.0)
+        self.assertEqual(one_week_window[0]["mape"], 0.01)
         self.assertEqual(one_week_window[1]["model_name"], "Baseline")
         self.assertEqual(one_week_window[1]["rank"], 2)
 
@@ -93,17 +94,19 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(len(seven_day_metrics), 1)
         self.assertEqual(seven_day_metrics[0]["model_name"], "Baseline")
 
-    def test_user_metrics_rank_by_mae_and_include_pooled_horizon(self) -> None:
+    def test_user_metrics_rank_by_percent_error_and_include_pooled_horizon(self) -> None:
         score_rows = [
             _user_score_row(
                 user_id="user-a",
                 username="Ada",
-                absolute_error=2.0,
+                absolute_error=1.0,
+                absolute_pct_error=0.04,
             ),
             _user_score_row(
                 user_id="user-b",
                 username="Grace",
-                absolute_error=1.0,
+                absolute_error=2.0,
+                absolute_pct_error=0.02,
             ),
         ]
 
@@ -124,6 +127,7 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(one_week_window[0]["user_id"], "user-b")
         self.assertEqual(one_week_window[0]["username"], "Grace")
         self.assertEqual(one_week_window[0]["rank"], 1)
+        self.assertEqual(one_week_window[0]["mape"], 0.02)
         self.assertEqual(one_week_window[1]["rank"], 2)
 
 
@@ -151,6 +155,7 @@ def _user_score_row(
     user_id: str,
     username: str,
     absolute_error: float,
+    absolute_pct_error: float | None = None,
     scored_at: str = "2026-02-01T12:00:00+00:00",
 ) -> dict:
     return {
@@ -161,7 +166,9 @@ def _user_score_row(
         "prediction_horizon": "1w",
         "absolute_error": absolute_error,
         "squared_error": absolute_error**2,
-        "absolute_pct_error": absolute_error / 100,
+        "absolute_pct_error": (
+            absolute_pct_error if absolute_pct_error is not None else absolute_error / 100
+        ),
         "direction_correct": 1,
     }
 

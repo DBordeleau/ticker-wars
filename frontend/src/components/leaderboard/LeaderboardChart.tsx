@@ -14,6 +14,10 @@ import type {
   MetricWindow,
   UserLeaderboardRow,
 } from "../../api/dashboardData";
+import {
+  compareLeaderboardAverageError,
+  getAveragePctError,
+} from "../../utils/leaderboardMetrics";
 import type { DashboardView } from "../dashboard/DashboardViewToggle";
 import SectionPanel from "../layout/SectionPanel";
 
@@ -39,18 +43,24 @@ export default function LeaderboardChart({
   const sourceRows: DisplayLeaderboardRow[] = view === "models" ? rows : userRows;
   const data = sourceRows
     .filter(
-      (row) => row.window === window && row.prediction_horizon === horizon && row.mae != null,
+      (row) =>
+        row.window === window &&
+        row.prediction_horizon === horizon &&
+        getAveragePctError(row) != null,
     )
-    .sort((a, b) => (a.mae ?? 0) - (b.mae ?? 0))
-    .map((row) => ({
-      name: "model_name" in row ? row.model_name : row.username,
-      mae: row.mae,
-    }));
+    .sort(compareLeaderboardAverageError)
+    .map((row) => {
+      const averageError = getAveragePctError(row);
+      return {
+        name: "model_name" in row ? row.model_name : row.username,
+        averageError: averageError == null ? null : Number((averageError * 100).toFixed(2)),
+      };
+    });
 
   return (
     <SectionPanel
       title="Error Snapshot"
-      subtitle={`Lower MAE is better for the selected ${view === "models" ? "model" : "user"} view.`}
+      subtitle={`Lower average percent error is better for the selected ${view === "models" ? "model" : "user"} view.`}
     >
       {loading ? (
         <Skeleton height={260} radius="sm" />
@@ -80,7 +90,7 @@ export default function LeaderboardChart({
                   borderRadius: 6,
                 }}
               />
-              <Bar dataKey="mae" fill="#22c55e" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="averageError" name="Avg Error %" fill="#22c55e" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

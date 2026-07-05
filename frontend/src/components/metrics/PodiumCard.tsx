@@ -5,7 +5,8 @@ import { Link } from "react-router-dom";
 import type { IconType } from "react-icons";
 import type { LeaderboardRow, UserLeaderboardRow } from "../../api/dashboardData";
 import type { DashboardView } from "../dashboard/DashboardViewToggle";
-import { formatMetric, formatPercent } from "../../utils/format";
+import { formatPercent } from "../../utils/format";
+import { formatAveragePctError } from "../../utils/leaderboardMetrics";
 import { modelTypeColor, normalizeModelType } from "../../utils/models";
 import EntityHoverCard from "../cards/EntityHoverCard";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
@@ -155,7 +156,7 @@ function PodiumStats({ row }: { row: LeaderboardRow | UserLeaderboardRow }) {
   return (
     <div className="podium-stats">
       <PodiumStat label="Directional" value={formatPercent(row.directional_accuracy)} accent />
-      <PodiumStat label="MAE" value={formatMetric(row.mae)} />
+      <PodiumStat label="Avg Error" value={formatAveragePctError(row)} />
       <PodiumStat label="Scored" value={row.prediction_count.toLocaleString()} />
     </div>
   );
@@ -165,7 +166,7 @@ function GhostStats() {
   return (
     <div className="podium-stats podium-stats--ghost">
       <PodiumStat label="Directional" value="—" />
-      <PodiumStat label="MAE" value="—" />
+      <PodiumStat label="Avg Error" value="—" />
       <PodiumStat label="Scored" value="—" />
     </div>
   );

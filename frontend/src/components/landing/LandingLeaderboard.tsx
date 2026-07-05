@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { AvatarOptions } from "../../auth/types";
 import type { LeaderboardRow, UserLeaderboardRow } from "../../api/dashboardData";
 import { formatPercent } from "../../utils/format";
+import { getAveragePctError } from "../../utils/leaderboardMetrics";
 import EntityHoverCard from "../cards/EntityHoverCard";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
 import AvatarImage from "../users/AvatarImage";
@@ -20,7 +21,7 @@ type CombinedRow = {
   key: string;
   kind: "model" | "user";
   name: string;
-  directional: number | null;
+  averageError: number | null;
   scored: number;
   modelSlug?: string;
   avatarSeed?: string;
@@ -30,8 +31,8 @@ type CombinedRow = {
 
 const TOP_N = 8;
 
-function directionalValue(row: { directional: number | null }) {
-  return row.directional ?? -1;
+function averageErrorValue(row: { averageError: number | null }) {
+  return row.averageError ?? Number.POSITIVE_INFINITY;
 }
 
 export default function LandingLeaderboard({ modelRows, userRows, loading, onUserProfileClick }: Props) {
@@ -43,7 +44,7 @@ export default function LandingLeaderboard({ modelRows, userRows, loading, onUse
         key: `model-${row.model_slug}`,
         kind: "model",
         name: row.model_name,
-        directional: row.directional_accuracy,
+        averageError: getAveragePctError(row),
         scored: row.prediction_count,
         modelSlug: row.model_slug,
       }));
@@ -54,7 +55,7 @@ export default function LandingLeaderboard({ modelRows, userRows, loading, onUse
         key: `user-${row.user_id}`,
         kind: "user",
         name: row.username,
-        directional: row.directional_accuracy,
+        averageError: getAveragePctError(row),
         scored: row.prediction_count,
         avatarSeed: row.avatar_seed,
         avatarOptions: row.avatar_options,
@@ -62,15 +63,20 @@ export default function LandingLeaderboard({ modelRows, userRows, loading, onUse
       }));
 
     return [...models, ...users]
-      .sort((a, b) => directionalValue(b) - directionalValue(a))
+      .sort(
+        (a, b) =>
+          averageErrorValue(a) - averageErrorValue(b) ||
+          b.scored - a.scored ||
+          a.name.localeCompare(b.name),
+      )
       .slice(0, TOP_N);
   }, [modelRows, userRows]);
 
   const headline = useMemo(() => {
     const leader = combined[0];
-    if (!leader || leader.directional == null) return null;
+    if (!leader || leader.averageError == null) return null;
     const who = leader.kind === "user" ? "A human" : "A machine";
-    return `${who} leads — ${leader.name} is hitting ${formatPercent(leader.directional)} directional accuracy.`;
+    return `${who} leads — ${leader.name} averages ${formatPercent(leader.averageError, 2)} error.`;
   }, [combined]);
 
   return (
@@ -133,11 +139,11 @@ export default function LandingLeaderboard({ modelRows, userRows, loading, onUse
                 <div className="landing-leaderboard-acc">
                   <Progress.Root size="lg" className="landing-acc-bar">
                     <Progress.Section
-                      value={row.directional == null ? 0 : row.directional * 100}
+                      value={row.averageError == null ? 0 : Math.min(100, row.averageError * 100)}
                       color="green"
                     />
                   </Progress.Root>
-                  <span className="landing-acc-value">{formatPercent(row.directional)}</span>
+                  <span className="landing-acc-value">{formatPercent(row.averageError, 2)}</span>
                 </div>
                 <span className="landing-leaderboard-scored">
                   {row.scored.toLocaleString()} scored
