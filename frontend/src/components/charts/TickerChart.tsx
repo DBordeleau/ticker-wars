@@ -17,6 +17,7 @@ import { resolveTickerDisplayPrice, type LivePriceSnapshot } from "../../api/liv
 import { useLiveTickerPrice } from "../../hooks/useLiveTickerPrice";
 import { useTickerCloseSnapshot } from "../../hooks/useTickerCloseSnapshot";
 import { useTickerPriceSeries } from "../../hooks/useTickerPriceSeries";
+import { formatHorizon } from "../../utils/format";
 import SectionPanel from "../layout/SectionPanel";
 import PredictionHorizonSelector from "../predictions/PredictionHorizonSelector";
 import ChartTooltip from "./ChartTooltip";
@@ -32,6 +33,7 @@ type Props = {
   onTickerChange: (ticker: string | null) => void;
   loading: boolean;
   showTickerSelect?: boolean;
+  showDirectionalAgreement?: boolean;
 };
 
 const lineColors = ["#22c55e", "#60a5fa", "#f59e0b", "#a78bfa", "#ef4444", "#14b8a6"];
@@ -91,6 +93,7 @@ export default function TickerChart({
   onTickerChange,
   loading,
   showTickerSelect = true,
+  showDirectionalAgreement = false,
 }: Props) {
   const normalizedTicker = selectedTicker?.trim().toUpperCase() ?? "";
   // Phones get a shorter plot, a slimmer Y axis, tighter margins, and fewer X
@@ -120,6 +123,10 @@ export default function TickerChart({
 
   const chartPredictions = useMemo(
     () => latestPredictionsThroughHorizon(predictions, normalizedTicker, selectedHorizon),
+    [normalizedTicker, predictions, selectedHorizon],
+  );
+  const directionalAgreement = useMemo(
+    () => modelDirectionalAgreement(predictions, normalizedTicker, selectedHorizon),
     [normalizedTicker, predictions, selectedHorizon],
   );
   const models = useMemo(
@@ -250,6 +257,9 @@ export default function TickerChart({
         <>
           <ModelToggleGroup models={models} visibleModels={visibleModels} onChange={setVisibleModels} />
           <div className="chart-box ticker-chart-box">
+            {showDirectionalAgreement ? (
+              <DirectionalAgreementBadge agreement={directionalAgreement} horizon={selectedHorizon} />
+            ) : null}
             {tooltip ? (
               <div className="chart-static-tooltip">
                 <ChartTooltip label={tooltip.label} payload={tooltip.payload} />
@@ -344,6 +354,85 @@ export default function TickerChart({
         </>
       )}
     </SectionPanel>
+  );
+}
+
+type DirectionalAgreement = {
+  total: number;
+  up: number;
+  down: number;
+  flat: number;
+};
+
+function modelDirectionalAgreement(
+  predictions: LatestPrediction[],
+  ticker: string,
+  horizon: PredictionHorizon,
+): DirectionalAgreement {
+  const latestByModel = new Map<string, LatestPrediction>();
+  predictions
+    .filter(
+      (row): row is LatestPrediction & { prediction_horizon: PredictionHorizon } =>
+        row.ticker === ticker &&
+        row.model_slug !== "baseline" &&
+        row.prediction_horizon === horizon,
+    )
+    .forEach((row) => {
+      const key = row.model_slug || row.model_name;
+      const current = latestByModel.get(key);
+      if (!current || predictionSortValue(row) > predictionSortValue(current)) {
+        latestByModel.set(key, row);
+      }
+    });
+
+  const rows = Array.from(latestByModel.values());
+  const up = rows.filter((row) => row.predicted_return > 0).length;
+  const down = rows.filter((row) => row.predicted_return < 0).length;
+  return {
+    total: rows.length,
+    up,
+    down,
+    flat: rows.length - up - down,
+  };
+}
+
+function DirectionalAgreementBadge({
+  agreement,
+  horizon,
+}: {
+  agreement: DirectionalAgreement;
+  horizon: PredictionHorizon;
+}) {
+  const dominant =
+    agreement.total === 0
+      ? "pending"
+      : agreement.up > agreement.down && agreement.up > agreement.flat
+        ? "up"
+        : agreement.down > agreement.up && agreement.down > agreement.flat
+          ? "down"
+          : agreement.flat > agreement.up && agreement.flat > agreement.down
+            ? "flat"
+            : "mixed";
+
+  return (
+    <div className={`ticker-direction-badge ticker-direction-badge--${dominant}`}>
+      <span className="ticker-direction-eyebrow">{formatHorizon(horizon)} model direction</span>
+      {agreement.total === 0 ? (
+        <span className="ticker-direction-empty">No non-benchmark calls yet</span>
+      ) : (
+        <span className="ticker-direction-counts">
+          <strong>{agreement.up}</strong> up
+          <span aria-hidden>/</span>
+          <strong>{agreement.down}</strong> down
+          {agreement.flat > 0 ? (
+            <>
+              <span aria-hidden>/</span>
+              <strong>{agreement.flat}</strong> flat
+            </>
+          ) : null}
+        </span>
+      )}
+    </div>
   );
 }
 
