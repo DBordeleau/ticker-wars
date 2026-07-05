@@ -1,6 +1,6 @@
 import { Tooltip } from "@mantine/core";
 import type { ReactNode } from "react";
-import { FiHelpCircle } from "react-icons/fi";
+import { IoIosHelpCircle } from "react-icons/io";
 import { Link } from "react-router-dom";
 
 type Props = {
@@ -38,10 +38,8 @@ export default function RulesLink({
 
   const link = (
     <Link to={href} className={classes} aria-label={accessibleLabel}>
-      <FiHelpCircle aria-hidden />
+      <IoIosHelpCircle aria-hidden />
       {iconOnly ? (
-        // Hidden on desktop (icon-only), shown on touch/mobile where the hover
-        // tooltip is unavailable, so the link stays self-explanatory.
         <span className="rules-link-icon-label">{children}</span>
       ) : (
         <span>{children}</span>

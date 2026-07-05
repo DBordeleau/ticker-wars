@@ -96,7 +96,7 @@ export default function LeaderboardTable({
           section="leaderboards"
           compact
           iconOnly
-          tooltipLabel="Learn more about leaderboards"
+          tooltipLabel="Learn more about leaderboard rules."
         >
           Leaderboard rules
         </RulesLink>
@@ -115,124 +115,124 @@ export default function LeaderboardTable({
       ) : (
         <>
           <div className="desktop-table">
-        <Table.ScrollContainer minWidth={780}>
-          <Table verticalSpacing="md" className="leaderboard-table">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th className="leaderboard-table-center">Rank</Table.Th>
-                <Table.Th>{view === "models" ? "Model" : "User"}</Table.Th>
-                <MetricHeader
-                  label="Avg Error"
-                  tooltip="Average absolute percent error. Lower is better."
-                  className="leaderboard-table-center"
-                />
-                <MetricHeader
-                  label="Directional"
-                  tooltip={
-                    view === "models"
-                      ? "How often the model correctly predicted whether price moved up or down."
-                      : "How often the user correctly predicted whether price moved up or down."
-                  }
-                  className="leaderboard-table-center"
-                />
-                {view === "models" ? (
-                  <MetricHeader
-                    label="Winkler"
-                    tooltip="Interval score that rewards accurate, tighter prediction ranges. Lower is better."
-                    className="leaderboard-table-center"
-                  />
-                ) : (
-                  <MetricHeader
-                    label="Winkler"
-                    tooltip="User predictions are point estimates in this MVP."
-                    className="leaderboard-table-center"
-                  />
-                )}
-                <MetricHeader
-                  label="Scored"
-                  tooltip="Number of matured predictions included in this leaderboard row."
-                  className="leaderboard-table-center score-column"
-                />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {visibleRows.map((row, index) => {
-                const isModelRow = "model_slug" in row;
-                const displayRank = index + 1;
-                return (
-                  <motion.tr
-                    key={`${row.window}-${row.prediction_horizon}-${isModelRow ? row.model_slug : row.user_id}`}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    whileHover={{ x: 4 }}
-                    transition={{ duration: 0.2, delay: index * 0.025 }}
-                    className={`leaderboard-row ${isModelRow && row.model_slug === "baseline" ? "baseline-row" : ""}`}
-                  >
-                    <Table.Td className="leaderboard-table-center">
-                      <Group gap="xs" justify="center" wrap="nowrap">
-                        <Text fw={800}>{row.rank ? `#${displayRank}` : "Pending"}</Text>
-                        {!isModelRow ? (
-                          <LeaderboardMovementBadge movement={movementByUserId.get((row as UserLeaderboardRow).user_id)} />
-                        ) : null}
-                      </Group>
-                    </Table.Td>
-                    <Table.Td>
-                      {isModelRow ? (
-                        <ModelIdentity row={row} />
-                      ) : (
-                        <EntityHoverCard kind="user" username={row.username}>
-                          <Group gap="xs" wrap="nowrap" className="user-cell-link">
-                            <AvatarImage
-                              profile={{
-                                display_username: row.username,
-                                avatar_seed: row.avatar_seed,
-                                avatar_options: row.avatar_options,
-                              }}
-                              size={38}
-                            />
-                            <Text component={Link} to={`/users/${row.username}`} fw={800} className="plain-link">
-                              {row.username}
-                            </Text>
+            <Table.ScrollContainer minWidth={780}>
+              <Table verticalSpacing="md" className="leaderboard-table">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th className="leaderboard-table-center">Rank</Table.Th>
+                    <Table.Th>{view === "models" ? "Model" : "User"}</Table.Th>
+                    <MetricHeader
+                      label="Avg Error"
+                      tooltip="Average absolute percent error. Lower is better."
+                      className="leaderboard-table-center"
+                    />
+                    <MetricHeader
+                      label="Directional"
+                      tooltip={
+                        view === "models"
+                          ? "How often the model correctly predicted whether price moved up or down."
+                          : "How often the user correctly predicted whether price moved up or down."
+                      }
+                      className="leaderboard-table-center"
+                    />
+                    {view === "models" ? (
+                      <MetricHeader
+                        label="Winkler"
+                        tooltip="Interval score that rewards accurate, tighter prediction ranges. Lower is better."
+                        className="leaderboard-table-center"
+                      />
+                    ) : (
+                      <MetricHeader
+                        label="Winkler"
+                        tooltip="User predictions are point estimates in this MVP."
+                        className="leaderboard-table-center"
+                      />
+                    )}
+                    <MetricHeader
+                      label="Scored"
+                      tooltip="Number of matured predictions included in this leaderboard row."
+                      className="leaderboard-table-center score-column"
+                    />
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {visibleRows.map((row, index) => {
+                    const isModelRow = "model_slug" in row;
+                    const displayRank = index + 1;
+                    return (
+                      <motion.tr
+                        key={`${row.window}-${row.prediction_horizon}-${isModelRow ? row.model_slug : row.user_id}`}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        whileHover={{ x: 4 }}
+                        transition={{ duration: 0.2, delay: index * 0.025 }}
+                        className={`leaderboard-row ${isModelRow && row.model_slug === "baseline" ? "baseline-row" : ""}`}
+                      >
+                        <Table.Td className="leaderboard-table-center">
+                          <Group gap="xs" justify="center" wrap="nowrap">
+                            <Text fw={800}>{row.rank ? `#${displayRank}` : "Pending"}</Text>
+                            {!isModelRow ? (
+                              <LeaderboardMovementBadge movement={movementByUserId.get((row as UserLeaderboardRow).user_id)} />
+                            ) : null}
                           </Group>
-                        </EntityHoverCard>
-                      )}
-                    </Table.Td>
-                    <Table.Td className="leaderboard-table-center">{formatAveragePctError(row)}</Table.Td>
-                    <Table.Td className="leaderboard-table-center">
-                      <Group gap="xs" wrap="nowrap" justify="center">
-                        <Progress.Root className="direction-progress" size="lg">
-                          <Progress.Section
-                            value={
-                              row.directional_accuracy == null
-                                ? 0
-                                : row.directional_accuracy * 100
-                            }
-                            color="green"
-                          />
-                          <Progress.Section
-                            value={
-                              row.directional_accuracy == null
-                                ? 100
-                                : Math.max(0, (1 - row.directional_accuracy) * 100)
-                            }
-                            color={row.directional_accuracy == null ? "dark.3" : "red"}
-                          />
-                        </Progress.Root>
-                        <Text size="sm">{formatPercent(row.directional_accuracy)}</Text>
-                      </Group>
-                    </Table.Td>
-                    <Table.Td className="leaderboard-table-center">
-                      {isModelRow ? formatMetric(row.winkler_score) : "-"}
-                    </Table.Td>
-                    <Table.Td className="leaderboard-table-center score-column">
-                      {row.prediction_count.toLocaleString()}
-                    </Table.Td>
-                  </motion.tr>
-                );
-              })}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+                        </Table.Td>
+                        <Table.Td>
+                          {isModelRow ? (
+                            <ModelIdentity row={row} />
+                          ) : (
+                            <EntityHoverCard kind="user" username={row.username}>
+                              <Group gap="xs" wrap="nowrap" className="user-cell-link">
+                                <AvatarImage
+                                  profile={{
+                                    display_username: row.username,
+                                    avatar_seed: row.avatar_seed,
+                                    avatar_options: row.avatar_options,
+                                  }}
+                                  size={38}
+                                />
+                                <Text component={Link} to={`/users/${row.username}`} fw={800} className="plain-link">
+                                  {row.username}
+                                </Text>
+                              </Group>
+                            </EntityHoverCard>
+                          )}
+                        </Table.Td>
+                        <Table.Td className="leaderboard-table-center">{formatAveragePctError(row)}</Table.Td>
+                        <Table.Td className="leaderboard-table-center">
+                          <Group gap="xs" wrap="nowrap" justify="center">
+                            <Progress.Root className="direction-progress" size="lg">
+                              <Progress.Section
+                                value={
+                                  row.directional_accuracy == null
+                                    ? 0
+                                    : row.directional_accuracy * 100
+                                }
+                                color="green"
+                              />
+                              <Progress.Section
+                                value={
+                                  row.directional_accuracy == null
+                                    ? 100
+                                    : Math.max(0, (1 - row.directional_accuracy) * 100)
+                                }
+                                color={row.directional_accuracy == null ? "dark.3" : "red"}
+                              />
+                            </Progress.Root>
+                            <Text size="sm">{formatPercent(row.directional_accuracy)}</Text>
+                          </Group>
+                        </Table.Td>
+                        <Table.Td className="leaderboard-table-center">
+                          {isModelRow ? formatMetric(row.winkler_score) : "-"}
+                        </Table.Td>
+                        <Table.Td className="leaderboard-table-center score-column">
+                          {row.prediction_count.toLocaleString()}
+                        </Table.Td>
+                      </motion.tr>
+                    );
+                  })}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
           </div>
           <div className="mobile-cards">
             <div className="leaderboard-card-list">
