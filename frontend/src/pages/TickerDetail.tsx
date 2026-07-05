@@ -68,9 +68,9 @@ export default function TickerDetail() {
   const priceDetail = displayPrice?.detailLabel;
   const closeMoveClass =
     closeChange == null ? "ticker-close-move-neutral" :
-    closeChange > 0 ? "ticker-close-move-up" :
-    closeChange < 0 ? "ticker-close-move-down" :
-    "ticker-close-move-neutral";
+      closeChange > 0 ? "ticker-close-move-up" :
+        closeChange < 0 ? "ticker-close-move-down" :
+          "ticker-close-move-neutral";
 
   useEffect(() => {
     setFailedLogoUrl(null);
@@ -230,29 +230,22 @@ export default function TickerDetail() {
         />
       </AnimatedSection>
       <AnimatedSection delay={0.24}>
-        {latestPredictionsView === "models" ? (
-          <PredictionTable
-            rows={predictions}
-            loading={dashboard.loading}
-            view={latestPredictionsView}
-            onViewChange={setLatestPredictionsView}
-            showTickerFilter={false}
-            onPredictionSaved={() => void dashboard.refetch()}
-            tickerLogos={tickerLogos}
-          />
-        ) : (
-          <UserPredictionTable
-            rows={userPredictions}
-            loading={dashboard.loading}
-            view={latestPredictionsView}
-            onViewChange={setLatestPredictionsView}
-            horizon={latestUserHorizon}
-            onHorizonChange={setLatestUserHorizon}
-            title="Latest User Predictions"
-            subtitle={`Public user predictions for ${ticker}. Private profiles are excluded.`}
-            tickerLogos={tickerLogos}
-          />
-        )}
+        {tickerSpecialists.length > 0 ? (
+          <AnimatedSection delay={0.4}>
+            <SectionPanel
+              title="Human Specialists"
+              subtitle={`Public users with the strongest scored track record on ${ticker}.`}
+              className="competition-panel"
+            >
+              <div className="ticker-specialists-grid">
+                {tickerSpecialists.map((specialty) => (
+                  <TickerSpecialtyCard key={specialty.user_id} specialty={specialty} mode="ticker" />
+                ))}
+              </div>
+            </SectionPanel>
+          </AnimatedSection>
+        ) : null}
+
       </AnimatedSection>
       <AnimatedSection delay={0.32}>
         <TickerLeaderboard
@@ -262,21 +255,29 @@ export default function TickerDetail() {
           loading={dashboard.loading || tickerHistory.loading}
         />
       </AnimatedSection>
-      {tickerSpecialists.length > 0 ? (
-        <AnimatedSection delay={0.4}>
-          <SectionPanel
-            title="Human Specialists"
-            subtitle={`Public users with the strongest scored track record on ${ticker}.`}
-            className="competition-panel"
-          >
-            <div className="ticker-specialists-grid">
-              {tickerSpecialists.map((specialty) => (
-                <TickerSpecialtyCard key={specialty.user_id} specialty={specialty} mode="ticker" />
-              ))}
-            </div>
-          </SectionPanel>
-        </AnimatedSection>
-      ) : null}
+      {latestPredictionsView === "models" ? (
+        <PredictionTable
+          rows={predictions}
+          loading={dashboard.loading}
+          view={latestPredictionsView}
+          onViewChange={setLatestPredictionsView}
+          showTickerFilter={false}
+          onPredictionSaved={() => void dashboard.refetch()}
+          tickerLogos={tickerLogos}
+        />
+      ) : (
+        <UserPredictionTable
+          rows={userPredictions}
+          loading={dashboard.loading}
+          view={latestPredictionsView}
+          onViewChange={setLatestPredictionsView}
+          horizon={latestUserHorizon}
+          onHorizonChange={setLatestUserHorizon}
+          title="Latest User Predictions"
+          subtitle={`Public user predictions for ${ticker}. Private profiles are excluded.`}
+          tickerLogos={tickerLogos}
+        />
+      )}
       <AnimatedSection delay={0.44}>
         <DashboardFooter metadata={dashboard.metadata} loading={dashboard.loading} />
       </AnimatedSection>
