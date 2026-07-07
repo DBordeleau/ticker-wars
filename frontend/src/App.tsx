@@ -13,12 +13,14 @@ import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/Dashboard";
 import Landing from "./pages/Landing";
 import ModelDetail from "./pages/ModelDetail";
+import ModelScoredPredictions from "./pages/ModelScoredPredictions";
 import MyPredictions from "./pages/MyPredictions";
 import Onboarding from "./pages/Onboarding";
 import Rules from "./pages/Rules";
 import TickerDetail from "./pages/TickerDetail";
 import TickerUniverse from "./pages/TickerUniverse";
 import UserProfile, { MyProfileRedirect } from "./pages/UserProfile";
+import UserScoredPredictions from "./pages/UserScoredPredictions";
 import { theme } from "./styles/theme";
 
 export default function App() {
@@ -67,10 +69,12 @@ export default function App() {
                 </RequireAuth>
               }
             />
+            <Route path="/models/:modelSlug/scored" element={<ModelScoredPredictions />} />
             <Route path="/models/:modelSlug" element={<ModelDetail />} />
             <Route path="/rules" element={<Rules />} />
             <Route path="/tickers" element={<TickerUniverse />} />
             <Route path="/tickers/:ticker" element={<TickerDetail />} />
+            <Route path="/users/:username/scored" element={<UserScoredPredictions />} />
             <Route path="/users/:username" element={<UserProfile />} />
           </Routes>
         </BrowserRouter>

@@ -23,6 +23,7 @@ import PublicScoreBreakdownDrawer from "../components/predictions/PublicScoreBre
 import UserIdentityBlock from "../components/users/UserIdentityBlock";
 import UserVerdictBreakdown from "../components/users/UserVerdictBreakdown";
 import { useDashboardData } from "../hooks/useDashboardData";
+import { useTickerDisplayPrices } from "../hooks/useTickerDisplayPrices";
 import { useUserProgression } from "../hooks/useUserProgression";
 
 export default function UserProfile() {
@@ -111,6 +112,16 @@ export default function UserProfile() {
     };
   }, [visibleBundle?.profile.user_id]);
 
+  const profilePredictions = visibleBundle?.predictions ?? [];
+  const activePredictions = profilePredictions.filter((prediction) => prediction.section === "active");
+  const recentPredictions = profilePredictions.filter((prediction) => prediction.section === "recent");
+  const latestPredictions = visibleBundle?.latestPredictions ?? [];
+  const displayPriceTickers = [
+    ...activePredictions.map((prediction) => prediction.ticker),
+    ...latestPredictions.filter((prediction) => prediction.status === "pending").map((prediction) => prediction.ticker),
+  ];
+  const displayPrices = useTickerDisplayPrices(displayPriceTickers, { enabled: displayPriceTickers.length > 0 });
+
   if (loading && !visibleBundle) {
     return (
       <main className="dashboard-shell profile-page">
@@ -143,8 +154,6 @@ export default function UserProfile() {
     );
   }
 
-  const activePredictions = visibleBundle.predictions.filter((prediction) => prediction.section === "active");
-  const recentPredictions = visibleBundle.predictions.filter((prediction) => prediction.section === "recent");
   const featuredBadges = getFeaturedBadges(visibleBundle.badges);
   const tickerLogos = Object.fromEntries(
     dashboard.tickerAssets.map((asset) => [asset.ticker, asset.logo_data_url]),
@@ -232,7 +241,7 @@ export default function UserProfile() {
       <AnimatedSection delay={tickerSpecialties.length > 0 ? (isOwner ? 0.32 : 0.24) : (isOwner ? 0.24 : 0.16)}>
         <MagicHoverSurface className="section-magic-surface">
           <section className="section-panel profile-section">
-            <Title order={2}>On Deck</Title>
+            <Title order={2}>On the Horizon</Title>
             <Text c="dimmed" size="sm">Active predictions, sorted by what matures soonest.</Text>
             {activePredictions.length === 0 ? (
               <Text c="dimmed" size="sm">No active public predictions.</Text>
@@ -243,6 +252,7 @@ export default function UserProfile() {
                     key={prediction.prediction_id}
                     prediction={prediction}
                     tickerLogos={tickerLogos}
+                    displayPrice={displayPrices.prices[prediction.ticker]}
                   />
                 ))}
               </SimpleGrid>
@@ -250,6 +260,33 @@ export default function UserProfile() {
           </section>
         </MagicHoverSurface>
       </AnimatedSection>
+
+      {latestPredictions.length > 0 ? (
+        <AnimatedSection delay={tickerSpecialties.length > 0 ? (isOwner ? 0.4 : 0.32) : (isOwner ? 0.32 : 0.24)}>
+          <MagicHoverSurface className="section-magic-surface">
+            <section className="section-panel profile-section">
+              <Group justify="space-between" align="flex-end">
+                <div>
+                  <Title order={2}>Latest Predictions</Title>
+                  <Text c="dimmed" size="sm">This profile's most recent public calls.</Text>
+                </div>
+                <Text size="sm" fw={800}>{latestPredictions.length.toLocaleString()} recent</Text>
+              </Group>
+              <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+                {latestPredictions.slice(0, 8).map((prediction) => (
+                  <PublicPredictionCard
+                    key={`latest-${prediction.prediction_id}`}
+                    prediction={prediction}
+                    tickerLogos={tickerLogos}
+                    displayPrice={displayPrices.prices[prediction.ticker]}
+                    onScoreClick={setSelectedScore}
+                  />
+                ))}
+              </SimpleGrid>
+            </section>
+          </MagicHoverSurface>
+        </AnimatedSection>
+      ) : null}
 
       <AnimatedSection delay={tickerSpecialties.length > 0 ? (isOwner ? 0.4 : 0.32) : (isOwner ? 0.32 : 0.24)}>
         <MagicHoverSurface className="section-magic-surface">
@@ -611,6 +648,18 @@ function buildOwnerBundle(
       updated_at: new Date().toISOString(),
     },
     badges: publicBadges,
+    latestPredictions: predictions
+      .filter((prediction) => prediction.status !== "cancelled")
+      .sort(
+        (a, b) =>
+          b.prediction_date.localeCompare(a.prediction_date) ||
+          b.created_at.localeCompare(a.created_at) ||
+          b.target_date.localeCompare(a.target_date),
+      )
+      .slice(0, 20)
+      .map((prediction, index) =>
+        convertOwnPrediction(prediction, prediction.status === "pending" ? "active" : "recent", index + 1),
+      ),
     predictions: [
       ...activePredictions.map((prediction, index) => convertOwnPrediction(prediction, "active", index + 1)),
       ...recentPredictions.map((prediction, index) => convertOwnPrediction(prediction, "recent", index + 1)),

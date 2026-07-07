@@ -78,6 +78,13 @@ export type PublicUserProfileBundle = {
   profile: PublicUserProfile;
   badges: PublicUserBadge[];
   predictions: PublicProfilePrediction[];
+  latestPredictions: PublicProfilePrediction[];
+};
+
+export type PublicScoredPrediction = Omit<PublicProfilePrediction, "section" | "display_order" | "public_details_hidden"> & {
+  username: string;
+  display_username: string;
+  total_count: number;
 };
 
 export async function fetchPublicUserProfile(username: string): Promise<PublicUserProfileBundle | null> {
@@ -104,7 +111,11 @@ export async function fetchPublicUserProfile(username: string): Promise<PublicUs
   }
 
   const profile = profileData as PublicUserProfile;
-  const [{ data: badgeData, error: badgeError }, { data: predictionData, error: predictionError }] =
+  const [
+    { data: badgeData, error: badgeError },
+    { data: predictionData, error: predictionError },
+    { data: latestPredictionData, error: latestPredictionError },
+  ] =
     await Promise.all([
       supabase
         .from("public_user_badges")
@@ -120,6 +131,11 @@ export async function fetchPublicUserProfile(username: string): Promise<PublicUs
         .eq("user_id", profile.user_id)
         .order("section", { ascending: true })
         .order("display_order", { ascending: true }),
+      supabase
+        .from("public_user_latest_predictions")
+        .select("*")
+        .eq("user_id", profile.user_id)
+        .order("display_order", { ascending: true }),
     ]);
 
   if (badgeError) {
@@ -128,11 +144,55 @@ export async function fetchPublicUserProfile(username: string): Promise<PublicUs
   if (predictionError) {
     throw predictionError;
   }
+  if (latestPredictionError) {
+    if (latestPredictionError.code !== "42P01" && !latestPredictionError.message.includes("public_user_latest_predictions")) {
+      throw latestPredictionError;
+    }
+  }
 
   return {
     profile,
     badges: ((badgeData ?? []) as PublicUserBadge[]).map(normalizePublicBadge),
     predictions: (predictionData ?? []) as PublicProfilePrediction[],
+    latestPredictions: ((latestPredictionData ?? []) as Array<Omit<PublicProfilePrediction, "section">>).map((row) => ({
+      ...row,
+      section: row.status === "pending" ? "active" : "recent",
+    })),
+  };
+}
+
+export async function fetchPublicUserScoredPredictions(input: {
+  username: string;
+  evaluationWindow: "7d" | "30d" | "90d" | "all";
+  horizon: PredictionHorizon | "all";
+  limit?: number;
+  offset?: number;
+}): Promise<{ rows: PublicScoredPrediction[]; totalCount: number }> {
+  if (!supabase) {
+    return { rows: [], totalCount: 0 };
+  }
+
+  const { data, error } = await supabase.rpc("get_public_user_scored_predictions", {
+    p_username: input.username.trim().toLowerCase(),
+    p_evaluation_window: input.evaluationWindow,
+    p_prediction_horizon: input.horizon,
+    p_limit: input.limit ?? 50,
+    p_offset: input.offset ?? 0,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = ((data ?? []) as PublicScoredPrediction[]).map((row) => ({
+    ...row,
+    section: "recent",
+    total_count: Number(row.total_count ?? 0),
+  })) as PublicScoredPrediction[];
+
+  return {
+    rows,
+    totalCount: rows[0]?.total_count ?? 0,
   };
 }
 
