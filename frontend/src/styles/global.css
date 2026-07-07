@@ -5789,6 +5789,7 @@ h2,
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+  text-align: center;
 }
 
 .on-deck-tracking-grid>div {

@@ -13,6 +13,7 @@ import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/Dashboard";
 import Landing from "./pages/Landing";
 import ModelDetail from "./pages/ModelDetail";
+import ModelScoredPredictions from "./pages/ModelScoredPredictions";
 import MyPredictions from "./pages/MyPredictions";
 import Onboarding from "./pages/Onboarding";
 import Rules from "./pages/Rules";
@@ -68,6 +69,7 @@ export default function App() {
                 </RequireAuth>
               }
             />
+            <Route path="/models/:modelSlug/scored" element={<ModelScoredPredictions />} />
             <Route path="/models/:modelSlug" element={<ModelDetail />} />
             <Route path="/rules" element={<Rules />} />
             <Route path="/tickers" element={<TickerUniverse />} />

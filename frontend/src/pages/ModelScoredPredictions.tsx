@@ -3,53 +3,65 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { FiAlertTriangle } from "react-icons/fi";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import {
-  fetchPublicUserScoredPredictions,
-  type PublicProfilePrediction,
-  type PublicScoredPrediction,
-} from "../api/publicProfiles";
 import type { MetricHorizon, MetricWindow } from "../api/dashboardData";
+import { fetchPublicModelScoredPredictions, type PublicModelScoredPrediction } from "../api/modelScores";
+import EntityHoverCard from "../components/cards/EntityHoverCard";
 import AnimatedSection from "../components/layout/AnimatedSection";
 import BackToDashboardButton from "../components/layout/BackToDashboardButton";
 import DashboardFooter from "../components/layout/DashboardFooter";
 import SectionPanel from "../components/layout/SectionPanel";
-import EntityHoverCard from "../components/cards/EntityHoverCard";
-import PublicScoreBreakdownDrawer from "../components/predictions/PublicScoreBreakdownDrawer";
-import ScoreVerdictBadge from "../components/predictions/ScoreVerdictBadge";
+import ModelScoreBreakdownDrawer from "../components/predictions/ModelScoreBreakdownDrawer";
 import TickerLogoMark from "../components/tickers/TickerLogoMark";
 import { useDashboardData } from "../hooks/useDashboardData";
-import { formatCurrency, formatDate, formatHorizon, formatPercent, formatSignedPercent } from "../utils/format";
+import {
+  formatCurrency,
+  formatDate,
+  formatHorizon,
+  formatMetric,
+  formatPercent,
+  formatPredictionRange,
+  formatSignedPercent,
+} from "../utils/format";
+import { getModelInfo } from "../utils/models";
 
 const pageSize = 50;
 
-export default function UserScoredPredictions() {
-  const { username = "" } = useParams();
+export default function ModelScoredPredictions() {
+  const { modelSlug = "" } = useParams();
   const [searchParams] = useSearchParams();
   const dashboard = useDashboardData();
   const window = parseWindow(searchParams.get("window"));
   const horizon = parseHorizon(searchParams.get("horizon"));
   const [page, setPage] = useState(0);
-  const [rows, setRows] = useState<PublicScoredPrediction[]>([]);
+  const [rows, setRows] = useState<PublicModelScoredPrediction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPrediction, setSelectedPrediction] = useState<PublicProfilePrediction | null>(null);
+  const [selectedPrediction, setSelectedPrediction] = useState<PublicModelScoredPrediction | null>(null);
   const tickerLogos = useMemo(
     () => Object.fromEntries(dashboard.tickerAssets.map((asset) => [asset.ticker, asset.logo_data_url])),
     [dashboard.tickerAssets],
   );
+  const modelName =
+    rows[0]?.model_name ??
+    dashboard.leaderboard.find((row) => row.model_slug === modelSlug)?.model_name ??
+    dashboard.latestPredictions.find((row) => row.model_slug === modelSlug)?.model_name;
+  const modelInfo = getModelInfo(modelSlug, modelName);
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+  const shownStart = totalCount === 0 ? 0 : page * pageSize + 1;
+  const shownEnd = Math.min(totalCount, page * pageSize + rows.length);
 
   useEffect(() => {
     setPage(0);
-  }, [horizon, username, window]);
+  }, [horizon, modelSlug, window]);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError(null);
 
-    fetchPublicUserScoredPredictions({
-      username,
+    fetchPublicModelScoredPredictions({
+      modelSlug,
       evaluationWindow: window,
       horizon,
       limit: pageSize,
@@ -76,12 +88,7 @@ export default function UserScoredPredictions() {
     return () => {
       active = false;
     };
-  }, [horizon, page, username, window]);
-
-  const displayUsername = rows[0]?.display_username ?? username;
-  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
-  const shownStart = totalCount === 0 ? 0 : page * pageSize + 1;
-  const shownEnd = Math.min(totalCount, page * pageSize + rows.length);
+  }, [horizon, modelSlug, page, window]);
 
   return (
     <main className="dashboard-shell detail-page">
@@ -92,7 +99,7 @@ export default function UserScoredPredictions() {
       <AnimatedSection delay={0.08}>
         <header className="predictions-header">
           <Title order={1} className="predictions-header-title">
-            {username} Scored Predictions
+            {modelInfo.name} Scored Predictions
           </Title>
           <Text className="predictions-header-lead">
             Leaderboard set for {formatHorizon(horizon)} predictions.
@@ -109,7 +116,7 @@ export default function UserScoredPredictions() {
         <SectionPanel
           className="my-predictions-panel"
           title="Scored Predictions"
-          subtitle="The exact public score rows included in this leaderboard count."
+          subtitle="The exact model score rows included in this leaderboard count."
         >
           {loading ? (
             <Group justify="center" py="xl">
@@ -122,7 +129,7 @@ export default function UserScoredPredictions() {
           ) : (
             <>
               <div className="desktop-table">
-                <Table.ScrollContainer minWidth={860}>
+                <Table.ScrollContainer minWidth={960}>
                   <Table highlightOnHover verticalSpacing="sm" className="prediction-table user-predictions-table">
                     <Table.Thead>
                       <Table.Tr>
@@ -132,7 +139,7 @@ export default function UserScoredPredictions() {
                         <Table.Th className="prediction-table-center">Actual</Table.Th>
                         <Table.Th className="prediction-table-center">Error</Table.Th>
                         <Table.Th className="prediction-table-center">Direction</Table.Th>
-                        <Table.Th className="prediction-table-center">Verdict</Table.Th>
+                        <Table.Th className="prediction-table-center">Winkler</Table.Th>
                         <Table.Th className="prediction-table-center">Matured On</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
@@ -143,11 +150,11 @@ export default function UserScoredPredictions() {
                           className="settled-prediction-row"
                           tabIndex={0}
                           aria-label={`Open score breakdown for ${row.ticker}`}
-                          onClick={() => setSelectedPrediction(toPublicProfilePrediction(row))}
+                          onClick={() => setSelectedPrediction(row)}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
                               event.preventDefault();
-                              setSelectedPrediction(toPublicProfilePrediction(row));
+                              setSelectedPrediction(row);
                             }
                           }}
                         >
@@ -159,6 +166,11 @@ export default function UserScoredPredictions() {
                           </Table.Td>
                           <Table.Td className="prediction-table-center">
                             <PriceReturn close={row.predicted_close} ret={row.predicted_return} />
+                            {row.predicted_close_lower != null && row.predicted_close_upper != null ? (
+                              <Text size="xs" c="dimmed">
+                                {formatPredictionRange(row.predicted_close_lower, row.predicted_close_upper, row.interval_level)}
+                              </Text>
+                            ) : null}
                           </Table.Td>
                           <Table.Td className="prediction-table-center">
                             <PriceReturn close={row.actual_close} ret={row.actual_return} />
@@ -169,16 +181,7 @@ export default function UserScoredPredictions() {
                               {row.direction_correct === 1 ? "Hit" : "Miss"}
                             </Badge>
                           </Table.Td>
-                          <Table.Td className="prediction-table-center">
-                            <ScoreVerdictBadge
-                              score={{
-                                absolute_pct_error: row.absolute_pct_error ?? 0,
-                                prediction_horizon: row.prediction_horizon,
-                                direction_correct: row.direction_correct ?? undefined,
-                                score_verdict: row.score_verdict,
-                              }}
-                            />
-                          </Table.Td>
+                          <Table.Td className="prediction-table-center">{formatMetric(row.winkler_score)}</Table.Td>
                           <Table.Td className="prediction-table-center">{formatDate(row.target_date)}</Table.Td>
                         </Table.Tr>
                       ))}
@@ -195,11 +198,11 @@ export default function UserScoredPredictions() {
                       role="button"
                       tabIndex={0}
                       aria-label={`Open score breakdown for ${row.ticker}`}
-                      onClick={() => setSelectedPrediction(toPublicProfilePrediction(row))}
+                      onClick={() => setSelectedPrediction(row)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          setSelectedPrediction(toPublicProfilePrediction(row));
+                          setSelectedPrediction(row);
                         }
                       }}
                     >
@@ -207,26 +210,11 @@ export default function UserScoredPredictions() {
                         <TickerCell ticker={row.ticker} logoUrl={tickerLogos[row.ticker]} card />
                         <Badge variant="light" color="green">{formatHorizon(row.prediction_horizon)}</Badge>
                       </Group>
-                      <ScoreCardRow
-                        label="Verdict"
-                        value={
-                          <ScoreVerdictBadge
-                            score={{
-                              absolute_pct_error: row.absolute_pct_error ?? 0,
-                              prediction_horizon: row.prediction_horizon,
-                              direction_correct: row.direction_correct ?? undefined,
-                              score_verdict: row.score_verdict,
-                            }}
-                          />
-                        }
-                      />
                       <ScoreCardRow label="Predicted" value={<PriceReturn close={row.predicted_close} ret={row.predicted_return} inline />} />
                       <ScoreCardRow label="Actual" value={<PriceReturn close={row.actual_close} ret={row.actual_return} inline />} />
                       <ScoreCardRow label="Error" value={formatPercent(row.absolute_pct_error, 2)} />
-                      <ScoreCardRow
-                        label="Direction"
-                        value={row.direction_correct === 1 ? "Hit" : "Miss"}
-                      />
+                      <ScoreCardRow label="Direction" value={row.direction_correct === 1 ? "Hit" : "Miss"} />
+                      <ScoreCardRow label="Winkler" value={formatMetric(row.winkler_score)} />
                       <ScoreCardRow label="Matured on" value={formatDate(row.target_date)} />
                     </article>
                   ))}
@@ -250,7 +238,7 @@ export default function UserScoredPredictions() {
         </SectionPanel>
       </AnimatedSection>
 
-      <PublicScoreBreakdownDrawer
+      <ModelScoreBreakdownDrawer
         prediction={selectedPrediction}
         opened={Boolean(selectedPrediction)}
         onClose={() => setSelectedPrediction(null)}
@@ -333,36 +321,6 @@ function ScoreCardRow({ label, value }: { label: string; value: ReactNode }) {
       <Text component="div" size="sm" fw={800}>{value}</Text>
     </Group>
   );
-}
-
-function toPublicProfilePrediction(row: PublicScoredPrediction): PublicProfilePrediction {
-  return {
-    prediction_id: row.prediction_id,
-    user_id: row.user_id,
-    section: "recent",
-    display_order: 0,
-    ticker: row.ticker,
-    prediction_date: row.prediction_date,
-    target_date: row.target_date,
-    prediction_horizon: row.prediction_horizon,
-    reference_close: row.reference_close,
-    predicted_return: row.predicted_return,
-    predicted_close: row.predicted_close,
-    status: row.status,
-    public_details_hidden: false,
-    actual_close: row.actual_close,
-    actual_return: row.actual_return,
-    absolute_error: row.absolute_error,
-    absolute_pct_error: row.absolute_pct_error,
-    direction_correct: row.direction_correct,
-    score_verdict: row.score_verdict,
-    score_verdict_rank: row.score_verdict_rank,
-    score_verdict_color: row.score_verdict_color,
-    xp_awarded: row.xp_awarded,
-    scored_at: row.scored_at,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  };
 }
 
 function parseWindow(value: string | null): MetricWindow {

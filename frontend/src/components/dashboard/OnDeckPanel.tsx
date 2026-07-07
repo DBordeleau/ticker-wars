@@ -132,7 +132,7 @@ function OnDeckCard({
           <strong>{tracking ? formatSignedPercent(tracking.currentReturn) : "Pending"}</strong>
         </div>
         <div>
-          <span>Call</span>
+          <span>Predicted</span>
           <strong>{formatSignedPercent(prediction.predicted_return)}</strong>
         </div>
         <div>

@@ -321,7 +321,17 @@ function ScoredCount({
 }) {
   const count = row.prediction_count.toLocaleString();
   if (isModelRow) {
-    return <>{count}</>;
+    const modelRow = row as LeaderboardRow;
+    return (
+      <Text
+        component={Link}
+        to={`/models/${modelRow.model_slug}/scored?window=${row.window}&horizon=${row.prediction_horizon}`}
+        className="leaderboard-score-link"
+        fw={850}
+      >
+        {count}
+      </Text>
+    );
   }
 
   const userRow = row as UserLeaderboardRow;

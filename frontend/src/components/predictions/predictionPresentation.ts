@@ -72,7 +72,7 @@ export function buildTrackingSnapshot(
   const detail =
     distanceToPrediction == null
       ? `${formatSignedPercent(currentReturn)} from reference`
-      : `${formatPercent(distanceToPrediction, 2)} from call`;
+      : `${formatPercent(distanceToPrediction, 2)}`;
 
   return {
     currentPrice: displayPrice.price,
