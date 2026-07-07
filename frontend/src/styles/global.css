@@ -1419,6 +1419,7 @@ h2,
 .chart-panel .mantine-Input-wrapper::after,
 .prediction-surface-card .mantine-Input-wrapper::after,
 .profile-owner-controls .mantine-Input-wrapper::after,
+.profile-loadout-editor .mantine-Input-wrapper::after,
 .delete-account-confirm-input .mantine-Input-wrapper::after,
 .model-toggle::after {
   position: absolute;
@@ -1456,6 +1457,8 @@ h2,
 .section-magic-surface:hover .prediction-filters .mantine-Input-wrapper::after,
 .section-magic-surface:hover .chart-panel .mantine-Input-wrapper::after,
 .section-magic-surface:hover .profile-owner-controls .mantine-Input-wrapper::after,
+.profile-loadout-editor .mantine-Input-wrapper:hover::after,
+.profile-loadout-editor .mantine-Input-wrapper:focus-within::after,
 .delete-account-surface:hover .delete-account-confirm-input .mantine-Input-wrapper::after,
 .section-magic-surface:hover .model-toggle::after,
 .spotlight-control-wrap:hover::after {
@@ -6237,6 +6240,130 @@ tr.prediction-row-highlighted {
   overflow: visible;
 }
 
+.profile-loadout-editor {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.badge-select-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  width: 100%;
+  padding: 7px 2px;
+}
+
+.badge-select-option-token {
+  flex: 0 0 auto;
+}
+
+.badge-select-option-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.badge-select-option-title {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge-select-option-rarity {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.badge-select-option-rarity--common {
+  color: #e2e8f0;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.badge-select-option-rarity--uncommon {
+  color: #bbf7d0;
+  background: rgba(74, 222, 128, 0.16);
+}
+
+.badge-select-option-rarity--rare {
+  color: #bae6fd;
+  background: rgba(56, 189, 248, 0.16);
+}
+
+.badge-select-option-rarity--epic {
+  color: #f5d0fe;
+  background: rgba(217, 70, 239, 0.18);
+}
+
+.badge-select-option-rarity--legendary {
+  color: #fef3c7;
+  background: rgba(250, 204, 21, 0.18);
+}
+
+.badge-select-option-detail,
+.badge-select-option-unlocked {
+  overflow: hidden;
+  color: rgba(226, 232, 240, 0.76);
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.28;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge-select-option-unlocked {
+  color: rgba(148, 163, 184, 0.86);
+  font-size: 0.7rem;
+}
+
+.badge-select-option-check {
+  display: inline-flex;
+  color: #86efac;
+}
+
+.badge-select-option-check svg {
+  width: 16px;
+  height: 16px;
+}
+
+.badge-loadout-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.badge-loadout-preview-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.badge-loadout-preview-label {
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
 .avatar-editor {
   display: grid;
   grid-template-columns: minmax(220px, 0.34fr) minmax(0, 0.66fr);
@@ -6808,10 +6935,12 @@ tr.prediction-row-highlighted {
   }
 
   /* On mobile the preview collapses into a compact bar that sticks to the top of
-     the viewport, so it follows the user while they scroll through variants. */
+     the viewport, so it follows the user while they scroll through variants. The
+     offset clears the fixed top identity strip (the .app-nav-spacer reserves
+     55px for it) so the bar is never tucked behind the header. */
   .avatar-preview-panel {
     position: sticky;
-    top: 10px;
+    top: calc(55px + 8px);
     z-index: 6;
     display: flex;
     flex-direction: row;
@@ -7326,7 +7455,8 @@ tr.prediction-row-highlighted {
 
 /* Owner "Profile Loadout" inputs pick up the same spotlight border ring as the
    prediction form inputs so the badge selects stop looking like bare controls. */
-.profile-owner-controls .mantine-Input-wrapper {
+.profile-owner-controls .mantine-Input-wrapper,
+.profile-loadout-editor .mantine-Input-wrapper {
   --spotlight-child-x: 50%;
   --spotlight-child-y: 50%;
   position: relative;
@@ -7334,7 +7464,8 @@ tr.prediction-row-highlighted {
   border-radius: 6px;
 }
 
-.profile-owner-controls .mantine-Input-input {
+.profile-owner-controls .mantine-Input-input,
+.profile-loadout-editor .mantine-Input-input {
   position: relative;
   z-index: 1;
   transition:
@@ -7343,7 +7474,9 @@ tr.prediction-row-highlighted {
     background-color 170ms ease;
 }
 
-.section-magic-surface:hover .profile-owner-controls .mantine-Input-input {
+.section-magic-surface:hover .profile-owner-controls .mantine-Input-input,
+.profile-loadout-editor .mantine-Input-wrapper:hover .mantine-Input-input,
+.profile-loadout-editor .mantine-Input-wrapper:focus-within .mantine-Input-input {
   border-color: rgba(74, 222, 128, 0.26);
 }
 

@@ -8,12 +8,14 @@ import type { AvatarOptions } from "../../auth/types";
 import type { TickerCloseSnapshot, TickerProfile } from "../../api/dashboardData";
 import { loadLivePriceSnapshot } from "../../api/livePriceCache";
 import { resolveTickerDisplayPrice, type LivePriceSnapshot } from "../../api/livePrices";
-import { fetchPublicUserProfile, type PublicUserProfileBundle } from "../../api/publicProfiles";
+import {
+  fetchPublicUserProfile,
+  resolvePublicProfileVerdictCounts,
+  type PublicUserProfileBundle,
+} from "../../api/publicProfiles";
 import { loadTickerCloseSnapshot, loadTickerProfile } from "../../api/tickerCache";
 import {
-  isScoreVerdict,
   titleForLevel,
-  verdictForScore,
   type ScoreVerdict,
 } from "../../api/gamification";
 import { formatCurrency, formatSignedPercent } from "../../utils/format";
@@ -151,7 +153,7 @@ function UserCardBody({
   const { bundle, loading } = usePublicUserHoverData(username);
   const profile = bundle?.profile ?? null;
   const featuredBadges = bundle ? getFeaturedBadges(bundle.badges) : [];
-  const verdictCounts = profile?.verdict_counts ?? (bundle ? verdictCountsFromProfilePredictions(bundle) : {});
+  const verdictCounts = bundle ? resolvePublicProfileVerdictCounts(bundle) : {};
 
   if (loading) {
     return (
@@ -220,25 +222,6 @@ function ProfileCta({
       <FiArrowRight aria-hidden />
     </Link>
   );
-}
-
-function verdictCountsFromProfilePredictions(bundle: PublicUserProfileBundle) {
-  return bundle.predictions.reduce<Partial<Record<ScoreVerdict, number>>>((counts, prediction) => {
-    if (prediction.section !== "recent") {
-      return counts;
-    }
-    const computed = verdictForScore({
-      absolutePctError: prediction.absolute_pct_error,
-      predictionHorizon: prediction.prediction_horizon,
-      directionCorrect: prediction.direction_correct,
-    });
-    const verdict = computed ?? prediction.score_verdict;
-    if (!isScoreVerdict(verdict)) {
-      return counts;
-    }
-    counts[verdict] = (counts[verdict] ?? 0) + 1;
-    return counts;
-  }, {});
 }
 
 function getFeaturedBadges(badges: PublicUserProfileBundle["badges"]) {

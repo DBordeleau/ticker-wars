@@ -1,12 +1,18 @@
-import { Alert, Button, Group, Loader, Modal, Select, SimpleGrid, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Button, Group, Loader, Modal, SimpleGrid, Stack, Text, TextInput, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useEffect, useMemo, useState } from "react";
 import { FiAlertTriangle, FiCheck, FiTrash2, FiX } from "react-icons/fi";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { fetchPublicUserProfile, updateOwnFeaturedBadges, type PublicProfilePrediction, type PublicUserBadge, type PublicUserProfileBundle } from "../api/publicProfiles";
+import {
+  fetchPublicUserProfile,
+  resolvePublicProfileVerdictCounts,
+  type PublicProfilePrediction,
+  type PublicUserBadge,
+  type PublicUserProfileBundle,
+} from "../api/publicProfiles";
 import { fetchUserTickerSpecialties, type TickerSpecialtyRow } from "../api/competition";
 import { resetDashboardCache } from "../api/dashboardStore";
-import { dispatchProgressionRefresh, isScoreVerdict, titleForLevel, verdictForScore } from "../api/gamification";
+import { dispatchProgressionRefresh, titleForLevel } from "../api/gamification";
 import type { BadgeDefinition, ScoreVerdict } from "../api/gamification";
 import { fetchOwnUserPredictions, type UserPrediction } from "../api/userPredictions";
 import { useAuth } from "../auth/AuthProvider";
@@ -178,26 +184,12 @@ export default function UserProfile() {
             <UserVerdictBreakdown
               activeCount={visibleBundle.profile.active_prediction_count}
               settledCount={visibleBundle.profile.scored_count}
-              verdictCounts={visibleBundle.profile.verdict_counts ?? verdictCountsFromProfilePredictions(visibleBundle)}
+              verdictCounts={resolvePublicProfileVerdictCounts(visibleBundle)}
               variant="profile"
             />
           </section>
         </MagicHoverSurface>
       </AnimatedSection>
-
-      {isOwner ? (
-        <AnimatedSection delay={0.08}>
-          <ProfileIdentityControls
-            badges={visibleBundle.badges}
-            primaryBadgeSlug={visibleBundle.profile.featured_badge_slug}
-            secondaryBadgeSlug={visibleBundle.profile.secondary_featured_badge_slug ?? null}
-            onSaved={() => {
-              dispatchProgressionRefresh();
-              void fetchPublicUserProfile(normalizedUsername).then(setBundle);
-            }}
-          />
-        </AnimatedSection>
-      ) : null}
 
       <AnimatedSection delay={isOwner ? 0.16 : 0.08}>
         <MagicHoverSurface className="section-magic-surface">
@@ -340,93 +332,6 @@ export function MyProfileRedirect() {
     return <Navigate to="/onboarding" replace />;
   }
   return <Navigate to={`/users/${profile.username}`} replace />;
-}
-
-function ProfileIdentityControls({
-  badges,
-  primaryBadgeSlug,
-  secondaryBadgeSlug,
-  onSaved,
-}: {
-  badges: PublicUserBadge[];
-  primaryBadgeSlug: string | null;
-  secondaryBadgeSlug: string | null;
-  onSaved: () => void;
-}) {
-  const [saving, setSaving] = useState(false);
-  const [nextPrimary, setNextPrimary] = useState(primaryBadgeSlug);
-  const [nextSecondary, setNextSecondary] = useState(secondaryBadgeSlug);
-  const badgeOptions = badges.map((badge) => ({ value: badge.badge_slug, label: badge.name }));
-
-  useEffect(() => {
-    setNextPrimary(primaryBadgeSlug);
-    setNextSecondary(secondaryBadgeSlug);
-  }, [primaryBadgeSlug, secondaryBadgeSlug]);
-
-  const handleSave = async () => {
-    if (nextPrimary && nextSecondary && nextPrimary === nextSecondary) {
-      notifications.show({
-        color: "yellow",
-        icon: <FiAlertTriangle />,
-        title: "Choose two different badges",
-        message: "Your primary and secondary featured badges need to be different.",
-      });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await updateOwnFeaturedBadges({ primaryBadgeSlug: nextPrimary, secondaryBadgeSlug: nextSecondary });
-      notifications.show({
-        color: "green",
-        icon: <FiCheck />,
-        title: "Profile updated",
-        message: "Your featured badges are live.",
-      });
-      onSaved();
-    } catch (caught) {
-      notifications.show({
-        color: "red",
-        icon: <FiAlertTriangle />,
-        title: "Unable to update profile",
-        message: caught instanceof Error ? caught.message : "Please try again.",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <MagicHoverSurface className="section-magic-surface">
-      <section className="section-panel profile-section profile-owner-controls">
-        <Group justify="space-between" align="flex-end">
-          <div>
-            <Title order={2}>Profile Loadout</Title>
-            <Text c="dimmed" size="sm">Pick the badges people see first. Your title comes from your level.</Text>
-          </div>
-          <Button color="green" loading={saving} onClick={() => void handleSave()}>
-            Save
-          </Button>
-        </Group>
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-          <Select
-            label="Primary featured badge"
-            value={nextPrimary}
-            clearable
-            data={badgeOptions}
-            onChange={setNextPrimary}
-          />
-          <Select
-            label="Secondary featured badge"
-            value={nextSecondary}
-            clearable
-            data={badgeOptions}
-            onChange={setNextSecondary}
-          />
-        </SimpleGrid>
-      </section>
-    </MagicHoverSurface>
-  );
 }
 
 function DeleteAccountControl({
@@ -678,22 +583,6 @@ function getFeaturedBadges(badges: PublicUserBadge[]) {
 
   const legacyFeatured = badges.filter((badge) => badge.is_featured);
   return legacyFeatured.length > 0 ? legacyFeatured.slice(0, 2) : badges.slice(0, 2);
-}
-
-function verdictCountsFromProfilePredictions(bundle: PublicUserProfileBundle) {
-  return bundle.predictions.reduce<Partial<Record<ScoreVerdict, number>>>((counts, prediction) => {
-    const computed = verdictForScore({
-      absolutePctError: prediction.absolute_pct_error,
-      predictionHorizon: prediction.prediction_horizon,
-      directionCorrect: prediction.direction_correct,
-    });
-    const verdict = computed ?? prediction.score_verdict;
-    if (!isScoreVerdict(verdict)) {
-      return counts;
-    }
-    counts[verdict] = (counts[verdict] ?? 0) + 1;
-    return counts;
-  }, {});
 }
 
 function convertOwnPrediction(
