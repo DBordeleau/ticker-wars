@@ -110,14 +110,7 @@ def fetch_hunter_logo(
 
 
 def domain_from_fundamentals(row: dict[str, Any]) -> str | None:
-    raw = row.get("raw_json")
-    raw_json = raw if isinstance(raw, dict) else {}
-    website = _clean_string(
-        row.get("website")
-        or raw_json.get("website")
-        or raw_json.get("websiteUrl")
-        or raw_json.get("website_url")
-    )
+    website = _clean_string(row.get("website"))
     if not website:
         return None
 

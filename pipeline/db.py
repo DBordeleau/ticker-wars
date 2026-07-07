@@ -243,7 +243,29 @@ class SupabaseDatabase:
             ).execute()
             written += len(batch)
 
+        self._delete_older_fundamentals(rows)
         return written
+
+    def _delete_older_fundamentals(self, rows: list[dict[str, Any]]) -> None:
+        latest_dates: dict[str, str] = {}
+        for row in rows:
+            ticker = str(row.get("ticker", ""))
+            as_of_date = row.get("as_of_date")
+            if not ticker or as_of_date is None:
+                continue
+            date_text = str(as_of_date)
+            current = latest_dates.get(ticker)
+            if current is None or date_text > current:
+                latest_dates[ticker] = date_text
+
+        for ticker, as_of_date in latest_dates.items():
+            (
+                self._client.table("fundamentals")
+                .delete()
+                .eq("ticker", ticker)
+                .lt("as_of_date", as_of_date)
+                .execute()
+            )
 
     def fetch_latest_fundamentals(self, batch_size: int = 1000) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []

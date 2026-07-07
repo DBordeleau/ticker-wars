@@ -7,10 +7,10 @@ from pipeline.ingestion.logos import domain_from_fundamentals, fetch_ticker_logo
 
 
 class LogoIngestionTest(unittest.TestCase):
-    def test_domain_from_fundamentals_uses_raw_website(self) -> None:
+    def test_domain_from_fundamentals_uses_explicit_website(self) -> None:
         row = {
             "ticker": "AAPL",
-            "raw_json": {"website": "https://www.apple.com/investor-relations/"},
+            "website": "https://www.apple.com/investor-relations/",
         }
 
         self.assertEqual(domain_from_fundamentals(row), "apple.com")
@@ -19,7 +19,7 @@ class LogoIngestionTest(unittest.TestCase):
         with patch("pipeline.ingestion.logos.fetch_hunter_logo") as fetch_logo:
             result = fetch_ticker_logos(
                 fundamental_rows=[
-                    {"ticker": "AAPL", "raw_json": {"website": "https://www.apple.com"}},
+                    {"ticker": "AAPL", "website": "https://www.apple.com"},
                 ],
                 existing_rows=[{"ticker": "AAPL", "logo_data_url": "data:image/png;base64,abc"}],
             )
@@ -33,7 +33,7 @@ class LogoIngestionTest(unittest.TestCase):
         with patch("pipeline.ingestion.logos.fetch_hunter_logo", return_value=row) as fetch_logo:
             result = fetch_ticker_logos(
                 fundamental_rows=[
-                    {"ticker": "AAPL", "raw_json": {"website": "https://www.apple.com"}},
+                    {"ticker": "AAPL", "website": "https://www.apple.com"},
                 ],
                 existing_rows=[],
             )

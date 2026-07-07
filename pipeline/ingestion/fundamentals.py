@@ -148,8 +148,15 @@ def _build_fundamentals_row(
         "current_ratio": _clean_float(info.get("currentRatio")),
         "sector": _clean_string(info.get("sector")),
         "industry": _clean_string(info.get("industry")),
+        "long_name": _clean_string(info.get("longName")),
+        "short_name": _clean_string(info.get("shortName")),
+        "display_name": _clean_string(info.get("displayName")),
+        "business_summary": _clean_string(info.get("longBusinessSummary")),
+        "website": _clean_string(
+            info.get("website") or info.get("websiteUrl") or info.get("website_url")
+        ),
         "source": SOURCE_NAME,
-        "raw_json": _json_safe_info(info),
+        "raw_json": None,
         "ingested_at": ingested_at.isoformat(),
     }
     return row
@@ -223,12 +230,7 @@ def _parse_optional_date(value: object) -> date | None:
 
 def _has_any_fundamental_value(row: dict[str, Any]) -> bool:
     ignored_keys = {"ticker", "as_of_date", "source", "raw_json", "ingested_at"}
-    raw_json = row.get("raw_json")
-    raw_profile_fields = ("longName", "shortName", "displayName", "longBusinessSummary")
-    return any(row.get(key) is not None for key in row if key not in ignored_keys) or (
-        isinstance(raw_json, dict)
-        and any(_clean_string(raw_json.get(key)) for key in raw_profile_fields)
-    )
+    return any(row.get(key) is not None for key in row if key not in ignored_keys)
 
 
 def _first_clean_float(*values: object) -> float | None:
@@ -268,15 +270,3 @@ def _is_missing(value: object) -> bool:
     except (TypeError, ValueError):
         return False
     return missing if isinstance(missing, bool) else False
-
-
-def _json_safe_info(info: dict[str, Any]) -> dict[str, Any]:
-    safe: dict[str, Any] = {}
-    for key, value in info.items():
-        if isinstance(value, str | int | bool) or value is None:
-            safe[key] = value
-        elif isinstance(value, float):
-            safe[key] = value if math.isfinite(value) else None
-        else:
-            safe[key] = str(value)
-    return safe

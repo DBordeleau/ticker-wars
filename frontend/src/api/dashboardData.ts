@@ -386,13 +386,32 @@ export async function fetchTickerProfile(ticker: string): Promise<TickerProfile 
 
   const { data, error } = await supabase
     .from("fundamentals")
-    .select("ticker,as_of_date,sector,industry,source,raw_json")
+    .select(
+      "ticker,as_of_date,sector,industry,long_name,short_name,display_name,business_summary,source",
+    )
     .eq("ticker", normalizedTicker)
     .order("as_of_date", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (error) {
+  let profileRow = data as Record<string, unknown> | null;
+  if (error && isMissingFundamentalsProfileColumnError(error)) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from("fundamentals")
+      .select("ticker,as_of_date,sector,industry,source")
+      .eq("ticker", normalizedTicker)
+      .order("as_of_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (fallbackError) {
+      if (fallbackError.code === "42P01" || fallbackError.message.includes("fundamentals")) {
+        return fallbackTickerProfiles[normalizedTicker] ?? null;
+      }
+      throw fallbackError;
+    }
+    profileRow = fallbackData as Record<string, unknown> | null;
+  } else if (error) {
     if (error.code === "42P01" || error.message.includes("fundamentals")) {
       return fallbackTickerProfiles[normalizedTicker] ?? null;
     }
@@ -409,8 +428,8 @@ export async function fetchTickerProfile(ticker: string): Promise<TickerProfile 
     throw assetError;
   }
 
-  return data
-    ? withFallbackTickerProfile(normalizeTickerProfileRow(data, assetData ?? null))
+  return profileRow
+    ? withFallbackTickerProfile(normalizeTickerProfileRow(profileRow, assetData ?? null))
     : fallbackTickerProfiles[normalizedTicker] ?? null;
 }
 
@@ -978,21 +997,30 @@ function normalizeTickerProfileRow(
   row: Record<string, unknown>,
   assetRow: Record<string, unknown> | null = null,
 ): TickerProfile {
-  const raw = isRecord(row.raw_json) ? row.raw_json : {};
   return {
     ticker: cleanString(row.ticker) ?? "",
     company_name:
-      cleanString(raw.longName) ??
-      cleanString(raw.shortName) ??
-      cleanString(raw.displayName) ??
+      cleanString(row.long_name) ??
+      cleanString(row.short_name) ??
+      cleanString(row.display_name) ??
       null,
     logo_data_url: cleanDataUrl(assetRow?.logo_data_url),
-    sector: cleanString(row.sector) ?? cleanString(raw.sector) ?? null,
-    industry: cleanString(row.industry) ?? cleanString(raw.industry) ?? null,
-    business_summary: cleanString(raw.longBusinessSummary) ?? null,
+    sector: cleanString(row.sector) ?? null,
+    industry: cleanString(row.industry) ?? null,
+    business_summary: cleanString(row.business_summary) ?? null,
     as_of_date: cleanString(row.as_of_date),
     source: cleanString(row.source),
   };
+}
+
+function isMissingFundamentalsProfileColumnError(error: { code?: string; message: string }): boolean {
+  const message = error.message.toLowerCase();
+  return (
+    error.code === "42703" ||
+    ["long_name", "short_name", "display_name", "business_summary"].some((column) =>
+      message.includes(column),
+    )
+  );
 }
 
 function withFallbackTickerProfile(profile: TickerProfile): TickerProfile {
