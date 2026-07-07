@@ -225,6 +225,30 @@ class DatabaseAccessTest(unittest.TestCase):
         )
         self.assertEqual(client.operations[0]["table"], "fundamentals")
 
+    def test_upsert_fundamentals_prunes_older_rows_for_written_tickers(self) -> None:
+        database, client = _database_with_fake_client()
+        rows = [
+            {"ticker": "AAPL", "as_of_date": "2026-01-03", "market_cap": 3.2e12},
+            {"ticker": "AAPL", "as_of_date": "2026-01-02", "market_cap": 3.1e12},
+            {"ticker": "MSFT", "as_of_date": "2026-01-04", "market_cap": 3.0e12},
+        ]
+
+        written = database.upsert_fundamentals(rows)
+
+        self.assertEqual(written, 3)
+        self.assertEqual(client.operations[0]["table"], "fundamentals")
+        self.assertEqual(client.operations[0]["action"], "upsert")
+        self.assertEqual(client.operations[0]["on_conflict"], "ticker,as_of_date")
+        self.assertEqual(client.operations[1]["action"], "delete")
+        self.assertEqual(client.operations[1]["filters"], [
+            ("eq", "ticker", "AAPL"),
+            ("lt", "as_of_date", "2026-01-03"),
+        ])
+        self.assertEqual(client.operations[2]["filters"], [
+            ("eq", "ticker", "MSFT"),
+            ("lt", "as_of_date", "2026-01-04"),
+        ])
+
     def test_fetch_latest_price_dates_reads_one_recent_row_per_ticker(self) -> None:
         database, client = _database_with_fake_client()
         client.data["prices"] = [

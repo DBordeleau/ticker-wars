@@ -145,11 +145,22 @@ class WarrenBuffbotTest(unittest.TestCase):
                 feature_rows=[_feature_row("AAPL", date(2026, 6, 18))],
                 price_rows=[{"ticker": "AAPL", "date": "2026-06-18", "close": 100.0}],
                 settings=Settings(gemini_api_key="fake", warren_buffbot_enabled=True),
-                fundamental_rows=[{"ticker": "AAPL", "market_cap": 123_000_000_000}],
+                fundamental_rows=[
+                    {
+                        "ticker": "AAPL",
+                        "market_cap": 123_000_000_000,
+                        "raw_json": {"unapproved": "do not send"},
+                        "ingested_at": "2026-06-18T00:00:00+00:00",
+                    }
+                ],
             )
 
         self.assertEqual(len(rows), 4)
         llm_request.assert_called_once()
+        prompt = llm_request.call_args.args[0]
+        self.assertIn("market_cap", prompt)
+        self.assertNotIn("raw_json", prompt)
+        self.assertNotIn("do not send", prompt)
         self.assertEqual({row["prediction_horizon"] for row in rows}, set(FORECAST_HORIZONS))
         self.assertTrue(all(row["model_slug"] == "warren-buffbot" for row in rows))
         self.assertTrue(

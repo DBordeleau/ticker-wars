@@ -195,6 +195,11 @@ class FundamentalsIngestionTest(unittest.TestCase):
                 "profitMargins": 0.18,
                 "sector": "Technology",
                 "industry": "Software",
+                "longName": "Apple Inc.",
+                "shortName": "Apple",
+                "displayName": "Apple",
+                "longBusinessSummary": "Makes consumer hardware and services.",
+                "website": "https://www.apple.com",
             }
         )
 
@@ -214,8 +219,11 @@ class FundamentalsIngestionTest(unittest.TestCase):
         self.assertEqual(row["free_cash_flow"], 900_000_000.0)
         self.assertEqual(row["total_debt"], 2_000_000_000.0)
         self.assertEqual(row["sector"], "Technology")
+        self.assertEqual(row["long_name"], "Apple Inc.")
+        self.assertEqual(row["business_summary"], "Makes consumer hardware and services.")
+        self.assertEqual(row["website"], "https://www.apple.com")
         self.assertEqual(row["source"], "yfinance")
-        self.assertIn("raw_json", row)
+        self.assertIsNone(row["raw_json"])
 
     def test_profile_only_fundamentals_row_is_kept_for_etfs(self) -> None:
         row = {
@@ -224,11 +232,10 @@ class FundamentalsIngestionTest(unittest.TestCase):
             "market_cap": None,
             "sector": None,
             "industry": None,
+            "long_name": "SPDR S&P 500 ETF Trust",
+            "business_summary": "Tracks the S&P 500 Index.",
             "source": "yfinance",
-            "raw_json": {
-                "longName": "SPDR S&P 500 ETF Trust",
-                "longBusinessSummary": "Tracks the S&P 500 Index.",
-            },
+            "raw_json": None,
             "ingested_at": "2026-06-21T00:00:00+00:00",
         }
 

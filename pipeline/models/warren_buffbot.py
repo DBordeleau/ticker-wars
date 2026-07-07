@@ -33,6 +33,29 @@ from pipeline.llm.prompt_templates import (
 from pipeline.models.base import build_prediction_row, historical_return_interval
 
 MODEL_NAME = "Warren Buffbot"
+FUNDAMENTALS_PROMPT_FIELDS = (
+    "market_cap",
+    "trailing_pe",
+    "forward_pe",
+    "price_to_book",
+    "price_to_sales",
+    "revenue_ttm",
+    "revenue_growth",
+    "net_income_ttm",
+    "profit_margin",
+    "operating_margin",
+    "free_cash_flow",
+    "total_debt",
+    "debt_to_equity",
+    "current_ratio",
+    "sector",
+    "industry",
+    "long_name",
+    "short_name",
+    "display_name",
+    "business_summary",
+)
+MAX_BUSINESS_SUMMARY_CHARS = 800
 
 LOGGER = logging.getLogger(__name__)
 
@@ -204,4 +227,24 @@ def _parse_optional_date(value: object) -> date | None:
 
 
 def _fundamentals_by_ticker(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    return {str(row["ticker"]): row for row in rows if row.get("ticker")}
+    return {
+        str(row["ticker"]): curated
+        for row in rows
+        if row.get("ticker") and (curated := _curated_fundamentals(row))
+    }
+
+
+def _curated_fundamentals(row: dict[str, Any]) -> dict[str, Any]:
+    curated: dict[str, Any] = {}
+    for field in FUNDAMENTALS_PROMPT_FIELDS:
+        value = row.get(field)
+        if value is None:
+            continue
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                continue
+            if field == "business_summary":
+                value = value[:MAX_BUSINESS_SUMMARY_CHARS]
+        curated[field] = value
+    return curated
