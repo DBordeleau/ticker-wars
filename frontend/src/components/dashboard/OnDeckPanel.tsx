@@ -1,9 +1,12 @@
 import { Badge, Button, Group, Skeleton, Text } from "@mantine/core";
 import { FiArrowRight, FiTarget } from "react-icons/fi";
 import { Link } from "react-router-dom";
+import type { TickerDisplayPrice } from "../../api/livePrices";
 import { useUserPredictions } from "../../hooks/useUserPredictions";
-import { formatDate, formatHorizon } from "../../utils/format";
+import { useTickerDisplayPrices } from "../../hooks/useTickerDisplayPrices";
+import { formatCurrency, formatDate, formatHorizon, formatSignedPercent } from "../../utils/format";
 import SectionPanel from "../layout/SectionPanel";
+import { buildTrackingSnapshot } from "../predictions/predictionPresentation";
 import TickerLogoMark from "../tickers/TickerLogoMark";
 import { buildOnDeckItems, type OnDeckItem } from "./onDeck";
 
@@ -15,10 +18,11 @@ export default function OnDeckPanel({ tickerLogos }: Props) {
   const predictions = useUserPredictions();
   const items = buildOnDeckItems(predictions.data);
   const visibleItems = items.slice(0, 5);
+  const tickerPrices = useTickerDisplayPrices(visibleItems.map((item) => item.prediction.ticker));
 
   if (predictions.loading) {
     return (
-      <SectionPanel className="on-deck-panel" title="On Deck">
+      <SectionPanel className="on-deck-panel" title="On the Horizon">
         <Skeleton height={140} radius="sm" />
       </SectionPanel>
     );
@@ -31,7 +35,7 @@ export default function OnDeckPanel({ tickerLogos }: Props) {
   return (
     <SectionPanel
       className="on-deck-panel"
-      title="On Deck"
+      title="On the Horizon"
       subtitle={items.length > 0 ? onDeckSubtitle(items) : "No active predictions waiting to mature."}
       action={
         <Link to="/me/predictions" className="dashboard-inline-cta">
@@ -47,6 +51,7 @@ export default function OnDeckPanel({ tickerLogos }: Props) {
               key={item.prediction.prediction_id}
               item={item}
               logoUrl={tickerLogos[item.prediction.ticker]}
+              displayPrice={tickerPrices.prices[item.prediction.ticker]}
             />
           ))}
         </div>
@@ -56,7 +61,7 @@ export default function OnDeckPanel({ tickerLogos }: Props) {
             <FiTarget aria-hidden />
           </span>
           <div>
-            <Text fw={900}>No active predictions on deck</Text>
+            <Text fw={900}>No active predictions on the horizon</Text>
             <Text size="sm" c="dimmed">
               Make a prediction to start building a return loop.
             </Text>
@@ -70,9 +75,30 @@ export default function OnDeckPanel({ tickerLogos }: Props) {
   );
 }
 
-function OnDeckCard({ item, logoUrl }: { item: OnDeckItem; logoUrl?: string | null }) {
+function OnDeckCard({
+  item,
+  logoUrl,
+  displayPrice,
+}: {
+  item: OnDeckItem;
+  logoUrl?: string | null;
+  displayPrice?: TickerDisplayPrice | null;
+}) {
   const prediction = item.prediction;
   const status = statusCopy(item);
+  const tracking = buildTrackingSnapshot(
+    {
+      ...prediction,
+      public_details_hidden: false,
+      actual_close: null,
+      actual_return: null,
+      absolute_error: null,
+      absolute_pct_error: null,
+      direction_correct: null,
+      score_verdict: null,
+    },
+    displayPrice,
+  );
 
   return (
     <Link
@@ -91,6 +117,29 @@ function OnDeckCard({ item, logoUrl }: { item: OnDeckItem; logoUrl?: string | nu
           {status.label}
         </Badge>
       </Group>
+      <div className="on-deck-price-row">
+        <div>
+          <Text className="on-deck-price-label">{tracking?.priceLabel ?? "Current price"}</Text>
+          <Text className="on-deck-price">{tracking ? formatCurrency(tracking.currentPrice) : "Pending"}</Text>
+        </div>
+        <Badge variant="light" color={tracking?.tone ?? "gray"} className="on-deck-tracking-badge">
+          {tracking?.label ?? "Awaiting price"}
+        </Badge>
+      </div>
+      <div className="on-deck-tracking-grid">
+        <div>
+          <span>Now</span>
+          <strong>{tracking ? formatSignedPercent(tracking.currentReturn) : "Pending"}</strong>
+        </div>
+        <div>
+          <span>Call</span>
+          <strong>{formatSignedPercent(prediction.predicted_return)}</strong>
+        </div>
+        <div>
+          <span>Gap</span>
+          <strong>{tracking?.detail ?? "Pending"}</strong>
+        </div>
+      </div>
       <div className="on-deck-progress">
         <span style={{ width: `${Math.round(item.progress * 100)}%` }} />
       </div>

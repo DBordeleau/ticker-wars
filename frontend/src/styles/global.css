@@ -2406,6 +2406,20 @@ h2,
   text-shadow: 0 0 18px rgba(74, 222, 128, 0.24);
 }
 
+.leaderboard-score-link {
+  color: #86efac;
+  text-decoration: underline;
+  text-decoration-color: rgba(134, 239, 172, 0.42);
+  text-underline-offset: 4px;
+}
+
+.leaderboard-score-link:hover,
+.leaderboard-score-link:focus-visible {
+  color: #4ade80;
+  text-decoration-color: #4ade80;
+  outline: none;
+}
+
 .baseline-row {}
 
 .direction-progress {
@@ -5746,6 +5760,61 @@ h2,
   font-weight: 800;
 }
 
+.on-deck-price-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.on-deck-price-label {
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.on-deck-price {
+  color: #f8fafc;
+  font-size: 1.25rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.on-deck-tracking-badge {
+  white-space: nowrap;
+}
+
+.on-deck-tracking-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.on-deck-tracking-grid>div {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.on-deck-tracking-grid span {
+  display: block;
+  color: rgba(226, 232, 240, 0.58);
+  font-size: 0.67rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.on-deck-tracking-grid strong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #f8fafc;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
 .on-deck-progress {
   display: block;
   width: 100%;
@@ -8252,7 +8321,7 @@ tr.prediction-row-highlighted {
 
 .public-prediction-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
