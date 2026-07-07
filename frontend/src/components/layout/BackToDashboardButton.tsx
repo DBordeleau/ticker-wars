@@ -1,25 +1,18 @@
 import { Button } from "@mantine/core";
 import { FiArrowLeft } from "react-icons/fi";
-import { useLocation, useNavigate } from "react-router-dom";
-import { previousPathname } from "../../utils/navigationHistory";
+import { useNavigate } from "react-router-dom";
+import { hasPreviousBrowserEntry } from "../../utils/navigationHistory";
 
 export default function BackToDashboardButton() {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleClick = () => {
-    if (location.pathname === "/rules") {
-      navigate("/dashboard");
-      return;
-    }
-
-    if (previousPathname() === "/dashboard") {
-      // The dashboard is the immediately previous history entry: POP back so the
-      // ScrollManager restores the dashboard's saved scroll position.
+    if (hasPreviousBrowserEntry()) {
+      // POP back so ScrollManager restores the saved scroll position for the
+      // previous history entry.
       navigate(-1);
     } else {
-      // Came from elsewhere (another ticker/model page) or a deep link: open the
-      // dashboard fresh at the top instead of walking back through history.
+      // Deep link / hard refresh: keep a useful in-app escape hatch.
       navigate("/dashboard");
     }
   };
@@ -32,7 +25,7 @@ export default function BackToDashboardButton() {
       className="back-dashboard-button"
       leftSection={<FiArrowLeft className="back-dashboard-icon" />}
     >
-      Back to dashboard
+      Back
     </Button>
   );
 }

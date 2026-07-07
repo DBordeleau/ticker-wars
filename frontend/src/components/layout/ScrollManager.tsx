@@ -71,8 +71,8 @@ export default function ScrollManager() {
     // scroll events triggered below are attributed here, not to the prior entry.
     activeKeyRef.current = location.key;
 
-    // Mirror this history index -> pathname so navigation UI (the "Back to
-    // dashboard" button) can tell what the previous entry is.
+    // Mirror this history entry -> pathname so navigation UI can tell whether
+    // there is an in-app page to go back to.
     recordHistoryEntry(location.pathname);
 
     // Respect in-page anchor links if any are ever added.
@@ -85,7 +85,7 @@ export default function ScrollManager() {
     }
 
     if (navigationType === "POP") {
-      // Back/forward (incl. "Back to dashboard"): restore the saved offset.
+      // Back/forward: restore the saved offset for that history entry.
       restoreScroll(scrollPositions.get(location.key) ?? 0);
     } else {
       // PUSH / REPLACE => a newly opened page. Start at the top.
