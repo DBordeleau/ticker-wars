@@ -19,6 +19,7 @@ import Rules from "./pages/Rules";
 import TickerDetail from "./pages/TickerDetail";
 import TickerUniverse from "./pages/TickerUniverse";
 import UserProfile, { MyProfileRedirect } from "./pages/UserProfile";
+import UserScoredPredictions from "./pages/UserScoredPredictions";
 import { theme } from "./styles/theme";
 
 export default function App() {
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="/rules" element={<Rules />} />
             <Route path="/tickers" element={<TickerUniverse />} />
             <Route path="/tickers/:ticker" element={<TickerDetail />} />
+            <Route path="/users/:username/scored" element={<UserScoredPredictions />} />
             <Route path="/users/:username" element={<UserProfile />} />
           </Routes>
         </BrowserRouter>

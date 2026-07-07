@@ -229,7 +229,7 @@ export default function LeaderboardTable({
                           {isModelRow ? formatMetric(row.winkler_score) : "-"}
                         </Table.Td>
                         <Table.Td className="leaderboard-table-center score-column">
-                          {row.prediction_count.toLocaleString()}
+                          <ScoredCount row={row} isModelRow={isModelRow} />
                         </Table.Td>
                       </motion.tr>
                     );
@@ -298,7 +298,7 @@ export default function LeaderboardTable({
                       </div>
                       <div>
                         <dt>Scored</dt>
-                        <dd>{row.prediction_count.toLocaleString()}</dd>
+                        <dd><ScoredCount row={row} isModelRow={isModelRow} /></dd>
                       </div>
                     </dl>
                   </article>
@@ -309,6 +309,31 @@ export default function LeaderboardTable({
         </>
       )}
     </SectionPanel>
+  );
+}
+
+function ScoredCount({
+  row,
+  isModelRow,
+}: {
+  row: DisplayLeaderboardRow;
+  isModelRow: boolean;
+}) {
+  const count = row.prediction_count.toLocaleString();
+  if (isModelRow) {
+    return <>{count}</>;
+  }
+
+  const userRow = row as UserLeaderboardRow;
+  return (
+    <Text
+      component={Link}
+      to={`/users/${userRow.username}/scored?window=${row.window}&horizon=${row.prediction_horizon}`}
+      className="leaderboard-score-link"
+      fw={850}
+    >
+      {count}
+    </Text>
   );
 }
 
