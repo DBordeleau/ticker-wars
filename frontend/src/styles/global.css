@@ -4490,17 +4490,171 @@ h2,
 }
 
 @media (max-width: 620px) {
+
+  /* Pared-back, centered header: on phones the eyebrow flows straight into the
+     controls, so the redundant title/subtitle are dropped to save vertical
+     space. Scoped to the tickers page so MyPredictions keeps its full header. */
+  .ticker-universe-header.predictions-header {
+    align-items: center;
+    gap: 6px;
+    padding: 2px 2px 0;
+    text-align: center;
+  }
+
+  .ticker-universe-header .predictions-header-eyebrow {
+    letter-spacing: 0.2em;
+    margin-top: 1rem;
+  }
+
+  .ticker-universe-header .predictions-header-title.mantine-Title-root,
+  .ticker-universe-header .predictions-header-lead {
+    display: none;
+  }
+
+  /* Controls stack and center: full-width search, then the horizon + sort
+     selectors centered below. The ticker count is hidden on phones. */
+  .ticker-universe-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
   .ticker-universe-controls-lead {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
     width: 100%;
-    justify-content: space-between;
   }
 
   .ticker-universe-search {
     width: 100%;
   }
 
+  .ticker-universe-count {
+    display: none;
+  }
+
   .ticker-universe-control-group {
     width: 100%;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  /* Compact the segmented controls so the two selectors read as tidy centered
+     pills instead of a chunky full-width bar; each wraps to its own centered
+     row when both can't share one line. */
+  .ticker-universe-control-group .horizon-selector {
+    --horizon-selector-control-height: 32px;
+    min-width: 0;
+  }
+
+  .ticker-universe-control-group .horizon-selector .mantine-SegmentedControl-label {
+    padding: 0 11px;
+    font-size: 0.76rem;
+  }
+
+  /* Denser two-up grid so mobile users scan many tickers at once, matching the
+     at-a-glance feel of the desktop grid instead of ~3 tall stacked cards.
+     minmax(0, 1fr) keeps the columns even and lets them shrink below the
+     desktop 264px floor. */
+  .ticker-universe-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .ticker-universe-skeleton {
+    height: 150px !important;
+  }
+
+  .ticker-universe-card {
+    gap: 12px;
+    padding: 13px 13px 14px;
+    border-radius: 10px;
+  }
+
+  /* Head stays a single tidy row: logo + symbol on the left, the move value on
+     the right. The uppercase period label is dropped on mobile since the global
+     horizon selector already communicates the window.
+
+     Everything is scaled down to fit one line, and the row is shrink-safe so
+     the trend arrow can never collide with the symbol: the guaranteed 8px gap
+     can't collapse, and if space runs out the identity absorbs it (ellipsizing
+     the symbol) rather than overlapping the value. */
+  .ticker-universe-card-head {
+    gap: 8px;
+  }
+
+  .ticker-universe-move-label {
+    display: none;
+  }
+
+  .ticker-universe-identity {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .ticker-universe-identity .ticker-logo-mark-md {
+    width: 24px;
+    height: 24px;
+  }
+
+  .ticker-universe-symbol {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.95rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ticker-universe-move-block {
+    flex: 0 0 auto;
+  }
+
+  .ticker-universe-daily {
+    font-size: 0.85rem;
+    gap: 3px;
+  }
+
+  .ticker-universe-daily svg {
+    width: 0.8rem;
+    height: 0.8rem;
+  }
+
+  /* Leans stack into two compact label/value rows so they stay legible and
+     aligned in a narrow column. */
+  .ticker-universe-stats {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .ticker-universe-stat {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .ticker-universe-stat-label {
+    font-size: 0.66rem;
+    letter-spacing: 0.05em;
+  }
+
+  .ticker-universe-stat-value {
+    margin-top: 0;
+    font-size: 0.98rem;
+  }
+}
+
+/* Very small phones: trim the head typography so the symbol + move value never
+   collide in a ~150px-wide column. */
+@media (max-width: 380px) {
+  .ticker-universe-symbol {
+    font-size: 0.96rem;
+  }
+
+  .ticker-universe-daily {
+    font-size: 0.88rem;
   }
 }
 

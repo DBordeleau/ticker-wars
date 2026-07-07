@@ -117,7 +117,7 @@ export default function TickerUniverse() {
         <BackToDashboardButton />
       </AnimatedSection>
       <AnimatedSection delay={0.08}>
-        <header className="predictions-header">
+        <header className="predictions-header ticker-universe-header">
           <Text className="predictions-header-eyebrow">All Tickers</Text>
           <Title order={1} className="predictions-header-title">
             Make a Prediction
@@ -157,7 +157,7 @@ export default function TickerUniverse() {
         {loading ? (
           <div className="ticker-universe-grid">
             {Array.from({ length: 9 }).map((_, index) => (
-              <Skeleton key={index} height={196} radius="sm" />
+              <Skeleton key={index} className="ticker-universe-skeleton" height={196} radius="sm" />
             ))}
           </div>
         ) : visibleRows.length === 0 ? (
