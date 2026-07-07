@@ -72,6 +72,83 @@ export async function fetchLivePriceSnapshot(
   return data ? normalizeLivePriceSnapshot(data) : null;
 }
 
+export async function fetchLivePriceSnapshots(
+  tickers: string[],
+): Promise<Record<string, LivePriceSnapshot | null>> {
+  const normalizedTickers = Array.from(
+    new Set(tickers.map((ticker) => ticker.trim().toUpperCase()).filter(Boolean)),
+  );
+  if (normalizedTickers.length === 0 || !supabase) {
+    return {};
+  }
+
+  const { data, error } = await supabase
+    .from("live_price_snapshots")
+    .select("*")
+    .in("ticker", normalizedTickers);
+
+  if (error) {
+    if (error.code === "42P01" || error.message.includes("live_price_snapshots")) {
+      return {};
+    }
+    throw error;
+  }
+
+  const snapshots: Record<string, LivePriceSnapshot | null> = {};
+  for (const row of data ?? []) {
+    const snapshot = normalizeLivePriceSnapshot(row);
+    if (snapshot) {
+      snapshots[snapshot.ticker] = snapshot;
+    }
+  }
+  return snapshots;
+}
+
+export async function fetchTickerCloseSnapshots(
+  tickers: string[],
+): Promise<Record<string, TickerCloseSnapshot | null>> {
+  const normalizedTickers = Array.from(
+    new Set(tickers.map((ticker) => ticker.trim().toUpperCase()).filter(Boolean)),
+  );
+  if (normalizedTickers.length === 0 || !supabase) {
+    return {};
+  }
+
+  const { data, error } = await supabase
+    .from("prices")
+    .select("ticker,date,close")
+    .in("ticker", normalizedTickers)
+    .order("date", { ascending: false })
+    .order("ticker")
+    .limit(Math.max(2, normalizedTickers.length * 3));
+
+  if (error) {
+    if (error.code === "42P01" || error.message.includes("prices")) {
+      return {};
+    }
+    throw error;
+  }
+
+  const rowsByTicker = new Map<string, Record<string, unknown>[]>();
+  for (const row of data ?? []) {
+    const ticker = cleanString((row as Record<string, unknown>).ticker)?.toUpperCase();
+    if (!ticker) {
+      continue;
+    }
+    const rows = rowsByTicker.get(ticker) ?? [];
+    if (rows.length < 2) {
+      rows.push(row);
+      rowsByTicker.set(ticker, rows);
+    }
+  }
+
+  const snapshots: Record<string, TickerCloseSnapshot | null> = {};
+  for (const ticker of normalizedTickers) {
+    snapshots[ticker] = normalizeTickerCloseSnapshot(rowsByTicker.get(ticker) ?? []);
+  }
+  return snapshots;
+}
+
 export async function fetchRecentDailyCloses(
   ticker: string,
   limit = 370,
@@ -309,6 +386,33 @@ function normalizeIntradayPriceBar(row: Record<string, unknown>): IntradayPriceB
     return null;
   }
   return { ticker, ts, close };
+}
+
+function normalizeTickerCloseSnapshot(rows: Record<string, unknown>[]): TickerCloseSnapshot | null {
+  const latest = rows[0];
+  if (!latest) {
+    return null;
+  }
+
+  const close = cleanNumber(latest.close);
+  if (close == null) {
+    return null;
+  }
+
+  const previous = rows[1];
+  const previousClose = previous ? cleanNumber(previous.close) : null;
+  const change = previousClose == null ? null : close - previousClose;
+  const changePercent = previousClose == null || previousClose === 0 ? null : close / previousClose - 1;
+
+  return {
+    ticker: cleanString(latest.ticker) ?? "",
+    date: cleanString(latest.date) ?? "",
+    close,
+    previous_date: previous ? cleanString(previous.date) : null,
+    previous_close: previousClose,
+    change,
+    change_percent: changePercent,
+  };
 }
 
 function cleanMarketState(value: unknown): LiveMarketState {
