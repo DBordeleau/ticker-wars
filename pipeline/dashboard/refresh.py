@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from pipeline.config import Settings
@@ -18,7 +18,8 @@ from pipeline.models.registry import (
     MODEL_TYPES,
 )
 
-DASHBOARD_RECENT_PREDICTION_LIMIT = 2500
+DASHBOARD_RECENT_PREDICTION_LIMIT = 5000
+DASHBOARD_TICKER_HISTORY_RETENTION_DAYS = 400
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,7 @@ def build_dashboard_tables(
         ),
         "dashboard_ticker_history": _build_ticker_history(
             scored_predictions,
+            price_rows,
             generated_at,
         ),
         "dashboard_run_metadata": [
@@ -307,8 +309,13 @@ def _build_user_ticker_leaderboard(
 
 def _build_ticker_history(
     scored_predictions: list[dict[str, Any]],
+    price_rows: list[dict[str, Any]],
     generated_at: str,
 ) -> list[dict[str, Any]]:
+    retained_predictions = _filter_recent_ticker_history_rows(
+        scored_predictions,
+        price_rows,
+    )
     return [
         {
             "generated_at": generated_at,
@@ -328,10 +335,61 @@ def _build_ticker_history(
             "reasoning_summary": row.get("reasoning_summary"),
         }
         for row in sorted(
-            scored_predictions,
+            retained_predictions,
             key=lambda item: (item["ticker"], item["target_date"], item["model_name"]),
         )
     ]
+
+
+def _filter_recent_ticker_history_rows(
+    scored_predictions: list[dict[str, Any]],
+    price_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    anchor = _latest_price_date(price_rows) or _latest_scored_target_date(scored_predictions)
+    if anchor is None:
+        return scored_predictions
+
+    cutoff = anchor - timedelta(days=DASHBOARD_TICKER_HISTORY_RETENTION_DAYS)
+    return [
+        row
+        for row in scored_predictions
+        if (target_date := _parse_date(row.get("target_date"))) is None
+        or target_date >= cutoff
+    ]
+
+
+def _latest_price_date(price_rows: list[dict[str, Any]]) -> date | None:
+    latest: date | None = None
+    for row in price_rows:
+        parsed_date = _parse_date(row.get("date"))
+        if parsed_date is not None and (latest is None or parsed_date > latest):
+            latest = parsed_date
+    return latest
+
+
+def _latest_scored_target_date(scored_predictions: list[dict[str, Any]]) -> date | None:
+    latest: date | None = None
+    for row in scored_predictions:
+        if not _has_score(row):
+            continue
+        parsed_date = _parse_date(row.get("target_date"))
+        if parsed_date is not None and (latest is None or parsed_date > latest):
+            latest = parsed_date
+    return latest
+
+
+def _has_score(row: dict[str, Any]) -> bool:
+    return any(
+        row.get(field) is not None
+        for field in (
+            "actual_close",
+            "actual_return",
+            "absolute_error",
+            "squared_error",
+            "absolute_pct_error",
+            "scored_at",
+        )
+    )
 
 
 def _build_run_metadata(
@@ -382,6 +440,19 @@ def _recent_user_prediction_sort_key(row: dict[str, Any]) -> tuple[str, str, str
         str(row["ticker"]),
         str(row["user_id"]),
     )
+
+
+def _parse_date(value: Any) -> date | None:
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if not isinstance(value, str):
+        return None
+    try:
+        return date.fromisoformat(value[:10])
+    except ValueError:
+        return None
 
 
 def _public_profiles_by_user_id(
