@@ -30,7 +30,12 @@ class DashboardContractTest(unittest.TestCase):
         tables = build_dashboard_tables(
             prediction_rows=[
                 _prediction("AAPL", "2026-01-02", "Warren Buffbot", prediction_date="2026-01-01"),
-                _prediction("AAPL", "2026-01-03", "Linear Regression", prediction_date="2026-01-02"),
+                _prediction(
+                    "AAPL",
+                    "2026-01-03",
+                    "Linear Regression",
+                    prediction_date="2026-01-02",
+                ),
             ],
             score_rows=[],
             price_rows=[_price("AAPL", "2026-01-02", 100.0)],
@@ -145,6 +150,98 @@ class DashboardContractTest(unittest.TestCase):
         self.assertEqual(len(history), 2)
         self.assertEqual(history[0]["actual_close"], 101.0)
         self.assertIsNone(history[1]["actual_close"])
+
+    def test_ticker_history_excludes_rows_outside_retention_window(self) -> None:
+        recent_prediction = _prediction("AAPL", "2026-01-02", "Baseline")
+        old_prediction = _prediction(
+            "AAPL",
+            "2024-11-20",
+            "Baseline",
+            prediction_date="2024-11-13",
+        )
+        tables = build_dashboard_tables(
+            prediction_rows=[old_prediction, recent_prediction],
+            score_rows=[
+                _score(
+                    old_prediction["prediction_id"],
+                    prediction_date="2024-11-13",
+                    target_date="2024-11-20",
+                ),
+                _score(recent_prediction["prediction_id"]),
+            ],
+            price_rows=[
+                _price("AAPL", "2024-11-20", 99.0),
+                _price("AAPL", "2026-01-02", 101.0),
+            ],
+            settings=Settings(),
+        )
+
+        history = tables["dashboard_ticker_history"]
+
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0]["target_date"], "2026-01-02")
+
+    def test_ticker_history_retains_recent_rows_inside_retention_window(self) -> None:
+        recent_prediction = _prediction(
+            "AAPL",
+            "2025-01-01",
+            "Baseline",
+            prediction_date="2024-12-25",
+        )
+        tables = build_dashboard_tables(
+            prediction_rows=[recent_prediction],
+            score_rows=[
+                _score(
+                    recent_prediction["prediction_id"],
+                    prediction_date="2024-12-25",
+                    target_date="2025-01-01",
+                )
+            ],
+            price_rows=[
+                _price("AAPL", "2026-01-02", 101.0),
+            ],
+            settings=Settings(),
+        )
+
+        history = tables["dashboard_ticker_history"]
+
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0]["target_date"], "2025-01-01")
+
+    def test_ticker_history_retention_ignores_far_future_pending_targets(self) -> None:
+        recent_scored_prediction = _prediction(
+            "AAPL",
+            "2025-01-01",
+            "Baseline",
+            prediction_date="2024-12-25",
+        )
+        far_future_pending_prediction = _prediction(
+            "AAPL",
+            "2027-01-02",
+            "Baseline",
+            prediction_date="2026-01-02",
+        )
+        tables = build_dashboard_tables(
+            prediction_rows=[recent_scored_prediction, far_future_pending_prediction],
+            score_rows=[
+                _score(
+                    recent_scored_prediction["prediction_id"],
+                    prediction_date="2024-12-25",
+                    target_date="2025-01-01",
+                )
+            ],
+            price_rows=[
+                _price("AAPL", "2026-01-02", 101.0),
+            ],
+            settings=Settings(),
+        )
+
+        history = tables["dashboard_ticker_history"]
+
+        self.assertEqual(
+            [row["target_date"] for row in history],
+            ["2025-01-01", "2027-01-02"],
+        )
 
     def test_user_dashboard_tables_exclude_private_users(self) -> None:
         public_user_id = "11111111-1111-1111-1111-111111111111"
@@ -349,12 +446,18 @@ def _prediction(
     }
 
 
-def _score(prediction_id: str, model_name: str = "Baseline") -> dict:
+def _score(
+    prediction_id: str,
+    *,
+    model_name: str = "Baseline",
+    prediction_date: str = "2026-01-01",
+    target_date: str = "2026-01-02",
+) -> dict:
     return {
         "prediction_id": prediction_id,
         "ticker": "AAPL",
-        "prediction_date": "2026-01-01",
-        "target_date": "2026-01-02",
+        "prediction_date": prediction_date,
+        "target_date": target_date,
         "prediction_horizon": "1w",
         "model_name": model_name,
         "model_slug": model_name.lower().replace(" ", "-"),

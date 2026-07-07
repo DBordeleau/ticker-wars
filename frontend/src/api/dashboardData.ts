@@ -180,7 +180,23 @@ export type DashboardData = {
 
 const hiddenModelSlugs = new Set(["ridge", "ridge-regression", "lasso"]);
 const dashboardPageSize = 1000;
-const dashboardRecentPredictionLimit = 2500;
+const dashboardRecentPredictionLimit = 5000;
+const dashboardSnapshotMaxAgeMs = 96 * 60 * 60 * 1000;
+const dashboardSnapshotBaseUrl = process.env.REACT_APP_DASHBOARD_SNAPSHOT_BASE_URL?.replace(
+  /\/+$/,
+  "",
+);
+
+const dashboardSnapshotFiles = {
+  latestPredictions: "latest_predictions.json",
+  leaderboard: "model_leaderboard.json",
+  userLeaderboard: "user_leaderboard.json",
+  userTickerLeaderboard: "user_ticker_leaderboard.json",
+  latestUserPredictions: "latest_user_predictions.json",
+  modelMetrics: "model_metrics.json",
+  metadata: "run_metadata.json",
+  tickerAssets: "ticker_assets.json",
+} as const;
 
 export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
   if (!supabase) {
@@ -648,6 +664,20 @@ export async function fetchRunMetadata(): Promise<RunMetadata | null> {
 }
 
 export async function fetchDashboardData(): Promise<DashboardData> {
+  const snapshotData = await fetchDashboardSnapshotData();
+  if (snapshotData) {
+    return snapshotData;
+  }
+
+  const rpcData = await fetchDashboardBundleFromRpc();
+  if (rpcData) {
+    return rpcData;
+  }
+
+  return fetchDashboardDataFromTables();
+}
+
+async function fetchDashboardDataFromTables(): Promise<DashboardData> {
   const [
     leaderboard,
     userLeaderboard,
@@ -679,6 +709,151 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     tickerHistory: supabase ? [] : fallbackDashboardData.tickerHistory,
     metadata,
     hasSupabaseConfig: isSupabaseConfigured,
+  };
+}
+
+async function fetchDashboardSnapshotData(): Promise<DashboardData | null> {
+  if (!dashboardSnapshotBaseUrl) {
+    return null;
+  }
+
+  try {
+    const [
+      latestPredictions,
+      leaderboard,
+      userLeaderboard,
+      userTickerLeaderboard,
+      latestUserPredictions,
+      modelMetrics,
+      metadataRows,
+      tickerAssets,
+    ] = await Promise.all([
+      fetchSnapshotArray<Partial<LatestPrediction>>(dashboardSnapshotFiles.latestPredictions),
+      fetchSnapshotArray<Partial<LeaderboardRow>>(dashboardSnapshotFiles.leaderboard),
+      fetchSnapshotArray<Partial<UserLeaderboardRow>>(dashboardSnapshotFiles.userLeaderboard),
+      fetchSnapshotArray<Partial<UserTickerLeaderboardRow>>(
+        dashboardSnapshotFiles.userTickerLeaderboard,
+      ),
+      fetchSnapshotArray<Partial<LatestUserPrediction>>(dashboardSnapshotFiles.latestUserPredictions),
+      fetchSnapshotArray<Partial<ModelMetricRow>>(dashboardSnapshotFiles.modelMetrics),
+      fetchSnapshotArray<Partial<RunMetadata>>(dashboardSnapshotFiles.metadata),
+      fetchOptionalSnapshotArray<Partial<TickerAsset>>(dashboardSnapshotFiles.tickerAssets),
+    ]);
+    const metadata = metadataRows[0] ? normalizeRunMetadata(metadataRows[0]) : null;
+    if (!isFreshDashboardSnapshot(metadata)) {
+      return null;
+    }
+    const resolvedTickerAssets = tickerAssets ?? (await fetchSnapshotTickerAssetsFallback());
+
+    return normalizeDashboardBundle(
+      {
+        leaderboard,
+        userLeaderboard,
+        userTickerLeaderboard,
+        modelMetrics,
+        latestPredictions,
+        latestUserPredictions,
+        tickerAssets: resolvedTickerAssets,
+        metadata,
+      },
+      isSupabaseConfigured,
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function fetchDashboardBundleFromRpc(): Promise<DashboardData | null> {
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase.rpc("get_public_dashboard_bundle");
+  if (error || !isRecord(data)) {
+    return null;
+  }
+
+  const dashboardData = normalizeDashboardBundle(data, isSupabaseConfigured);
+  if (dashboardData.tickerAssets.length === 0) {
+    dashboardData.tickerAssets = await fetchSnapshotTickerAssetsFallback();
+  }
+  return dashboardData;
+}
+
+async function fetchSnapshotArray<T>(filename: string): Promise<T[]> {
+  const response = await fetch(`${dashboardSnapshotBaseUrl}/${filename}`);
+  if (!response.ok) {
+    throw new Error(`Dashboard snapshot ${filename} returned ${response.status}`);
+  }
+  const payload: unknown = await response.json();
+  if (!Array.isArray(payload)) {
+    throw new Error(`Dashboard snapshot ${filename} is not an array`);
+  }
+  return payload as T[];
+}
+
+async function fetchOptionalSnapshotArray<T>(filename: string): Promise<T[] | null> {
+  try {
+    return await fetchSnapshotArray<T>(filename);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchSnapshotTickerAssetsFallback(): Promise<TickerAsset[]> {
+  if (!supabase) {
+    return fallbackDashboardData.tickerAssets;
+  }
+  try {
+    return await fetchTickerAssets();
+  } catch {
+    return [];
+  }
+}
+
+function isFreshDashboardSnapshot(metadata: RunMetadata | null): boolean {
+  if (!metadata?.generated_at) {
+    return false;
+  }
+  const generatedAt = Date.parse(metadata.generated_at);
+  return Number.isFinite(generatedAt) && Date.now() - generatedAt <= dashboardSnapshotMaxAgeMs;
+}
+
+function normalizeDashboardBundle(payload: unknown, hasSupabaseConfig: boolean): DashboardData {
+  const bundle = isRecord(payload) ? payload : {};
+  const metadataPayload = bundle.metadata;
+  const metadata = isRecord(metadataPayload)
+    ? normalizeRunMetadata(metadataPayload as Partial<RunMetadata>)
+    : null;
+
+  return {
+    leaderboard: asArray<Partial<LeaderboardRow>>(bundle.leaderboard)
+      .map(normalizeLeaderboardRow)
+      .filter(isVisibleModelRow),
+    userLeaderboard: asArray<Partial<UserLeaderboardRow>>(bundle.userLeaderboard).map(
+      normalizeUserLeaderboardRow,
+    ),
+    userTickerLeaderboard: asArray<Partial<UserTickerLeaderboardRow>>(
+      bundle.userTickerLeaderboard,
+    )
+      .map(normalizeUserTickerLeaderboardRow)
+      .filter((row) => !isRemovedTicker(row.ticker)),
+    modelMetrics: asArray<Partial<ModelMetricRow>>(bundle.modelMetrics)
+      .map(normalizeModelMetricRow)
+      .filter(isVisibleModelRow),
+    latestPredictions: asArray<Partial<LatestPrediction>>(bundle.latestPredictions)
+      .map(normalizeLatestPredictionRow)
+      .filter((row) => !isRemovedTicker(row.ticker))
+      .filter(isVisibleModelRow),
+    latestUserPredictions: asArray<Partial<LatestUserPrediction>>(bundle.latestUserPredictions)
+      .map(normalizeLatestUserPredictionRow)
+      .filter((row) => !isRemovedTicker(row.ticker)),
+    tickerAssets: asArray<Partial<TickerAsset>>(bundle.tickerAssets)
+      .map(normalizeTickerAssetRow)
+      .filter((row) => !isRemovedTicker(row.ticker)),
+    tickerHistory: [],
+    metadata,
+    hasSupabaseConfig,
   };
 }
 
@@ -904,6 +1079,10 @@ function fallbackModelType(modelSlug?: string) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
 }
 
 function cleanString(value: unknown): string | null {

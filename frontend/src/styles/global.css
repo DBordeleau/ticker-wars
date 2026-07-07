@@ -6998,9 +6998,16 @@ tr.prediction-row-highlighted {
     width: min(100% - 20px, 1180px);
   }
 
+  /* No hover on touch, so signal "tappable back" with the accent color and a
+     nudged-in arrow instead of a boxy outline/fill (which read as out of place
+     against the glass surfaces). */
   .back-dashboard-button {
-    border: 1px solid rgba(134, 239, 172, 0.36);
-    background: rgba(34, 197, 94, 0.06);
+    padding-left: 6px;
+    color: #86efac;
+  }
+
+  .back-dashboard-button .mantine-Button-section {
+    transform: translateX(-2px);
   }
 
   .metric-strip {
