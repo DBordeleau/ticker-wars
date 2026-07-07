@@ -1,6 +1,12 @@
 import { supabase } from "./supabaseClient";
 import type { AvatarOptions } from "../auth/types";
-import type { BadgeDefinition, ScoreVerdict, UserProgression } from "./gamification";
+import {
+  isScoreVerdict,
+  verdictForScore,
+  type BadgeDefinition,
+  type ScoreVerdict,
+  type UserProgression,
+} from "./gamification";
 import type { PredictionHorizon, UserPredictionStatus } from "./userPredictions";
 
 export type PublicUserProfile = {
@@ -86,6 +92,86 @@ export type PublicScoredPrediction = Omit<PublicProfilePrediction, "section" | "
   display_username: string;
   total_count: number;
 };
+
+const SCORE_VERDICTS: ScoreVerdict[] = [
+  "called_it",
+  "close_call",
+  "in_the_zone",
+  "miss",
+  "way_off",
+  "not_even_close",
+];
+
+export function normalizeVerdictCounts(rawCounts: unknown): Partial<Record<ScoreVerdict, number>> {
+  if (!rawCounts || typeof rawCounts !== "object" || Array.isArray(rawCounts)) {
+    return {};
+  }
+
+  return Object.entries(rawCounts as Record<string, unknown>).reduce<Partial<Record<ScoreVerdict, number>>>(
+    (counts, [rawVerdict, rawCount]) => {
+      const verdict = normalizeScoreVerdictKey(rawVerdict);
+      const count = normalizeCount(rawCount);
+      if (!verdict || count <= 0) {
+        return counts;
+      }
+
+      counts[verdict] = (counts[verdict] ?? 0) + count;
+      return counts;
+    },
+    {},
+  );
+}
+
+export function verdictCountsFromPublicPredictions(
+  predictions: PublicProfilePrediction[],
+): Partial<Record<ScoreVerdict, number>> {
+  return predictions.reduce<Partial<Record<ScoreVerdict, number>>>((counts, prediction) => {
+    if (prediction.status !== "scored") {
+      return counts;
+    }
+
+    const computed = verdictForScore({
+      absolutePctError: prediction.absolute_pct_error,
+      predictionHorizon: prediction.prediction_horizon,
+      directionCorrect: prediction.direction_correct,
+    });
+    const verdict = computed ?? normalizeScoreVerdictKey(prediction.score_verdict);
+    if (!verdict) {
+      return counts;
+    }
+
+    counts[verdict] = (counts[verdict] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+export function resolvePublicProfileVerdictCounts(
+  bundle: PublicUserProfileBundle,
+): Partial<Record<ScoreVerdict, number>> {
+  const profileCounts = normalizeVerdictCounts(bundle.profile.verdict_counts);
+  const profileTotal = verdictCountTotal(profileCounts);
+  const expectedTotal = Math.max(0, bundle.profile.scored_count ?? 0);
+
+  if (profileTotal >= expectedTotal && profileTotal > 0) {
+    return profileCounts;
+  }
+
+  const predictionCounts = verdictCountsFromPublicPredictions(bundle.predictions);
+  const predictionTotal = verdictCountTotal(predictionCounts);
+  if (predictionTotal === 0) {
+    return profileCounts;
+  }
+
+  const mergedCounts = SCORE_VERDICTS.reduce<Partial<Record<ScoreVerdict, number>>>((counts, verdict) => {
+    const count = Math.max(profileCounts[verdict] ?? 0, predictionCounts[verdict] ?? 0);
+    if (count > 0) {
+      counts[verdict] = count;
+    }
+    return counts;
+  }, {});
+
+  return verdictCountTotal(mergedCounts) > profileTotal ? mergedCounts : profileCounts;
+}
 
 export async function fetchPublicUserProfile(username: string): Promise<PublicUserProfileBundle | null> {
   if (!supabase) {
@@ -221,4 +307,22 @@ function normalizePublicBadge(row: PublicUserBadge): PublicUserBadge {
     ...row,
     slug: row.badge_slug,
   };
+}
+
+function normalizeScoreVerdictKey(value: unknown): ScoreVerdict | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return isScoreVerdict(normalized) ? normalized : null;
+}
+
+function normalizeCount(value: unknown) {
+  const numericValue = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(numericValue) ? Math.max(0, Math.floor(numericValue)) : 0;
+}
+
+function verdictCountTotal(counts: Partial<Record<ScoreVerdict, number>>) {
+  return SCORE_VERDICTS.reduce((sum, verdict) => sum + (counts[verdict] ?? 0), 0);
 }
