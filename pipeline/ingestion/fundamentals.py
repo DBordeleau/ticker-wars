@@ -35,12 +35,17 @@ def fetch_fundamentals(
     failed_tickers: list[str] = []
     skipped_tickers: list[str] = []
     as_of_date = as_of_date or date.today()
-    cached_dates = _latest_cached_dates(existing_rows or [])
+    cached_rows = _latest_cached_rows(existing_rows or [])
 
     LOGGER.info("Fetching fundamentals for %s tickers.", len(tickers))
     for ticker in tickers:
-        cached_date = cached_dates.get(ticker)
-        if not force and _is_cache_fresh(cached_date, as_of_date, freshness_days):
+        cached_row = cached_rows.get(ticker)
+        cached_date = _parse_optional_date(cached_row.get("as_of_date")) if cached_row else None
+        if (
+            not force
+            and _is_cache_fresh(cached_date, as_of_date, freshness_days)
+            and _has_business_summary(cached_row)
+        ):
             skipped_tickers.append(ticker)
             LOGGER.info("Skipping %s fundamentals; cached row is fresh.", ticker)
             continue
@@ -198,16 +203,16 @@ def _statement_value(statement: pd.DataFrame | None, label: str) -> float | None
     return _clean_float(row)
 
 
-def _latest_cached_dates(rows: list[dict[str, Any]]) -> dict[str, date]:
-    latest: dict[str, date] = {}
+def _latest_cached_rows(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    latest: dict[str, dict[str, Any]] = {}
     for row in rows:
         ticker = str(row.get("ticker", ""))
         as_of_date = _parse_optional_date(row.get("as_of_date"))
         if not ticker or as_of_date is None:
             continue
-        current = latest.get(ticker)
-        if current is None or as_of_date > current:
-            latest[ticker] = as_of_date
+        current_date = _parse_optional_date(latest.get(ticker, {}).get("as_of_date"))
+        if current_date is None or as_of_date > current_date:
+            latest[ticker] = row
     return latest
 
 
@@ -215,6 +220,12 @@ def _is_cache_fresh(cached_date: date | None, as_of_date: date, freshness_days: 
     if cached_date is None:
         return False
     return cached_date >= as_of_date - timedelta(days=freshness_days)
+
+
+def _has_business_summary(row: dict[str, Any] | None) -> bool:
+    if row is None:
+        return False
+    return _clean_string(row.get("business_summary")) is not None
 
 
 def _parse_optional_date(value: object) -> date | None:
