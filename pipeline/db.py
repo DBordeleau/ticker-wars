@@ -91,19 +91,20 @@ class SupabaseDatabase:
             start += batch_size
 
     def fetch_latest_price_dates(self, tickers: tuple[str, ...]) -> dict[str, str]:
+        if not tickers:
+            return {}
+
+        response = self._client.rpc(
+            "get_latest_price_dates",
+            {"p_tickers": list(tickers)},
+        ).execute()
+        rows = response.data or []
         latest_dates: dict[str, str] = {}
-        for ticker in tickers:
-            response = (
-                self._client.table("prices")
-                .select("ticker,date")
-                .eq("ticker", ticker)
-                .order("date", desc=True)
-                .limit(1)
-                .execute()
-            )
-            rows = response.data or []
-            if rows and rows[0].get("date") is not None:
-                latest_dates[ticker] = str(rows[0]["date"])
+        for row in rows:
+            ticker = row.get("ticker")
+            price_date = row.get("date")
+            if ticker is not None and price_date is not None:
+                latest_dates[str(ticker)] = str(price_date)
 
         return latest_dates
 
@@ -552,6 +553,13 @@ class SupabaseDatabase:
 
     def evaluate_public_competition_badges(self) -> int:
         response = self._client.rpc("evaluate_public_competition_badges", {}).execute()
+        return int(response.data or 0)
+
+    def prune_user_engagement_events(self, seen_before: str | None = None) -> int:
+        params = {}
+        if seen_before is not None:
+            params["p_seen_before"] = seen_before
+        response = self._client.rpc("prune_user_engagement_events", params).execute()
         return int(response.data or 0)
 
     def refresh_nearby_rivals(self) -> int:

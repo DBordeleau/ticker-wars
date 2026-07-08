@@ -16,7 +16,12 @@ from pipeline.ingestion.live_prices import (
     _frame_to_intraday_bar_rows,
     current_intraday_retention_cutoff,
 )
-from pipeline.ingestion.market_data import _frame_to_price_rows, fetch_incremental_daily_prices
+from pipeline.ingestion.market_data import (
+    _extract_ticker_frame,
+    _frame_to_price_rows,
+    fetch_daily_prices,
+    fetch_incremental_daily_prices,
+)
 
 
 class MarketDataIngestionTest(unittest.TestCase):
@@ -60,32 +65,121 @@ class MarketDataIngestionTest(unittest.TestCase):
         self.assertEqual(rows[0]["date"], "2024-01-02")
 
     def test_incremental_prices_start_from_latest_stored_date(self) -> None:
-        fetched: list[tuple[str, str]] = []
+        fetched: list[tuple[tuple[str, ...], str]] = []
 
-        def fake_fetch(
-            ticker: str,
+        def fake_fetch_batch(
+            tickers: tuple[str, ...],
             start_date: str,
             _end_date: str | None,
             _max_attempts: int,
-        ) -> list[dict[str, object]]:
-            fetched.append((ticker, start_date))
-            return [{"ticker": ticker, "date": start_date}]
+        ) -> dict[str, list[dict[str, object]]]:
+            fetched.append((tickers, start_date))
+            return {
+                ticker: [{"ticker": ticker, "date": start_date}]
+                for ticker in tickers
+            }
 
-        with patch("pipeline.ingestion.market_data._fetch_ticker_with_retries", fake_fetch):
+        with (
+            patch("pipeline.ingestion.market_data._fetch_tickers_with_retries", fake_fetch_batch),
+            patch("pipeline.ingestion.market_data._fetch_ticker_with_retries") as fallback,
+        ):
             result = fetch_incremental_daily_prices(
                 start_date="2020-01-01",
                 latest_dates={"AAPL": "2026-06-26"},
                 tickers=("AAPL", "GME"),
             )
 
-        self.assertEqual(fetched, [("AAPL", "2026-06-26"), ("GME", "2020-01-01")])
+        self.assertEqual(fetched, [(("GME",), "2020-01-01"), (("AAPL",), "2026-06-26")])
+        fallback.assert_not_called()
         self.assertEqual(
             result.rows,
             [
-                {"ticker": "AAPL", "date": "2026-06-26"},
                 {"ticker": "GME", "date": "2020-01-01"},
+                {"ticker": "AAPL", "date": "2026-06-26"},
             ],
         )
+
+    def test_incremental_prices_batch_tickers_with_the_same_start_date(self) -> None:
+        fetched: list[tuple[tuple[str, ...], str]] = []
+
+        def fake_fetch_batch(
+            tickers: tuple[str, ...],
+            start_date: str,
+            _end_date: str | None,
+            _max_attempts: int,
+        ) -> dict[str, list[dict[str, object]]]:
+            fetched.append((tickers, start_date))
+            return {
+                ticker: [{"ticker": ticker, "date": start_date}]
+                for ticker in tickers
+            }
+
+        with patch("pipeline.ingestion.market_data._fetch_tickers_with_retries", fake_fetch_batch):
+            result = fetch_incremental_daily_prices(
+                start_date="2020-01-01",
+                latest_dates={"AAPL": "2026-06-26", "MSFT": "2026-06-26"},
+                tickers=("AAPL", "MSFT", "GME"),
+                batch_size=25,
+            )
+
+        self.assertEqual(
+            fetched,
+            [
+                (("GME",), "2020-01-01"),
+                (("AAPL", "MSFT"), "2026-06-26"),
+            ],
+        )
+        self.assertEqual([row["ticker"] for row in result.rows], ["GME", "AAPL", "MSFT"])
+
+    def test_missing_batch_rows_fall_back_once_per_ticker(self) -> None:
+        with (
+            patch(
+                "pipeline.ingestion.market_data._fetch_tickers_with_retries",
+                return_value={"AAPL": [], "MSFT": []},
+            ) as fetch_batch,
+            patch(
+                "pipeline.ingestion.market_data._fetch_ticker_with_retries",
+                side_effect=[
+                    [{"ticker": "AAPL", "date": "2026-06-26"}],
+                    [],
+                ],
+            ) as fetch_ticker,
+        ):
+            result = fetch_daily_prices(
+                start_date="2026-06-26",
+                tickers=("AAPL", "MSFT"),
+                batch_size=25,
+            )
+
+        fetch_batch.assert_called_once()
+        self.assertEqual(fetch_ticker.call_count, 2)
+        self.assertEqual(result.rows, [{"ticker": "AAPL", "date": "2026-06-26"}])
+        self.assertEqual(result.failed_tickers, ["MSFT"])
+
+    def test_multi_ticker_yfinance_frame_can_be_split_into_price_rows(self) -> None:
+        frame = pd.DataFrame(
+            {
+                ("AAPL", "Open"): [100.0],
+                ("AAPL", "High"): [104.0],
+                ("AAPL", "Low"): [99.5],
+                ("AAPL", "Close"): [103.0],
+                ("AAPL", "Volume"): [1_250_000],
+                ("MSFT", "Open"): [300.0],
+                ("MSFT", "High"): [304.0],
+                ("MSFT", "Low"): [299.5],
+                ("MSFT", "Close"): [303.0],
+                ("MSFT", "Volume"): [2_250_000],
+            },
+            index=[pd.Timestamp("2024-01-02")],
+        )
+        frame.columns = pd.MultiIndex.from_tuples(frame.columns)
+
+        rows = _frame_to_price_rows("MSFT", _extract_ticker_frame(frame, "MSFT"))
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["ticker"], "MSFT")
+        self.assertEqual(rows[0]["date"], "2024-01-02")
+        self.assertEqual(rows[0]["close"], 303.0)
 
     def test_live_price_rows_match_database_contract(self) -> None:
         fetched_at = datetime(2026, 6, 29, 14, 31, 4, tzinfo=UTC)

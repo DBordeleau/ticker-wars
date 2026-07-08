@@ -135,6 +135,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers.add_parser("run-daily", help="Run the daily pipeline.")
+    prune_engagement = subparsers.add_parser(
+        "prune-engagement-events",
+        help="Delete old engagement events that have already been seen in all relevant surfaces.",
+    )
+    prune_engagement.add_argument(
+        "--seen-days",
+        type=int,
+        default=90,
+        help="Retain fully seen engagement events for this many days.",
+    )
     build_features = subparsers.add_parser(
         "build-features",
         help="Build derived feature rows from prices without writing them.",
@@ -233,6 +243,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "ingest-latest-prices":
         return run_ingest_latest_prices()
 
+    if args.command == "prune-engagement-events":
+        return run_prune_engagement_events(seen_days=args.seen_days)
+
     if args.command == "refresh-live-prices":
         return run_refresh_live_prices(
             tickers=_parse_ticker_arg(args.tickers),
@@ -313,6 +326,9 @@ def main(argv: list[str] | None = None) -> int:
         refresh_status = run_refresh_dashboard()
         if refresh_status != 0:
             return refresh_status
+        prune_status = run_prune_engagement_events()
+        if prune_status != 0:
+            return prune_status
         return run_export_snapshot()
 
     return run_placeholder_step(args.command)
@@ -374,6 +390,28 @@ def run_ingest_latest_prices() -> int:
             result.failed_tickers,
         )
 
+    return 0
+
+
+def run_prune_engagement_events(seen_days: int = 90) -> int:
+    if seen_days < 1:
+        LOGGER.error("--seen-days must be at least 1.")
+        return 1
+
+    database = SupabaseDatabase.from_settings()
+    if database is None:
+        LOGGER.info(
+            "Engagement event pruning skipped because Supabase credentials are not configured."
+        )
+        return 0
+
+    seen_before = (datetime.now(UTC) - timedelta(days=seen_days)).isoformat()
+    pruned = database.prune_user_engagement_events(seen_before)
+    LOGGER.info(
+        "Pruned %s fully seen engagement events older than %s days.",
+        pruned,
+        seen_days,
+    )
     return 0
 
 

@@ -249,22 +249,22 @@ class DatabaseAccessTest(unittest.TestCase):
             ("lt", "as_of_date", "2026-01-04"),
         ])
 
-    def test_fetch_latest_price_dates_reads_one_recent_row_per_ticker(self) -> None:
+    def test_fetch_latest_price_dates_uses_bulk_rpc(self) -> None:
         database, client = _database_with_fake_client()
-        client.data["prices"] = [
+        client.rpc_results["get_latest_price_dates"] = [
             {"ticker": "AAPL", "date": "2026-01-03"},
-            {"ticker": "AAPL", "date": "2026-01-02"},
             {"ticker": "MSFT", "date": "2026-01-04"},
         ]
 
         rows = database.fetch_latest_price_dates(("AAPL", "MSFT", "GME"))
 
         self.assertEqual(rows, {"AAPL": "2026-01-03", "MSFT": "2026-01-04"})
-        self.assertEqual([operation["table"] for operation in client.operations], ["prices"] * 3)
-        self.assertEqual(client.operations[0]["columns"], "ticker,date")
-        self.assertIn(("eq", "ticker", "AAPL"), client.operations[0]["filters"])
-        self.assertEqual(client.operations[0]["order"], [("date", True)])
-        self.assertEqual(client.operations[0]["limit"], 1)
+        self.assertEqual(client.operations[0]["action"], "rpc")
+        self.assertEqual(client.operations[0]["rpc"], "get_latest_price_dates")
+        self.assertEqual(
+            client.operations[0]["params"],
+            {"p_tickers": ["AAPL", "MSFT", "GME"]},
+        )
 
     def test_fetch_latest_feature_dates_reads_one_recent_row_per_ticker(self) -> None:
         database, client = _database_with_fake_client()
@@ -489,6 +489,19 @@ class DatabaseAccessTest(unittest.TestCase):
                 "refresh_nearby_rivals",
                 "refresh_user_ticker_specialties",
             ],
+        )
+
+    def test_prune_user_engagement_events_calls_retention_rpc(self) -> None:
+        database, client = _database_with_fake_client()
+        client.rpc_results["prune_user_engagement_events"] = 12
+
+        pruned = database.prune_user_engagement_events("2026-04-01T00:00:00+00:00")
+
+        self.assertEqual(pruned, 12)
+        self.assertEqual(client.operations[0]["rpc"], "prune_user_engagement_events")
+        self.assertEqual(
+            client.operations[0]["params"],
+            {"p_seen_before": "2026-04-01T00:00:00+00:00"},
         )
 
 
