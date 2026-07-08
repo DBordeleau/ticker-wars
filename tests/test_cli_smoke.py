@@ -4,9 +4,17 @@ import unittest
 from contextlib import redirect_stdout
 from datetime import UTC, datetime, timedelta
 from io import StringIO
+from types import SimpleNamespace
 from unittest.mock import patch
 
-from pipeline.cli import _feature_rows_for_incremental_upsert, _report_live_price_health, main
+from pipeline.cli import (
+    _bounded_feature_rows_from_prices,
+    _report_live_price_health,
+    main,
+    run_build_features,
+    run_predict_horizons,
+    run_seed_model_predictions,
+)
 from pipeline.config import Settings
 
 
@@ -132,6 +140,147 @@ class CliSmokeTest(unittest.TestCase):
             self.assertEqual(main(["build-features", "--full-refresh"]), 0)
         run_features.assert_called_once_with(full_refresh=True)
 
+    def test_build_features_builds_rows_without_persisting_them(self) -> None:
+        class FakeDatabase:
+            def fetch_prices(self):
+                return [
+                    {"ticker": "AAPL", "date": "2026-01-02", "close": 100.0, "volume": 10},
+                    {"ticker": "SPY", "date": "2026-01-02", "close": 500.0, "volume": 10},
+                ]
+
+            def upsert_features(self, _rows):
+                raise AssertionError("build-features should not persist feature rows")
+
+            def fetch_latest_feature_dates(self, _tickers):
+                raise AssertionError("build-features should not read durable feature state")
+
+        with (
+            patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=FakeDatabase()),
+            patch("pipeline.cli.build_feature_rows", return_value=[{"ticker": "AAPL"}]) as build,
+        ):
+            self.assertEqual(run_build_features(), 0)
+
+        build.assert_called_once()
+
+    def test_predict_horizons_builds_features_from_prices_without_fetching_features(self) -> None:
+        class FakeDatabase:
+            def __init__(self) -> None:
+                self.prediction_rows: list[dict[str, object]] = []
+
+            def fetch_prices(self):
+                return [{"ticker": "AAPL", "date": "2026-01-02", "close": 100.0, "volume": 10}]
+
+            def fetch_latest_fundamentals(self):
+                return []
+
+            def fetch_features(self):
+                raise AssertionError("predict-horizons should derive features from prices")
+
+            def upsert_predictions(self, rows):
+                self.prediction_rows = rows
+                return len(rows)
+
+        fake_database = FakeDatabase()
+        feature_rows = [{"ticker": "AAPL", "date": "2026-01-02", "feature_json": {}}]
+        training_result = SimpleNamespace(
+            prediction_rows=[{"prediction_date": "2026-01-02"}],
+            skipped=[],
+        )
+
+        with (
+            patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=fake_database),
+            patch("pipeline.cli.build_feature_rows", return_value=feature_rows) as build,
+            patch("pipeline.cli.train_and_predict", return_value=training_result) as train,
+            patch("pipeline.cli.generate_warren_buffbot_predictions", return_value=[]),
+            patch("pipeline.cli.generate_timesfm_predictions", return_value=[]),
+            patch("pipeline.cli.generate_chronos_predictions", return_value=[]),
+        ):
+            self.assertEqual(run_predict_horizons(), 0)
+
+        build.assert_called_once_with(fake_database.fetch_prices())
+        train.assert_called_once_with(feature_rows, fake_database.fetch_prices())
+        self.assertEqual(fake_database.prediction_rows, training_result.prediction_rows)
+
+    def test_seed_model_predictions_builds_bounded_features_from_prices(self) -> None:
+        class FakeDatabase:
+            def __init__(self) -> None:
+                self.fetch_prices_kwargs: dict[str, object] | None = None
+
+            def fetch_prices(self, **kwargs):
+                self.fetch_prices_kwargs = kwargs
+                return [{"ticker": "AAPL", "date": "2026-01-02", "close": 100.0, "volume": 10}]
+
+            def fetch_features(self, **_kwargs):
+                raise AssertionError("historical seeding should derive features from prices")
+
+            def upsert_predictions(self, _rows):
+                raise AssertionError("dry run should not upsert predictions")
+
+        fake_database = FakeDatabase()
+        built_rows = [
+            {"ticker": "AAPL", "date": "2024-12-31", "feature_json": {}},
+            {"ticker": "AAPL", "date": "2025-01-01", "feature_json": {}},
+            {"ticker": "AAPL", "date": "2026-07-01", "feature_json": {}},
+            {"ticker": "AAPL", "date": "2026-07-02", "feature_json": {}},
+        ]
+
+        with (
+            patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=fake_database),
+            patch(
+                "pipeline.cli._seed_fetch_start_dates",
+                return_value=("2025-01-01", "2024-01-01"),
+            ),
+            patch("pipeline.cli.build_feature_rows", return_value=built_rows) as build,
+            patch(
+                "pipeline.cli.seed_predictions_for_target_window",
+                return_value=SimpleNamespace(prediction_rows=[], skipped=[]),
+            ) as seed,
+        ):
+            self.assertEqual(
+                run_seed_model_predictions(
+                    target_start="2026-07-01",
+                    target_end="2026-07-01",
+                    tickers=("AAPL",),
+                    model_slugs=("baseline",),
+                    dry_run=True,
+                ),
+                0,
+            )
+
+        self.assertEqual(
+            fake_database.fetch_prices_kwargs,
+            {
+                "start_date": "2024-01-01",
+                "end_date": "2026-07-01",
+                "tickers": ("AAPL", "SPY"),
+            },
+        )
+        build.assert_called_once()
+        self.assertEqual(
+            seed.call_args.kwargs["feature_rows"],
+            [
+                {"ticker": "AAPL", "date": "2025-01-01", "feature_json": {}},
+                {"ticker": "AAPL", "date": "2026-07-01", "feature_json": {}},
+            ],
+        )
+
+    def test_bounded_feature_rows_filters_after_building_with_price_lookback(self) -> None:
+        built_rows = [
+            {"ticker": "AAPL", "date": "2024-12-31"},
+            {"ticker": "AAPL", "date": "2025-01-01"},
+            {"ticker": "AAPL", "date": "2026-07-01"},
+            {"ticker": "AAPL", "date": "2026-07-02"},
+        ]
+
+        with patch("pipeline.cli.build_feature_rows", return_value=built_rows):
+            rows = _bounded_feature_rows_from_prices(
+                [{"ticker": "AAPL"}],
+                start_date="2025-01-01",
+                end_date="2026-07-01",
+            )
+
+        self.assertEqual(rows, built_rows[1:3])
+
     def test_export_snapshots_alias_runs_snapshot_export(self) -> None:
         with patch("pipeline.cli.run_export_snapshot", return_value=0) as run_export:
             self.assertEqual(main(["export-snapshots"]), 0)
@@ -183,29 +332,6 @@ class CliSmokeTest(unittest.TestCase):
                 "predict",
                 "refresh",
                 "export",
-            ],
-        )
-
-    def test_incremental_feature_filter_keeps_new_and_long_horizon_refresh_rows(self) -> None:
-        feature_rows = [
-            {"ticker": "AAPL", "date": "2024-01-01"},
-            {"ticker": "AAPL", "date": "2025-01-01"},
-            {"ticker": "AAPL", "date": "2026-01-02"},
-            {"ticker": "GME", "date": "2024-01-01"},
-        ]
-
-        rows = _feature_rows_for_incremental_upsert(
-            feature_rows,
-            latest_feature_dates={"AAPL": "2026-01-02"},
-            lookback_days=430,
-        )
-
-        self.assertEqual(
-            rows,
-            [
-                {"ticker": "AAPL", "date": "2025-01-01"},
-                {"ticker": "AAPL", "date": "2026-01-02"},
-                {"ticker": "GME", "date": "2024-01-01"},
             ],
         )
 

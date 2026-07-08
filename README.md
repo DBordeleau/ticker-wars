@@ -136,9 +136,9 @@ python -m pipeline.cli run-daily
 
 `backfill` / `ingest-prices` perform an explicit historical repair/load from the requested start date. `ingest-latest-prices` checks the latest stored price date per ticker and fetches only the missing/recent bars, re-fetching the most recent stored bar so late provider corrections can be upserted.
 
-`build-features` builds features from the available price table, then upserts only new/recent feature rows by default. The recent window is long enough to refresh rows whose 1Y targets may have just matured. Use `build-features --full-refresh` after historical repairs or feature-contract changes.
+`build-features` builds derived feature rows from the available price table as a diagnostic check, but it does not write durable feature rows. Normal latest and historical prediction flows derive their in-memory features directly from bounded price rows. The legacy `features` table and database helpers remain for compatibility/backout only.
 
-`run-daily` performs the normal end-to-end flow: incrementally ingest latest prices, incrementally upsert recent feature rows, ingest fundamentals, score matured predictions, generate predictions, refresh dashboard tables, and export snapshots.
+`run-daily` performs the normal end-to-end flow: incrementally ingest latest prices, build derived features as a non-writing diagnostic step, ingest fundamentals, score matured predictions, generate predictions from price-derived in-memory features, refresh dashboard tables, and export snapshots.
 
 The command writes `data_exports/runtime_benchmark.json` with cold/warm timings, prediction counts, approximate Python allocation/RSS data, Hugging Face cache size when available, and an automation recommendation.
 
