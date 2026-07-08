@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -11,6 +12,7 @@ from pipeline.forecasting.horizons import FORECAST_HORIZONS, ForecastHorizon, Ho
 
 DEFAULT_INTERVAL_LEVEL = 0.80
 MIN_INTERVAL_OBSERVATIONS = 2
+PREDICTION_ID_HEX_LENGTH = 32
 
 
 @dataclass(frozen=True)
@@ -147,10 +149,41 @@ def _prediction_id(
     horizon: ForecastHorizon,
     model_slug: str,
 ) -> str:
-    return (
-        f"{ticker}:{prediction_date.isoformat()}:"
-        f"{target_date.isoformat()}:{horizon}:{model_slug}"
+    return compact_prediction_id(
+        ticker=ticker,
+        prediction_date=prediction_date,
+        target_date=target_date,
+        horizon=horizon,
+        model_slug=model_slug,
     )
+
+
+def compact_prediction_id(
+    *,
+    ticker: str,
+    prediction_date: date | str,
+    target_date: date | str,
+    horizon: ForecastHorizon | str,
+    model_slug: str,
+) -> str:
+    """Return a deterministic compact ID for a model prediction natural identity."""
+
+    identity = "|".join(
+        (
+            str(ticker),
+            _date_identity_part(prediction_date),
+            _date_identity_part(target_date),
+            str(horizon),
+            str(model_slug),
+        )
+    )
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()[:PREDICTION_ID_HEX_LENGTH]
+
+
+def _date_identity_part(value: date | str) -> str:
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value)
 
 
 def _interval_fields(

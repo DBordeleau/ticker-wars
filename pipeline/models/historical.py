@@ -20,6 +20,7 @@ from pipeline.models.base import (
     historical_return_interval,
     residual_prediction_interval,
 )
+from pipeline.models.baseline import BASELINE_MODEL_SLUG, build_baseline_prediction_row
 from pipeline.models.chronos_model import ChronosModelLoader, ChronosPredictionAdapter
 from pipeline.models.registry import MODEL_SLUGS, MODEL_SPECS, ModelSpec
 from pipeline.models.timesfm_model import TimesFMModelLoader, TimesFMPredictionAdapter
@@ -246,6 +247,20 @@ def _predict_classic_as_of(
         predicted_return=predicted_return,
     )
 
+    model_metadata = {
+        "training_scope": training_scope,
+        "training_row_count": int(len(training_rows)),
+    }
+    if spec.slug == BASELINE_MODEL_SLUG:
+        return build_baseline_prediction_row(
+            ticker=ticker,
+            prediction_date=seed_target.prediction_date,
+            target=seed_target.target,
+            reference_close=reference_close,
+            interval=interval,
+            model_metadata=model_metadata,
+        )
+
     return build_prediction_row(
         ticker=ticker,
         prediction_date=seed_target.prediction_date,
@@ -254,10 +269,7 @@ def _predict_classic_as_of(
         model_slug=spec.slug,
         reference_close=reference_close,
         predicted_return=predicted_return,
-        model_metadata={
-            "training_scope": training_scope,
-            "training_row_count": int(len(training_rows)),
-        },
+        model_metadata=model_metadata,
     ) | _interval_row_fields(interval, reference_close)
 
 

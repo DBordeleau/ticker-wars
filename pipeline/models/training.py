@@ -25,6 +25,7 @@ from pipeline.models.base import (
     historical_return_interval,
     residual_prediction_interval,
 )
+from pipeline.models.baseline import BASELINE_MODEL_SLUG, build_baseline_prediction_row
 from pipeline.models.registry import MODEL_SPECS, ModelSpec
 
 MIN_TRAINING_ROWS = 100
@@ -110,6 +111,15 @@ def _predict_for_ticker_horizon(
         target_column=target_column,
         predicted_return=predicted_return,
     )
+
+    if spec.slug == BASELINE_MODEL_SLUG:
+        return build_baseline_prediction_row(
+            ticker=ticker,
+            prediction_date=prediction_date,
+            target=target,
+            reference_close=reference_close,
+            interval=interval,
+        )
 
     return build_prediction_row(
         ticker=ticker,
