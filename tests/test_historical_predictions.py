@@ -8,6 +8,7 @@ import pandas as pd
 
 from pipeline.config import Settings
 from pipeline.features.build_features import FEATURE_COLUMNS
+from pipeline.models.base import compact_prediction_id
 from pipeline.models.historical import (
     resolve_seed_targets_for_window,
     seed_predictions_for_target_window,
@@ -127,10 +128,23 @@ class HistoricalPredictionTest(unittest.TestCase):
 
         self.assertEqual(len(result.prediction_rows), 1)
         row = result.prediction_rows[0]
-        self.assertEqual(row["prediction_id"], "AAPL:2026-06-24:2026-07-01:1w:baseline")
+        self.assertEqual(
+            row["prediction_id"],
+            compact_prediction_id(
+                ticker="AAPL",
+                prediction_date=date(2026, 6, 24),
+                target_date=date(2026, 7, 1),
+                horizon="1w",
+                model_slug="baseline",
+            ),
+        )
         self.assertEqual(row["reference_close"], 100.0)
         self.assertEqual(row["interval_method"], "fallback-wide-return-band")
         self.assertEqual(row["interval_level"], 0.80)
+        self.assertEqual(
+            row["model_metadata"]["baseline_prediction_source"],
+            "deterministic-synthesis",
+        )
 
     def test_classic_seed_uses_pooled_fallback_without_future_rows(self) -> None:
         pooled_rows = [
