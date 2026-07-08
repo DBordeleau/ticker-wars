@@ -137,12 +137,12 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("run-daily", help="Run the daily pipeline.")
     build_features = subparsers.add_parser(
         "build-features",
-        help="Build and upsert feature rows from prices.",
+        help="Build derived feature rows from prices without writing them.",
     )
     build_features.add_argument(
         "--full-refresh",
         action="store_true",
-        help="Upsert every feature row instead of only the recent refresh window.",
+        help="Compatibility flag; feature rows are derived from prices and are not persisted.",
     )
     subparsers.add_parser(
         "predict-horizons",
@@ -571,18 +571,17 @@ def run_build_features(full_refresh: bool = False) -> int:
             return 0
 
     feature_rows = build_feature_rows(price_rows)
-    total_feature_rows = len(feature_rows)
-    if not full_refresh:
-        latest_feature_dates = database.fetch_latest_feature_dates(_daily_prediction_tickers())
-        feature_rows = _feature_rows_for_incremental_upsert(feature_rows, latest_feature_dates)
-    written = database.upsert_features(feature_rows)
     if full_refresh:
-        LOGGER.info("Feature generation wrote %s feature rows.", written)
+        LOGGER.info(
+            "Feature generation built %s feature rows; no rows were written because "
+            "features are derived from prices.",
+            len(feature_rows),
+        )
     else:
         LOGGER.info(
-            "Feature generation wrote %s recent feature rows out of %s built rows.",
-            written,
-            total_feature_rows,
+            "Feature generation built %s feature rows from prices; no Supabase writes "
+            "were performed.",
+            len(feature_rows),
         )
     return 0
 
@@ -601,13 +600,17 @@ def run_predict_horizons() -> int:
         )
         return 0
 
-    feature_rows = database.fetch_features()
     price_rows = database.fetch_prices()
-    fundamental_rows = database.fetch_latest_fundamentals()
-    if not feature_rows or not price_rows:
-        LOGGER.warning("Prediction generation skipped because features or prices are missing.")
+    if not price_rows:
+        LOGGER.warning("Prediction generation skipped because prices are missing.")
         return 0
 
+    feature_rows = build_feature_rows(price_rows)
+    if not feature_rows:
+        LOGGER.warning("Prediction generation skipped because no features could be built.")
+        return 0
+
+    fundamental_rows = database.fetch_latest_fundamentals()
     training_result = train_and_predict(feature_rows, price_rows)
     buffbot_rows = generate_warren_buffbot_predictions(
         feature_rows,
@@ -664,33 +667,30 @@ def run_seed_model_predictions(
         return 0
 
     target_tickers = tickers or _daily_prediction_tickers()
+    feature_price_tickers = tuple(dict.fromkeys((*target_tickers, "SPY")))
     feature_start, price_start = _seed_fetch_start_dates(start_date, settings)
-    LOGGER.info(
-        "Fetching seed features from %s through %s for %s tickers.",
-        feature_start,
-        target_end,
-        len(target_tickers),
-    )
-    feature_rows = database.fetch_features(
-        start_date=feature_start,
-        end_date=target_end,
-        tickers=target_tickers,
-    )
     LOGGER.info(
         "Fetching seed prices from %s through %s for %s tickers.",
         price_start,
         target_end,
-        len(target_tickers),
+        len(feature_price_tickers),
     )
     price_rows = database.fetch_prices(
         start_date=price_start,
         end_date=target_end,
-        tickers=target_tickers,
+        tickers=feature_price_tickers,
     )
-    if not feature_rows or not price_rows:
-        LOGGER.warning(
-            "Historical prediction seeding skipped because features or prices are missing."
-        )
+    if not price_rows:
+        LOGGER.warning("Historical prediction seeding skipped because prices are missing.")
+        return 0
+
+    feature_rows = _bounded_feature_rows_from_prices(
+        price_rows,
+        start_date=feature_start,
+        end_date=target_end,
+    )
+    if not feature_rows:
+        LOGGER.warning("Historical prediction seeding skipped because no features could be built.")
         return 0
 
     result = seed_predictions_for_target_window(
@@ -745,6 +745,21 @@ def _seed_fetch_start_dates(start_date, settings) -> tuple[str, str]:
     max_context_length = max(settings.timesfm_context_length, settings.chronos_context_length)
     price_start = start_date - timedelta(days=365 + max(2200, max_context_length * 2))
     return feature_start.isoformat(), price_start.isoformat()
+
+
+def _bounded_feature_rows_from_prices(
+    price_rows: list[dict[str, Any]],
+    *,
+    start_date: str,
+    end_date: str,
+) -> list[dict[str, Any]]:
+    lower_bound = parse_date(start_date)
+    upper_bound = parse_date(end_date)
+    return [
+        row
+        for row in build_feature_rows(price_rows)
+        if lower_bound <= parse_date(str(row["date"])) <= upper_bound
+    ]
 
 
 def run_score() -> int:
@@ -994,26 +1009,6 @@ def _utc_now(value: datetime | None = None) -> datetime:
     if current.tzinfo is None:
         return current.replace(tzinfo=UTC)
     return current.astimezone(UTC)
-
-
-def _feature_rows_for_incremental_upsert(
-    feature_rows: list[dict[str, Any]],
-    latest_feature_dates: dict[str, str],
-    lookback_days: int = 430,
-) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for row in feature_rows:
-        ticker = str(row.get("ticker", ""))
-        latest_feature_date = latest_feature_dates.get(ticker)
-        if latest_feature_date is None:
-            rows.append(row)
-            continue
-
-        refresh_start = parse_date(latest_feature_date) - timedelta(days=lookback_days)
-        if parse_date(str(row["date"])) >= refresh_start:
-            rows.append(row)
-
-    return rows
 
 
 if __name__ == "__main__":
