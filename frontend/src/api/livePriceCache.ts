@@ -1,11 +1,14 @@
-import { fetchLivePriceSnapshot, type LivePriceSnapshot } from "./livePrices";
+import { fetchLivePriceSnapshots, type LivePriceSnapshot } from "./livePrices";
 
-const liveSnapshotCache = new Map<
-  string,
-  { promise: Promise<LivePriceSnapshot | null>; expiresAt: number }
->();
+type LiveSnapshotCacheEntry = {
+  promise: Promise<LivePriceSnapshot | null>;
+  expiresAt: number;
+  inFlight: boolean;
+};
 
-const liveSnapshotTtlMs = 45_000;
+const liveSnapshotCache = new Map<string, LiveSnapshotCacheEntry>();
+
+export const liveSnapshotTtlMs = 45_000;
 
 export function loadLivePriceSnapshot(
   ticker: string,
@@ -16,21 +19,69 @@ export function loadLivePriceSnapshot(
     return Promise.resolve(null);
   }
 
-  const now = Date.now();
-  const cached = liveSnapshotCache.get(key);
-  if (!options.force && cached && cached.expiresAt > now) {
-    return cached.promise;
+  return loadLivePriceSnapshots([key], options).then((snapshots) => snapshots[key] ?? null);
+}
+
+export function loadLivePriceSnapshots(
+  tickers: string[],
+  options: { force?: boolean } = {},
+): Promise<Record<string, LivePriceSnapshot | null>> {
+  const normalizedTickers = Array.from(
+    new Set(tickers.map((ticker) => ticker.trim().toUpperCase()).filter(Boolean)),
+  );
+  if (normalizedTickers.length === 0) {
+    return Promise.resolve({});
   }
 
-  const promise = fetchLivePriceSnapshot(key).catch((error) => {
-    liveSnapshotCache.delete(key);
-    throw error;
-  });
+  const now = Date.now();
+  const snapshotPromises = new Map<string, Promise<LivePriceSnapshot | null>>();
+  const missingTickers: string[] = [];
 
-  liveSnapshotCache.set(key, {
-    promise,
-    expiresAt: now + liveSnapshotTtlMs,
-  });
+  for (const ticker of normalizedTickers) {
+    const cached = liveSnapshotCache.get(ticker);
+    if (cached?.inFlight || (!options.force && cached && cached.expiresAt > now)) {
+      snapshotPromises.set(ticker, cached.promise);
+    } else {
+      missingTickers.push(ticker);
+    }
+  }
 
-  return promise;
+  if (missingTickers.length > 0) {
+    const bulkPromise = fetchLivePriceSnapshots(missingTickers);
+    for (const ticker of missingTickers) {
+      const promise = bulkPromise
+        .then((snapshots) => {
+          const snapshot = snapshots[ticker] ?? null;
+          liveSnapshotCache.set(ticker, {
+            promise: Promise.resolve(snapshot),
+            expiresAt: Date.now() + liveSnapshotTtlMs,
+            inFlight: false,
+          });
+          return snapshot;
+        })
+        .catch((error) => {
+          liveSnapshotCache.delete(ticker);
+          throw error;
+        });
+
+      liveSnapshotCache.set(ticker, {
+        promise,
+        expiresAt: now + liveSnapshotTtlMs,
+        inFlight: true,
+      });
+      snapshotPromises.set(ticker, promise);
+    }
+  }
+
+  return Promise.all(
+    normalizedTickers.map((ticker) =>
+      (snapshotPromises.get(ticker) ?? Promise.resolve(null)).then(
+        (snapshot) => [ticker, snapshot] as const,
+      ),
+    ),
+  ).then((entries) => Object.fromEntries(entries));
+}
+
+export function __clearLivePriceCacheForTests() {
+  liveSnapshotCache.clear();
 }
