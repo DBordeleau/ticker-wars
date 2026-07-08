@@ -339,13 +339,47 @@ class FundamentalsIngestionTest(unittest.TestCase):
         with patch("pipeline.ingestion.fundamentals._fetch_ticker_with_retries") as fetch_ticker:
             result = fetch_fundamentals(
                 tickers=("AAPL",),
-                existing_rows=[{"ticker": "AAPL", "as_of_date": "2026-06-20"}],
+                existing_rows=[
+                    {
+                        "ticker": "AAPL",
+                        "as_of_date": "2026-06-20",
+                        "business_summary": "Makes consumer hardware and services.",
+                    }
+                ],
                 as_of_date=date(2026, 6, 21),
             )
 
         self.assertEqual(result.rows, [])
         self.assertEqual(result.skipped_tickers, ["AAPL"])
         fetch_ticker.assert_not_called()
+
+    def test_fetch_fundamentals_refreshes_fresh_cached_rows_missing_summary(self) -> None:
+        row = {
+            "ticker": "AAPL",
+            "as_of_date": "2026-06-21",
+            "market_cap": 1.0,
+            "business_summary": "Makes consumer hardware and services.",
+        }
+        with patch(
+            "pipeline.ingestion.fundamentals._fetch_ticker_with_retries",
+            return_value=row,
+        ) as fetch_ticker:
+            result = fetch_fundamentals(
+                tickers=("AAPL",),
+                existing_rows=[
+                    {
+                        "ticker": "AAPL",
+                        "as_of_date": "2026-06-20",
+                        "long_name": "Apple Inc.",
+                        "business_summary": None,
+                    }
+                ],
+                as_of_date=date(2026, 6, 21),
+            )
+
+        self.assertEqual(result.rows, [row])
+        self.assertEqual(result.skipped_tickers, [])
+        fetch_ticker.assert_called_once()
 
     def test_fetch_fundamentals_refreshes_stale_cached_rows(self) -> None:
         row = {"ticker": "AAPL", "as_of_date": "2026-06-21", "market_cap": 1.0}
