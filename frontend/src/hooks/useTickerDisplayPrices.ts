@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { loadLivePriceSnapshots } from "../api/livePriceCache";
 import {
-  fetchLivePriceSnapshots,
   fetchTickerCloseSnapshots,
   resolveTickerDisplayPrice,
   type TickerDisplayPrice,
@@ -47,7 +47,7 @@ export function useTickerDisplayPrices(
       setLoading(true);
       setError(null);
       Promise.all([
-        fetchLivePriceSnapshots(normalizedTickers),
+        loadLivePriceSnapshots(normalizedTickers),
         fetchTickerCloseSnapshots(normalizedTickers),
       ])
         .then(([liveSnapshots, closeSnapshots]) => {

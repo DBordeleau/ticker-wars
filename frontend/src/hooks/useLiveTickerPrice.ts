@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { loadLivePriceSnapshot } from "../api/livePriceCache";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LivePriceSnapshot } from "../api/livePrices";
+import { getLiveTickerPriceStore } from "./liveTickerPriceStore";
 
 type LiveTickerPriceState = {
   data: LivePriceSnapshot | null;
@@ -26,7 +26,6 @@ export function useLiveTickerPrice(
   const [data, setData] = useState<LivePriceSnapshot | null>(null);
   const [loading, setLoading] = useState(Boolean(normalizedTicker && enabled));
   const [error, setError] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     if (!normalizedTicker || !enabled) {
@@ -36,63 +35,32 @@ export function useLiveTickerPrice(
       return undefined;
     }
 
-    let active = true;
-    let intervalId: number | undefined;
-
-    const load = (force = false) => {
-      if (document.hidden && !force) {
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-      loadLivePriceSnapshot(normalizedTicker, { force })
-        .then((snapshot) => {
-          if (active) {
-            setData(snapshot);
-          }
-        })
-        .catch((caught) => {
-          if (active) {
-            setError(caught instanceof Error ? caught.message : "Unable to load live price.");
-          }
-        })
-        .finally(() => {
-          if (active) {
-            setLoading(false);
-          }
-        });
+    const store = getLiveTickerPriceStore(normalizedTicker);
+    const updateState = () => {
+      const snapshot = store.getSnapshot();
+      setData(snapshot.data);
+      setLoading(snapshot.loading);
+      setError(snapshot.error);
     };
+    updateState();
 
-    load(refreshToken > 0);
+    return store.subscribe(updateState, { poll, pollMs });
+  }, [enabled, normalizedTicker, poll, pollMs]);
 
-    if (poll) {
-      intervalId = window.setInterval(() => load(true), pollMs);
+  const refetch = useCallback(() => {
+    if (!normalizedTicker || !enabled) {
+      return;
     }
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        load(true);
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      active = false;
-      if (intervalId != null) {
-        window.clearInterval(intervalId);
-      }
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [enabled, normalizedTicker, poll, pollMs, refreshToken]);
+    getLiveTickerPriceStore(normalizedTicker).refetch();
+  }, [enabled, normalizedTicker]);
 
   return useMemo(
     () => ({
       data,
       loading,
       error,
-      refetch: () => setRefreshToken((current) => current + 1),
+      refetch,
     }),
-    [data, error, loading],
+    [data, error, loading, refetch],
   );
 }
