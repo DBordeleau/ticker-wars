@@ -13,6 +13,7 @@ from pipeline.cli import (
     main,
     run_build_features,
     run_predict_horizons,
+    run_prune_engagement_events,
     run_seed_model_predictions,
 )
 from pipeline.config import Settings
@@ -90,6 +91,30 @@ class CliSmokeTest(unittest.TestCase):
         with patch("pipeline.cli.run_ingest_latest_prices", return_value=0) as run_prices:
             self.assertEqual(main(["ingest-latest-prices"]), 0)
         run_prices.assert_called_once_with()
+
+    def test_prune_engagement_events_command_forwards_seen_days(self) -> None:
+        with patch("pipeline.cli.run_prune_engagement_events", return_value=0) as run_prune:
+            self.assertEqual(main(["prune-engagement-events", "--seen-days", "45"]), 0)
+        run_prune.assert_called_once_with(seen_days=45)
+
+    def test_prune_engagement_events_rejects_invalid_retention_window(self) -> None:
+        self.assertEqual(run_prune_engagement_events(seen_days=0), 1)
+
+    def test_prune_engagement_events_calls_database_retention_rpc(self) -> None:
+        class FakeDatabase:
+            def __init__(self) -> None:
+                self.seen_before: str | None = None
+
+            def prune_user_engagement_events(self, seen_before: str):
+                self.seen_before = seen_before
+                return 4
+
+        fake_database = FakeDatabase()
+
+        with patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=fake_database):
+            self.assertEqual(run_prune_engagement_events(seen_days=90), 0)
+
+        self.assertIsNotNone(fake_database.seen_before)
 
     def test_refresh_live_prices_command_forwards_tickers_and_dry_run(self) -> None:
         with patch("pipeline.cli.run_refresh_live_prices", return_value=0) as run_live:
@@ -317,6 +342,7 @@ class CliSmokeTest(unittest.TestCase):
             patch("pipeline.cli.run_score", side_effect=record("score")),
             patch("pipeline.cli.run_predict_horizons", side_effect=record("predict")),
             patch("pipeline.cli.run_refresh_dashboard", side_effect=record("refresh")),
+            patch("pipeline.cli.run_prune_engagement_events", side_effect=record("prune")),
             patch("pipeline.cli.run_export_snapshot", side_effect=record("export")),
         ):
             self.assertEqual(main(["run-daily"]), 0)
@@ -331,6 +357,7 @@ class CliSmokeTest(unittest.TestCase):
                 "score",
                 "predict",
                 "refresh",
+                "prune",
                 "export",
             ],
         )
