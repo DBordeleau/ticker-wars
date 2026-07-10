@@ -1,101 +1,127 @@
 # Ticker Wars
 
-Ticker Wars is an machine-learning and analytics project that compares stock prediction models across multiple time horizons. The pipeline ingests market data, builds horizon-specific features, stores every prediction permanently, scores matured predictions, and presents the results in a polished React dashboard.
+[Live demo](https://tickerwars.vercel.app)
 
-This is not financial advice, a trading strategy, or a production prediction system. It is a portfolio project focused on clean data engineering, time-aware model evaluation, and clear frontend presentation.
+Ticker Wars is a portfolio machine-learning project that turns stock forecasting into a
+scoreable competition between baseline models, classical ML models, optional foundation
+forecasting adapters, and user predictions.
 
-## What The Dashboard Shows
+The interesting part is not that it "beats the market." It does not claim to. The project is
+about building the kind of data and evaluation system that makes forecasting claims measurable:
+daily market ingestion, horizon-aware feature generation, durable prediction storage, delayed
+scoring after target dates mature, and a React dashboard that explains model performance without
+requiring a reviewer to inspect raw tables.
 
-- Latest stock predictions by ticker, model, and horizon.
-- Prediction horizons: `1W`, `1M`, `3M`, and `1Y`.
-- A model leaderboard with horizon tabs: `ALL`, `1W`, `1M`, `3M`, and `1Y`.
-- Model rankings by MAE, directional accuracy, Winkler interval score, and scored count.
-- Per-ticker actual vs predicted charts with optional interval bands.
-- Latest prediction confidence intervals and maturity dates.
-- Model detail pages, ticker detail pages, and a clearly labeled Warren Buffbot toy LLM page.
-- An all-ticker browse page (`/tickers`) for quickly making your own predictions on any asset. Each ticker shows its trailing price move for the selected horizon alongside the model and user consensus, with ticker search and sorting (alphabetical, model consensus, user consensus, or price).
-- A personal prediction history page that separates active predictions still awaiting maturity from settled predictions scored against the realized close.
+This project is not financial advice, a trading strategy, or a production investment system.
 
-## Architecture
+## What Users Can Do
 
-```text
-Scheduled / manual pipeline run
-        |
-        v
-Python pipeline
-        |
-        +-- Fetch missing/recent OHLCV bars with yfinance
-        +-- Fetch/cache yfinance fundamentals when available
-        +-- Build horizon-aware features
-        +-- Score matured predictions
-        +-- Generate new predictions for all horizons
-        +-- Refresh dashboard tables
-        +-- Export JSON snapshots
-        |
-        v
-Supabase Postgres
-        |
-        v
-React dashboard
+- Browse latest model predictions for stocks across `1W`, `1M`, `3M`, and `1Y` horizons.
+- Compare models on MAE, directional accuracy, interval quality, and scored prediction count.
+- Inspect ticker pages with actual-vs-predicted charts and confidence interval bands.
+- Submit personal predictions, track active vs settled picks, and compare public leaderboard
+  results.
+- View model detail pages, ticker detail pages, public profiles, badges, and gamified prediction
+  history.
+
+## ML And Data Pipeline
+
+The backend pipeline is written in Python and is designed around time-aware prediction contracts.
+Each run:
+
+1. Fetches missing or recently corrected OHLCV bars from yfinance.
+2. Caches fundamentals and ticker logo metadata where available.
+3. Builds bounded, in-memory features from historical price rows.
+4. Scores predictions whose target dates have matured.
+5. Generates fresh predictions for each configured horizon.
+6. Refreshes narrow dashboard projection tables for the frontend.
+7. Exports static JSON snapshots as a fallback/dashboard artifact.
+
+```mermaid
+flowchart LR
+    A["yfinance market data"] --> B["Python pipeline"]
+    B --> C["prices and fundamentals"]
+    C --> D["horizon-aware features"]
+    D --> E["durable model predictions"]
+    E --> F["matured prediction scoring"]
+    F --> G["dashboard projection tables"]
+    G --> H["React dashboard"]
+    I["authenticated users"] --> J["user predictions"]
+    J --> F
 ```
 
-The frontend reads narrow `dashboard_*` tables with a Supabase publishable key. The Python pipeline writes normalized tables with a Supabase secret key.
+The key design choice is that predictions are stored before outcomes are known. Scoring happens
+later, after the target close is available, which avoids accidentally evaluating against data that
+was not available at prediction time.
 
-## Prediction Horizons
+## Modeling Approach
 
-Every enabled model can write predictions for:
+Ticker Wars intentionally includes a mix of model types so the dashboard can compare simple,
+interpretable baselines against heavier approaches:
 
-```text
-1W | 1M | 3M | 1Y
-```
+- **Baseline**: predicts no price movement.
+- **Linear Regression** and **Random Forest**: classical tabular models trained on derived price
+  features.
+- **Warren Buffbot**: a toy LLM comparison model that uses cached fundamentals and value-investing
+  style prompt context. It is intentionally labeled experimental.
+- **TimesFM** and **Chronos-2**: optional time-series foundation model adapters. They are disabled
+  by default because they add heavier dependencies, model downloads, and runtime constraints.
 
-Target dates are resolved with calendar offsets and rolled forward to the next available trading day. Each prediction is stored permanently in the `predictions` table and scored later when the target close is available.
+The pipeline supports all models across `1W`, `1M`, `3M`, and `1Y` horizons.
 
 ## Evaluation
 
-The leaderboard separates two ideas:
+The dashboard separates prediction horizon from evaluation metrics. A `1M` prediction is judged
+only after its target date matures and the actual close is known.
 
-- **Horizon tabs** select what type of prediction is being evaluated, such as `1M` predictions.
-- **Evaluation windows** are the matured prediction ranges used by the backend metrics, such as recent or all-time scored predictions. The current UI defaults to all available scored predictions for readability.
+Displayed metrics include:
 
-Displayed metrics:
+- **MAE**: mean absolute error in dollars.
+- **Directional accuracy**: whether the model predicted the correct up/down direction.
+- **Winkler interval score**: rewards confidence intervals that are both narrow and calibrated.
+- **Scored count**: how many matured predictions are included in a metric row.
 
-- **MAE**: mean absolute error in dollars. Lower is better.
-- **Directional accuracy**: how often the model predicted the correct up/down direction.
-- **Winkler interval score**: evaluates confidence intervals by rewarding tight ranges that still contain the actual result. Lower is better.
-- **Scored**: number of matured predictions included in the metric row.
+This framing keeps the project honest: small samples, volatile assets, and noisy markets are
+visible in the scoring tables instead of hidden behind a single cherry-picked metric.
 
-## Models
+## Architecture
 
-Core models:
+- **Python pipeline**: ingestion, feature generation, model execution, scoring, dashboard refresh,
+  and snapshot export.
+- **Supabase Postgres**: durable prediction store, user prediction system, projection tables, RLS
+  boundaries, and public dashboard reads.
+- **React + TypeScript frontend**: dashboard, model pages, ticker pages, prediction flows, public
+  profiles, and gamification UI.
+- **GitHub Actions / Supabase automation**: scheduled private pipeline runs and live price refresh
+  operations in the production project.
 
-- Baseline: predicts no price movement.
-- Linear Regression.
-- Random Forest.
-- Warren Buffbot: a toy LLM comparison model that can use cached fundamentals and value-investing style prompt guidance.
+Reviewer-facing schema documentation lives in [docs/database-schema.md](docs/database-schema.md).
+The curated public schema lives in [supabase/schema.sql](supabase/schema.sql).
 
-Optional time-series models:
+## What I Learned
 
-- Google TimesFM.
-- Amazon Chronos-2.
+- Forecasting projects need durable prediction records before they need fancy models.
+- Evaluation windows, prediction horizons, and target-date resolution are easy to blur unless they
+  are represented explicitly in the schema.
+- A useful ML dashboard often depends on projection tables, not raw normalized tables, because the
+  browser needs fast and narrow read contracts.
+- Optional foundation-model adapters are best isolated behind feature flags and dependency extras.
+- Public portfolio repos benefit from a curated schema and docs story rather than a noisy migration
+  trail from every experiment.
 
-TimesFM and Chronos-2 are optional because they require heavier dependencies, model downloads, and runtime validation. The pipeline runs without them by default unless their feature flags and dependencies are enabled.
+## Limitations
 
-## Data Sources
+- yfinance is an unofficial data source and can have delays, corrections, missing fields, or
+  occasional API issues.
+- Stock forecasting is noisy; the project is built to evaluate predictions, not to recommend
+  trades.
+- Some model results can be based on small matured samples, especially for longer horizons.
+- TimesFM and Chronos-2 are optional and may require large downloads or specific runtime setup.
+- Warren Buffbot is a deliberately experimental LLM comparison, not a serious investment analyst.
 
-Ticker Wars currently uses yfinance for market data and fundamentals such as valuation and company financial context when available. yfinance is useful and free, but it is unofficial and can have delays, corrections, missing fields, or occasional API issues.
+## Run Locally
 
-No Alpha Vantage key is required for the current pipeline.
-
-## Local Setup
-
-Create a local environment file:
-
-```bash
-cp .env.example .env
-```
-
-Install Python dependencies:
+Install backend dependencies:
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -108,102 +134,37 @@ cd frontend
 npm install
 ```
 
-For local frontend Supabase reads, create `frontend/.env.local` with:
-
-```text
-REACT_APP_SUPABASE_URL=...
-REACT_APP_SUPABASE_PUBLISHABLE_KEY=...
-REACT_APP_SITE_URL=https://tickerwars.vercel.app
-```
-
-## Pipeline Commands
+Create local environment files from the examples and provide Supabase values if you want live
+dashboard data:
 
 ```bash
-python -m pipeline.cli --help
-python -m pipeline.cli backfill --start 2020-01-01
-python -m pipeline.cli ingest-prices --start 2020-01-01
-python -m pipeline.cli ingest-latest-prices
-python -m pipeline.cli ingest-fundamentals
-python -m pipeline.cli build-features
-python -m pipeline.cli build-features --full-refresh
-python -m pipeline.cli predict-horizons
-python -m pipeline.cli score
-python -m pipeline.cli refresh-dashboard
-python -m pipeline.cli export-snapshot
-python -m pipeline.cli export-snapshots
-python -m pipeline.cli run-daily
+cp .env.example .env
 ```
-
-`backfill` / `ingest-prices` perform an explicit historical repair/load from the requested start date. `ingest-latest-prices` checks the latest stored price date per ticker and fetches only the missing/recent bars, re-fetching the most recent stored bar so late provider corrections can be upserted.
-
-`build-features` builds derived feature rows from the available price table as a diagnostic check, but it does not write durable feature rows. Normal latest and historical prediction flows derive their in-memory features directly from bounded price rows. The legacy `features` table and database helpers remain for compatibility/backout only.
-
-`run-daily` performs the normal end-to-end flow: incrementally ingest latest prices, build derived features as a non-writing diagnostic step, ingest fundamentals, score matured predictions, generate predictions from price-derived in-memory features, refresh dashboard tables, and export snapshots.
-
-The command writes `data_exports/runtime_benchmark.json` with cold/warm timings, prediction counts, approximate Python allocation/RSS data, Hugging Face cache size when available, and an automation recommendation.
-
-## Live Price Refresh
-
-Regular-session live prices are refreshed by the Supabase Edge Function at `supabase/functions/refresh-live-prices`. The function uses Yahoo's free multi-symbol Spark endpoint to refresh the compact `live_price_snapshots` table once per minute during the broad market-hours window. Spark currently accepts up to 20 symbols per request, so the function chunks the ticker universe and merges the results. It does not write intraday bars, because the frontend only needs the latest current price snapshot.
-
-Deploy the function:
-
-```bash
-npx supabase@latest functions deploy refresh-live-prices --project-ref <project-ref>
-```
-
-The function is configured in `supabase/config.toml` with `verify_jwt = true`. Cron calls it with the legacy Supabase `service_role` JWT stored in Vault.
-
-Before applying `supabase/migrations/018_schedule_live_price_refresh.sql`, enable Vault and create these Supabase Vault secrets in the SQL editor:
-
-```sql
-create extension if not exists supabase_vault with schema vault;
-
-select vault.create_secret(
-  'https://<project-ref>.supabase.co/functions/v1/refresh-live-prices',
-  'live_price_refresh_url'
-);
-
-select vault.create_secret(
-  '<supabase-service-role-key>',
-  'live_price_refresh_service_role_key'
-);
-```
-
-Then run the migration. It schedules `live-price-refresh-every-minute` for every minute in a broad UTC weekday window; the Edge Function itself enforces exact NYSE trading days and 9:30am-4:00pm ET. The GitHub Actions live-price workflow is manual-only and should be used only as a fallback repair job.
-
-## Frontend
 
 ```bash
 cd frontend
 npm start
 ```
 
-Production build:
-
-```bash
-cd frontend
-npm run build
-```
+More detailed setup notes are in [docs/local-development.md](docs/local-development.md).
 
 ## Tests
 
-Python:
-
 ```bash
-pytest
+python -m pytest
 ```
-
-Frontend:
 
 ```bash
 cd frontend
 npm test -- --watchAll=false
+npm run build
 ```
 
-## Configuration Notes
+Pipeline command details are in [docs/pipeline.md](docs/pipeline.md). Deployment and automation
+notes are intentionally kept out of the README and summarized in
+[docs/deployment-notes.md](docs/deployment-notes.md).
 
-- Put Supabase secret keys and LLM keys only in trusted backend environments.
-- The React app should only receive `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_PUBLISHABLE_KEY`.
-- `HF_TOKEN` is optional but recommended if you enable Hugging Face-hosted TimesFM/Chronos downloads to reduce rate-limit friction.
-- TimesFM and Chronos dependencies are optional extras and should be installed only when you are ready to run those models locally.
+## Repository Note
+
+The public portfolio repository is intended to be named `ticker-wars`. Some internal package names
+still use the earlier `next-day-price` project name to avoid unnecessary churn during cleanup.
