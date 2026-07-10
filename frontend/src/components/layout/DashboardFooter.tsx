@@ -44,7 +44,7 @@ export default function DashboardFooter({ metadata, loading }: Props) {
       <div className="footer-source">
         <Text size="sm">
           View the{" "}
-          <Anchor href="https://github.com/DBordeleau/next-day-price" target="_blank" rel="noreferrer">
+          <Anchor href="https://github.com/DBordeleau/ticker-wars" target="_blank" rel="noreferrer">
             source code on Github <FaGithub />
           </Anchor>
         </Text>
