@@ -1,0 +1,386 @@
+.rules-page {
+  max-width: 1180px;
+}
+
+.rules-hero {
+  display: grid;
+  gap: 12px;
+  margin: 28px 0 18px;
+}
+
+.rules-eyebrow {
+  color: #86efac;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.rules-hero h1 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: clamp(2.4rem, 6vw, 5rem);
+  line-height: 1;
+}
+
+.rules-lead {
+  max-width: 100%;
+  color: rgba(248, 250, 252, 1);
+  font-size: 1.08rem;
+  line-height: 1.55;
+}
+
+.rules-disclaimer {
+  max-width: 820px;
+  padding: 12px 14px;
+  border: 1px solid rgba(250, 204, 21, 0.18);
+  border-radius: 8px;
+  color: #fde68a;
+  background: rgba(250, 204, 21, 0.07);
+  font-size: 0.92rem;
+  font-weight: 750;
+}
+
+/* Two-column reading layout: a sticky numbered table of contents beside the
+   scrolling rule sections. The ToC replaced the old horizontal chip bar so the
+   page reads like a guide/manual and stays navigable while scrolling. */
+.rules-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 244px) minmax(0, 1fr);
+  gap: 26px;
+  align-items: start;
+  margin-top: 20px;
+}
+
+.rules-toc {
+  position: sticky;
+  top: 18px;
+  padding: 16px 14px;
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    rgba(8, 13, 11, 0.74);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 34px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.rules-toc-title {
+  margin: 0 0 10px;
+  padding: 0 8px;
+  color: #6ee7a8;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.rules-toc-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rules-toc-list a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  color: rgba(219, 230, 223, 0.72);
+  font-size: 0.83rem;
+  font-weight: 750;
+  line-height: 1.25;
+  text-decoration: none;
+  transition:
+    color 150ms ease,
+    background 150ms ease;
+}
+
+.rules-toc-index {
+  display: grid;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  color: rgba(219, 230, 223, 0.7);
+  font-size: 0.71rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  transition:
+    color 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease;
+}
+
+.rules-toc-list a:hover,
+.rules-toc-list a:focus-visible {
+  color: #f7fff9;
+  background: rgba(34, 197, 94, 0.1);
+  outline: none;
+}
+
+.rules-toc-list a:hover .rules-toc-index,
+.rules-toc-list a:focus-visible .rules-toc-index {
+  border-color: rgba(134, 239, 172, 0.44);
+  color: #eafff2;
+}
+
+.rules-toc-list a[aria-current="true"] {
+  color: #f7fff9;
+  background:
+    linear-gradient(135deg, rgba(34, 197, 94, 0.22), rgba(20, 184, 166, 0.12));
+}
+
+.rules-toc-list a[aria-current="true"] .rules-toc-index {
+  border-color: rgba(134, 239, 172, 0.6);
+  color: #04130a;
+  background:
+    linear-gradient(135deg, rgba(74, 222, 128, 0.95), rgba(20, 184, 166, 0.82));
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.3);
+}
+
+.rules-sections {
+  display: grid;
+  gap: 18px;
+}
+
+.rules-section {
+  scroll-margin-top: 96px;
+}
+
+.rules-section .section-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.rules-subgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+  align-items: start;
+}
+
+.rules-subsection {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  scroll-margin-top: 96px;
+}
+
+.rules-subsection h3 {
+  margin: 0;
+  color: #bbf7d0;
+  font-size: 0.94rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.rules-subsection:target {
+  border-radius: 8px;
+  outline: 1px solid rgba(134, 239, 172, 0.42);
+  outline-offset: 8px;
+}
+
+/* Give the section you jumped to a soft green edge so the anchor nav reads as a
+   real "you are here" instead of dumping you into an undifferentiated wall. */
+.rules-section:target .section-panel {
+  border-color: rgba(134, 239, 172, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 70px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(74, 222, 128, 0.18);
+}
+
+.rules-section .section-title {
+  color: #bbf7d0;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+}
+
+.rules-section p {
+  margin: 0;
+  color: rgba(228, 236, 231, 0.92);
+  font-size: 0.98rem;
+  line-height: 1.72;
+}
+
+/* The opening line of each section leads brighter and a touch larger, so the
+   eye lands on a summary before the supporting detail. */
+.rules-section p:first-of-type {
+  color: #eef6f1;
+  font-size: 1.05rem;
+}
+
+/* Bulleted rule lists: custom diamond markers in the brand gradient instead of
+   default grey discs, with roomier line spacing. */
+.rules-list {
+  display: grid;
+  gap: 11px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  color: rgba(228, 236, 231, 0.92);
+}
+
+.rules-list li {
+  position: relative;
+  padding-left: 26px;
+  font-size: 0.97rem;
+  line-height: 1.62;
+}
+
+.rules-list li::before {
+  position: absolute;
+  left: 4px;
+  top: 0.62em;
+  width: 8px;
+  height: 8px;
+  content: "";
+  border-radius: 2px;
+  background: linear-gradient(135deg, #4ade80, #22d3ee);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+/* Quick Start reads as a numbered path: each step gets a gradient number chip,
+   and the steps flow into two columns once there is room. */
+.rules-steps {
+  display: grid;
+  gap: 12px 26px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: rules-step;
+  color: rgba(228, 236, 231, 0.94);
+}
+
+.rules-steps li {
+  position: relative;
+  min-height: 26px;
+  padding: 3px 0 3px 40px;
+  counter-increment: rules-step;
+  font-size: 0.98rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.rules-steps li::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  content: counter(rules-step);
+  border: 1px solid rgba(134, 239, 172, 0.5);
+  border-radius: 999px;
+  color: #04130a;
+  background:
+    linear-gradient(135deg, rgba(74, 222, 128, 0.95), rgba(20, 184, 166, 0.82));
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.28);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+@media (min-width: 640px) {
+  .rules-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.rules-table {
+  color: #f8fafc;
+}
+
+.rules-table .mantine-Table-thead .mantine-Table-th {
+  color: #bbf7d0;
+}
+
+.rules-table .mantine-Table-thead .mantine-Table-th:not(:first-of-type),
+.rules-table-center {
+  text-align: center;
+}
+
+.rules-table .mantine-Table-td:first-of-type {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.rules-table .mantine-Table-tbody .mantine-Table-tr:hover {
+  background: rgba(74, 222, 128, 0.06);
+}
+
+.landing-rules-link-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .profile-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .user-verdict-breakdown--profile .user-record-strip {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .user-verdict-breakdown--profile .user-record-counts {
+    justify-content: center;
+  }
+
+  .user-verdict-breakdown--profile .user-verdict-rows {
+    grid-template-columns: 1fr;
+  }
+
+  /* Stack the ToC above the sections and drop the sticky behavior; it becomes a
+     tappable contents card at the top of the guide. */
+  .rules-layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .rules-toc {
+    position: static;
+  }
+
+  .rules-toc-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 8px;
+  }
+
+  .rules-subgrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-rules-topbar {
+    display: grid;
+    gap: 12px;
+  }
+
+  .dashboard-rules-topbar .rules-link {
+    margin-top: 0;
+  }
+
+  .competition-dashboard-grid,
+  .nearby-rivals-grid,
+  .challenge-prompt-grid,
+  .ticker-specialists-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .public-prediction-stats {
+    grid-template-columns: 1fr;
+  }
+}

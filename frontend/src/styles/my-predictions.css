@@ -1,0 +1,98 @@
+/* ---------------------------------------------------------------------------
+   My Predictions page — clean header, track-record summary, and the active /
+   settled prediction panels. The tables ride on the shared .prediction-table
+   chrome (centered columns, row hover, action-cell shine) inside a
+   section-magic-surface so the Edit control's border reacts to the spotlight.
+--------------------------------------------------------------------------- */
+.predictions-header {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 6px 2px 2px;
+}
+
+.predictions-header-eyebrow {
+  color: #6ee7a8;
+  font-size: clamp(0.74rem, 1.4vw, 0.84rem);
+  font-weight: 750;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.predictions-header-title.mantine-Title-root {
+  margin: 0;
+  font-size: clamp(2.1rem, 4.6vw, 3.3rem);
+  font-weight: 850;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.predictions-header-lead {
+  max-width: 620px;
+  color: rgba(219, 230, 223, 0.78);
+  font-size: clamp(1rem, 1.1vw, 1.12rem);
+  line-height: 1.55;
+}
+
+.predictions-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.predictions-summary-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 16px;
+  border: 1px solid rgba(187, 247, 208, 0.22);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
+    rgba(8, 13, 11, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+
+.predictions-summary-value {
+  color: #ffffff;
+  font-size: 1.06rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.predictions-summary-label {
+  color: rgba(219, 230, 223, 0.66);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.my-predictions-panel .section-title {
+  font-size: clamp(1.18rem, 1.7vw, 1.5rem);
+}
+
+.prediction-count-badge {
+  flex: 0 0 auto;
+}
+
+.prediction-locked-badge {
+  font-weight: 800;
+}
+
+.prediction-inline-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.prediction-card-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}

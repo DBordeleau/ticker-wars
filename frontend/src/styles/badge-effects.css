@@ -1,0 +1,316 @@
+/* ---------------------------------------------------------------------------
+   Badge VFX — opt-in per badge through getBadgeEffects() (badgeEffects.ts).
+   Effects are additive/composable: a badge can glow, sparkle, or both. To add a
+   new effect, define a `.badge-token--fx-<name>` block here and register it in
+   badgeEffects.ts. Prestige badges (Champion, Podium Finish) light up so they
+   read as trophies instead of flat pills.
+--------------------------------------------------------------------------- */
+
+/* Glow: a soft accent-colored aura that breathes behind the pill, plus a steady
+   ring so the badge stays special even at the dim phase of the pulse. */
+.badge-token--fx-glow {
+  border-color: color-mix(in srgb, var(--badge-accent) 70%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--badge-accent) 26%, transparent) inset,
+    0 0 18px color-mix(in srgb, var(--badge-accent) 30%, transparent);
+}
+
+.badge-token--fx-glow::before {
+  position: absolute;
+  inset: -4px;
+  /* z-index 0 keeps the bloom above opaque parent panels (so it stays visible in
+     the hover card) while the badge content (z-index 3) still sits on top. */
+  z-index: 0;
+  content: "";
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 50% 50%,
+      color-mix(in srgb, var(--badge-accent) 48%, transparent),
+      transparent 68%);
+  filter: blur(8px);
+  opacity: 0.5;
+  pointer-events: none;
+  will-change: opacity, transform;
+  animation: badge-glow-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes badge-glow-pulse {
+
+  0%,
+  100% {
+    opacity: 0.36;
+    transform: scale(0.96);
+  }
+
+  50% {
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
+}
+
+/* Sparkle: twinkling four-point stars scattered around the pill. Particle
+   positions/sizes/delays come from BADGE_SPARKLES via inline styles. */
+.badge-token-sparkles {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.badge-token-sparkle {
+  position: absolute;
+  display: block;
+  background: #ffffff;
+  clip-path: polygon(50% 0%,
+      60% 40%,
+      100% 50%,
+      60% 60%,
+      50% 100%,
+      40% 60%,
+      0% 50%,
+      40% 40%);
+  opacity: 0;
+  transform: scale(0.2) rotate(0deg);
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--badge-accent) 85%, #ffffff));
+  will-change: opacity, transform;
+  animation: badge-sparkle-twinkle 1.9s ease-in-out infinite;
+}
+
+@keyframes badge-sparkle-twinkle {
+
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.2) rotate(0deg);
+  }
+
+  45% {
+    opacity: 1;
+    transform: scale(1) rotate(35deg);
+  }
+
+  70% {
+    opacity: 0.25;
+    transform: scale(0.7) rotate(60deg);
+  }
+}
+
+/* Holo: an iridescent foil band that sweeps diagonally across the badge face,
+   brightening whatever it passes (screen blend) for a holographic-card sheen. */
+.badge-token--fx-holo {
+  border-color: rgba(226, 232, 240, 0.5);
+}
+
+.badge-token-holo {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg,
+      transparent 22%,
+      rgba(255, 92, 205, 0.5) 34%,
+      rgba(56, 189, 248, 0.5) 44%,
+      rgba(74, 222, 128, 0.5) 54%,
+      rgba(250, 204, 21, 0.5) 64%,
+      transparent 78%);
+  background-size: 250% 100%;
+  mix-blend-mode: screen;
+  opacity: 0.75;
+  will-change: background-position;
+  animation: badge-holo-shift 4s linear infinite;
+}
+
+@keyframes badge-holo-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Flame: warm tongues that lick up from the top edge and flicker on a stagger,
+   with a hot ember tint on the badge itself. */
+.badge-token--fx-flame {
+  border-color: rgba(251, 146, 60, 0.6);
+  box-shadow:
+    0 0 0 1px rgba(249, 115, 22, 0.22) inset,
+    0 0 18px rgba(249, 115, 22, 0.28);
+}
+
+.badge-token-flames {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.badge-token-flame {
+  position: absolute;
+  bottom: 55%;
+  background: linear-gradient(to top, #dc2626 0%, #f97316 38%, #fbbf24 70%, #fffbeb 100%);
+  clip-path: polygon(50% 0%, 88% 55%, 72% 100%, 28% 100%, 12% 55%);
+  filter: blur(1px);
+  transform-origin: 50% 100%;
+  opacity: 0.9;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+  animation: badge-flame-flicker 0.85s ease-in-out infinite;
+}
+
+@keyframes badge-flame-flicker {
+
+  0%,
+  100% {
+    transform: scaleY(1) translateY(0) skewX(0deg);
+    opacity: 0.85;
+  }
+
+  25% {
+    transform: scaleY(1.25) translateY(-3px) skewX(3deg);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scaleY(0.9) translateY(0) skewX(-3deg);
+    opacity: 0.65;
+  }
+
+  75% {
+    transform: scaleY(1.15) translateY(-2px) skewX(2deg);
+    opacity: 0.95;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-token--fx-glow::before {
+    animation: none;
+    opacity: 0.55;
+  }
+
+  .badge-token-sparkle {
+    animation: none;
+    opacity: 0.9;
+    transform: scale(0.9) rotate(30deg);
+  }
+
+  .badge-token-holo {
+    animation: none;
+    background-position: 50% 50%;
+  }
+
+  .badge-token-flame {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
+.badge-token--common {
+  --badge-accent: #94a3b8;
+}
+
+.badge-token--uncommon {
+  --badge-accent: #86efac;
+}
+
+.badge-token--rare {
+  --badge-accent: #38bdf8;
+}
+
+.badge-token--epic {
+  --badge-accent: #f0abfc;
+}
+
+.badge-token--legendary {
+  --badge-accent: #facc15;
+  box-shadow:
+    0 0 0 1px rgba(250, 204, 21, 0.18) inset,
+    0 0 22px rgba(250, 204, 21, 0.16);
+}
+
+.badge-token--featured {
+  transform: translateZ(0);
+}
+
+.badge-token--compact {
+  width: 34px;
+  justify-content: center;
+  padding: 7px;
+}
+
+.badge-token-icon {
+  display: inline-flex;
+  color: var(--badge-accent);
+}
+
+.badge-token-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.badge-token-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.badge-token-name,
+.user-identity-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge-token-name {
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.user-identity-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.user-identity-level {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border: 1px solid rgba(134, 239, 172, 0.34);
+  border-radius: 999px;
+  color: #bbf7d0;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.user-identity-meta {
+  min-height: 24px;
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.user-identity-featured-badge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.entity-hover-user-card .user-identity-featured-badge .badge-token {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+  padding: 8px 11px;
+  border-radius: 8px;
+}
+
+.entity-hover-user-card .user-identity-featured-badge .badge-token-copy {
+  max-width: 92px;
+}
+
+.podium-hover-target {
+  display: block;
+}
