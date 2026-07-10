@@ -40,7 +40,7 @@ flowchart LR
     F --> G["dashboard projection tables"]
     G --> H["React frontend"]
     I["user predictions"]
-    J --> F
+    I --> F
 ```
 
 ## Modeling Approach
