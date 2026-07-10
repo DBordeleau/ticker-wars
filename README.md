@@ -85,6 +85,7 @@ Schema documentation lives in [docs/database-schema.md](docs/database-schema.md)
 
 ## What I Learned
 
+- It is surprisingly easy and cheap (free) to automate a ML training pipeline with Github Actions.
 - Forecasting projects need durable prediction records before they need fancy models.
 - Evaluation windows, prediction horizons, and target-date resolution are easy to blur unless they
   are represented explicitly in the schema.
