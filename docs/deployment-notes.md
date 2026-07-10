@@ -6,11 +6,11 @@ deployment manual.
 
 ## Public Repository Strategy
 
-The final public repository is intended to be `ticker-wars`. The private operational repository can
-remain attached to production Supabase, Vercel, and scheduled GitHub Actions unless there is a
-deliberate reason to move automation public.
+The final public repository is intended to be `ticker-wars`. The public edition keeps validation
+CI only. Production Supabase, Vercel, scheduled pipeline automation, and migration runbooks should
+remain private unless there is a deliberate reason to move operations public.
 
-If publishing a fresh public repo, add public-safe CI for:
+The public CI should cover:
 
 - Python tests
 - Ruff linting
@@ -19,10 +19,12 @@ If publishing a fresh public repo, add public-safe CI for:
 
 ## GitHub Actions
 
-The private repo currently includes:
+The public repo includes `.github/workflows/ci.yml`, which needs no production secrets.
 
-- `daily-pipeline.yml`: scheduled/manual backend pipeline run.
-- `live-price-refresh.yml`: manual fallback repair workflow for live price refreshes.
+The private operational project may keep separate workflows for:
+
+- scheduled/manual backend pipeline runs
+- manual fallback repair workflow for live price refreshes
 
 Secrets such as Supabase service credentials, LLM keys, Hugging Face tokens, and deployment tokens
 must stay in private GitHub/Vercel/Supabase secret stores.
@@ -57,27 +59,9 @@ npx supabase@latest functions deploy refresh-live-prices --project-ref <project-
 ```
 
 The function is configured in `supabase/config.toml` with JWT verification enabled. Cron callers
-should use a service-role JWT stored in Supabase Vault or another private secret store.
-
-Before applying the live-price schedule migration, enable Vault and create placeholder-backed
-secrets in the Supabase SQL editor:
-
-```sql
-create extension if not exists supabase_vault with schema vault;
-
-select vault.create_secret(
-  'https://<project-ref>.supabase.co/functions/v1/refresh-live-prices',
-  'live_price_refresh_url'
-);
-
-select vault.create_secret(
-  '<supabase-service-role-key>',
-  'live_price_refresh_service_role_key'
-);
-```
-
-The scheduled migration runs the function during a broad weekday UTC window. The Edge Function
-itself enforces exact NYSE trading days and regular market hours.
+should use private Supabase/Vault-managed credentials. The private schedule should run the
+function during a broad weekday UTC window. The Edge Function itself enforces exact NYSE trading
+days and regular market hours.
 
 ## Publication Safety
 

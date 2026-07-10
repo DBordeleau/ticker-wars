@@ -17,8 +17,8 @@ tests, curated schema/docs, and a recruiter-facing README.
   local planning notes, or operational details that do not help reviewers.
 - Keep production Supabase and Vercel automation attached to the private repo
   unless there is a deliberate reason to move operations public.
-- Add public-safe CI to `ticker-wars` for Python tests, frontend tests, and
-  frontend build checks.
+- Keep public-safe CI in `ticker-wars` for Python tests, Ruff linting,
+  frontend tests, and frontend build checks.
 
 ## No-Regression Rule
 
@@ -62,7 +62,8 @@ states otherwise. Preserve:
 - Generated runtime exports unless intentionally sanitized.
 - Local planning archives that are not useful to reviewers.
 - Secret scanner reports that contain sensitive paths or findings.
-- Historical migrations if the public repo replaces them with a curated schema.
+- Historical migrations, because the public repo replaces them with a curated
+  schema.
 
 ## PR Sequence
 
