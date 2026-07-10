@@ -244,7 +244,7 @@ async function fetchSparkRowsChunk(tickers: string[]) {
     const response = await fetch(endpoint, {
       signal: controller.signal,
       headers: {
-        "User-Agent": "next-day-price-live-refresh/1.0",
+        "User-Agent": "ticker-wars-live-refresh/1.0",
       },
     });
     if (!response.ok) {

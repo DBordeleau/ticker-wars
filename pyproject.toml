@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "next-day-price"
+name = "ticker-wars"
 version = "0.1.0"
 description = "Multi-horizon stock prediction pipeline and Ticker Wars dashboard."
 readme = "README.md"
