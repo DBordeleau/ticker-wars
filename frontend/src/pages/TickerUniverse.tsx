@@ -226,11 +226,6 @@ function TickerCard({
               >
                 {row.ticker}
               </Text>
-              {row.companyName ? (
-                <Text component="span" className="ticker-universe-company">
-                  {row.companyName}
-                </Text>
-              ) : null}
             </Group>
           </EntityHoverCard>
           <div className="ticker-universe-move-block">

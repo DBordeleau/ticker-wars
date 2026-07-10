@@ -29,15 +29,6 @@ export function tickerMatchesSearch(
   return normalizedTicker.includes(needle) || companyName.includes(needle);
 }
 
-export function formatTickerSearchLabel(
-  ticker: string,
-  companyNames: TickerCompanyNames,
-): string {
-  const normalizedTicker = normalizeTicker(ticker);
-  const companyName = companyNames.get(normalizedTicker);
-  return companyName ? `${normalizedTicker} - ${companyName}` : normalizedTicker;
-}
-
 function normalizeTicker(value: string): string {
   return value.trim().toUpperCase();
 }

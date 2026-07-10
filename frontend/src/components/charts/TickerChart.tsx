@@ -1,4 +1,4 @@
-import { Group, Select, Text } from "@mantine/core";
+import { Group, Select, Text, type SelectProps } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -16,7 +16,7 @@ import { resolveTickerDisplayPrice } from "../../api/livePrices";
 import { useLiveTickerPrice } from "../../hooks/useLiveTickerPrice";
 import { useTickerCloseSnapshot } from "../../hooks/useTickerCloseSnapshot";
 import { useTickerPriceSeries } from "../../hooks/useTickerPriceSeries";
-import { formatTickerSearchLabel } from "../../utils/tickerSearch";
+import { tickerMatchesSearch } from "../../utils/tickerSearch";
 import SectionPanel from "../layout/SectionPanel";
 import PredictionHorizonSelector from "../predictions/PredictionHorizonSelector";
 import ChartTooltip, { type ChartTooltipItem } from "./ChartTooltip";
@@ -73,9 +73,33 @@ export default function TickerChart({
     () =>
       tickers.map((ticker) => ({
         value: ticker,
-        label: formatTickerSearchLabel(ticker, tickerCompanyNames),
+        label: ticker,
       })),
-    [tickerCompanyNames, tickers],
+    [tickers],
+  );
+  const tickerSelectFilter = useMemo<NonNullable<SelectProps["filter"]>>(
+    () =>
+      ({ options, search, limit }) => {
+        const filtered = [];
+        for (const option of options) {
+          if ("items" in option) {
+            const items = option.items.filter((item) =>
+              tickerMatchesSearch(item.value, search, tickerCompanyNames),
+            );
+            if (items.length > 0) {
+              filtered.push({ ...option, items });
+            }
+          } else if (tickerMatchesSearch(option.value, search, tickerCompanyNames)) {
+            filtered.push(option);
+          }
+
+          if (filtered.length >= limit) {
+            break;
+          }
+        }
+        return filtered;
+      },
+    [tickerCompanyNames],
   );
   const [selectedHorizon, setSelectedHorizon] = useState<PredictionHorizon>("1w");
   const priceSeries = useTickerPriceSeries(normalizedTicker);
@@ -201,6 +225,7 @@ export default function TickerChart({
               onChange={onTickerChange}
               placeholder="Select ticker"
               searchable
+              filter={tickerSelectFilter}
               aria-label="Select ticker for chart by symbol or company name"
             />
           ) : null}

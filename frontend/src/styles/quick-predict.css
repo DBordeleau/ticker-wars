@@ -145,7 +145,7 @@
 
 .quick-predict-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
   gap: 8px;
   max-height: 308px;
   overflow-y: auto;
@@ -200,24 +200,6 @@
   font-size: 0.86rem;
   font-weight: 850;
   letter-spacing: 0.01em;
-}
-
-.quick-predict-ticker-copy {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  max-width: 100%;
-  text-align: center;
-}
-
-.quick-predict-ticker-name {
-  overflow: hidden;
-  color: rgba(219, 230, 223, 0.64);
-  font-size: 0.68rem;
-  font-weight: 720;
-  line-height: 1.16;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .quick-predict-status {

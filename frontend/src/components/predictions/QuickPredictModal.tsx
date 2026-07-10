@@ -199,14 +199,7 @@ function QuickPredictContent({ onClose }: { onClose: () => void }) {
                       onClick={() => setSelected(ticker)}
                     >
                       <TickerLogoMark ticker={ticker} logoUrl={logoByTicker.get(ticker)} size="md" />
-                      <span className="quick-predict-ticker-copy">
-                        <span className="quick-predict-ticker-symbol">{ticker}</span>
-                        {companyNameByTicker.get(ticker) ? (
-                          <span className="quick-predict-ticker-name">
-                            {companyNameByTicker.get(ticker)}
-                          </span>
-                        ) : null}
-                      </span>
+                      <span className="quick-predict-ticker-symbol">{ticker}</span>
                     </button>
                   ))}
                 </div>
