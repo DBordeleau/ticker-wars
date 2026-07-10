@@ -32,15 +32,15 @@ class CliSmokeTest(unittest.TestCase):
         self.assertNotIn("train-predict", help_text)
 
     def test_backfill_placeholder_runs(self) -> None:
-        with patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=None):
+        with patch("pipeline.commands.ingestion.SupabaseDatabase.from_settings", return_value=None):
             self.assertEqual(main(["backfill", "--start", "2020-01-01"]), 0)
 
     def test_ingest_fundamentals_runs_without_supabase(self) -> None:
-        with patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=None):
+        with patch("pipeline.commands.ingestion.SupabaseDatabase.from_settings", return_value=None):
             self.assertEqual(main(["ingest-fundamentals"]), 0)
 
     def test_ingest_logos_runs_without_supabase(self) -> None:
-        with patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=None):
+        with patch("pipeline.commands.ingestion.SupabaseDatabase.from_settings", return_value=None):
             self.assertEqual(main(["ingest-logos"]), 0)
 
     def test_predict_horizons_command_runs_prediction_step(self) -> None:
@@ -111,7 +111,9 @@ class CliSmokeTest(unittest.TestCase):
 
         fake_database = FakeDatabase()
 
-        with patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=fake_database):
+        with patch(
+            "pipeline.commands.ingestion.SupabaseDatabase.from_settings", return_value=fake_database
+        ):
             self.assertEqual(run_prune_engagement_events(seen_days=90), 0)
 
         self.assertIsNotNone(fake_database.seen_before)
@@ -180,8 +182,14 @@ class CliSmokeTest(unittest.TestCase):
                 raise AssertionError("build-features should not read durable feature state")
 
         with (
-            patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=FakeDatabase()),
-            patch("pipeline.cli.build_feature_rows", return_value=[{"ticker": "AAPL"}]) as build,
+            patch(
+                "pipeline.commands.ingestion.SupabaseDatabase.from_settings",
+                return_value=FakeDatabase(),
+            ),
+            patch(
+                "pipeline.commands.ingestion.build_feature_rows",
+                return_value=[{"ticker": "AAPL"}],
+            ) as build,
         ):
             self.assertEqual(run_build_features(), 0)
 
@@ -213,12 +221,21 @@ class CliSmokeTest(unittest.TestCase):
         )
 
         with (
-            patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=fake_database),
-            patch("pipeline.cli.build_feature_rows", return_value=feature_rows) as build,
-            patch("pipeline.cli.train_and_predict", return_value=training_result) as train,
-            patch("pipeline.cli.generate_warren_buffbot_predictions", return_value=[]),
-            patch("pipeline.cli.generate_timesfm_predictions", return_value=[]),
-            patch("pipeline.cli.generate_chronos_predictions", return_value=[]),
+            patch(
+                "pipeline.commands.predictions.SupabaseDatabase.from_settings",
+                return_value=fake_database,
+            ),
+            patch(
+                "pipeline.commands.predictions.build_feature_rows", return_value=feature_rows
+            ) as build,
+            patch(
+                "pipeline.commands.predictions.train_and_predict", return_value=training_result
+            ) as train,
+            patch(
+                "pipeline.commands.predictions.generate_warren_buffbot_predictions", return_value=[]
+            ),
+            patch("pipeline.commands.predictions.generate_timesfm_predictions", return_value=[]),
+            patch("pipeline.commands.predictions.generate_chronos_predictions", return_value=[]),
         ):
             self.assertEqual(run_predict_horizons(), 0)
 
@@ -250,14 +267,19 @@ class CliSmokeTest(unittest.TestCase):
         ]
 
         with (
-            patch("pipeline.cli.SupabaseDatabase.from_settings", return_value=fake_database),
             patch(
-                "pipeline.cli._seed_fetch_start_dates",
+                "pipeline.commands.predictions.SupabaseDatabase.from_settings",
+                return_value=fake_database,
+            ),
+            patch(
+                "pipeline.commands.predictions.seed_fetch_start_dates",
                 return_value=("2025-01-01", "2024-01-01"),
             ),
-            patch("pipeline.cli.build_feature_rows", return_value=built_rows) as build,
             patch(
-                "pipeline.cli.seed_predictions_for_target_window",
+                "pipeline.commands.predictions.build_feature_rows", return_value=built_rows
+            ) as build,
+            patch(
+                "pipeline.commands.predictions.seed_predictions_for_target_window",
                 return_value=SimpleNamespace(prediction_rows=[], skipped=[]),
             ) as seed,
         ):
@@ -297,7 +319,7 @@ class CliSmokeTest(unittest.TestCase):
             {"ticker": "AAPL", "date": "2026-07-02"},
         ]
 
-        with patch("pipeline.cli.build_feature_rows", return_value=built_rows):
+        with patch("pipeline.commands.predictions.build_feature_rows", return_value=built_rows):
             rows = _bounded_feature_rows_from_prices(
                 [{"ticker": "AAPL"}],
                 start_date="2025-01-01",
