@@ -181,7 +181,7 @@ function statusCopy(item: OnDeckItem): { label: string; color: string } {
     };
   }
   if (item.status === "long_progress") {
-    return { label: "In progress", color: "teal" };
+    return { label: "Active", color: "gray" };
   }
   return { label: "Active", color: "gray" };
 }
