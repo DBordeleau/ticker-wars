@@ -1,5 +1,8 @@
 .env
 .env.*
+.env.local
+*.local
+*.log
 test/*
 
 __pycache__/
@@ -13,6 +16,8 @@ node_modules/
 frontend/node_modules/
 frontend/build/
 frontend/.env.local
+frontend/coverage/
+coverage/
 
 data_exports/*.json
 !data_exports/.gitkeep
