@@ -1,9 +1,8 @@
 -- Ticker Wars public reference schema.
 --
 -- This file documents the intended current database shape for portfolio review.
--- The production database is still managed by the historical migrations in
--- supabase/migrations. Use those migrations for operational deployments until
--- the public edition intentionally replaces them with a single baseline schema.
+-- The public edition presents this curated baseline instead of the private
+-- iterative migration history.
 
 create extension if not exists pgcrypto;
 create extension if not exists citext;

@@ -4,11 +4,10 @@ Ticker Wars uses Supabase Postgres as the contract between the Python
 prediction pipeline, the React dashboard, and the authenticated user-prediction
 experience.
 
-This document is the reviewer-facing map of the schema. The current operational
-database is still represented by the historical migrations in
-`supabase/migrations`. The curated reference shape is captured in
-`supabase/schema.sql` so the public portfolio repo can explain the final design
-without asking reviewers to read every iterative migration.
+This document is the reviewer-facing map of the schema. The public portfolio
+edition uses `supabase/schema.sql` as the curated reference shape so reviewers
+can understand the final design without reading every iterative migration from
+the private development history.
 
 ## Design Goals
 
@@ -78,9 +77,7 @@ into explicit columns so the app does not need to keep large raw JSON payloads.
 `ticker_assets`
 
 Logo cache keyed by ticker. The pipeline and frontend currently use this table,
-but the historical migration trail does not clearly contain a dedicated create
-table migration for it. Before the final public packaging step, either add a
-small migration for this table or rely on the curated baseline schema.
+and the public baseline schema includes it explicitly.
 
 `predictions`
 
@@ -244,16 +241,14 @@ The intended boundary is:
 
 ## Publication Notes
 
-For the public `ticker-wars` repo, prefer presenting `supabase/schema.sql` and
-this document as the readable database story. The existing migration history is
-valuable operational history, but it is noisy for reviewers because it includes
+For the public `ticker-wars` repo, `supabase/schema.sql` and this document are
+the readable database story. The private migration history is valuable
+operational history, but it is noisy for reviewers because it includes
 backfills, privacy toggles, projection rewrites, and iterative competition
 features.
 
 Before final public packaging:
 
-- Decide whether to omit historical migrations from the public edition.
-- Add or verify a migration/baseline entry for `ticker_assets`.
 - Confirm any sample data is synthetic or sanitized.
 - Confirm no Supabase service-role keys, project secrets, or real user data are
   present in the public tree.
