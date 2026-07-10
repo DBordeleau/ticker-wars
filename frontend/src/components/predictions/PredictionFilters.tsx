@@ -23,10 +23,10 @@ export default function PredictionFilters({
       {showTickerFilter ? (
         <TextInput
           leftSection={<FiSearch />}
-          placeholder="Search ticker"
+          placeholder="Search ticker or company"
           value={tickerQuery}
           onChange={(event) => onTickerQueryChange(event.currentTarget.value)}
-          aria-label="Search latest predictions by ticker"
+          aria-label="Search latest predictions by ticker or company name"
         />
       ) : null}
       <Select

@@ -16,6 +16,7 @@ import { resolveTickerDisplayPrice } from "../../api/livePrices";
 import { useLiveTickerPrice } from "../../hooks/useLiveTickerPrice";
 import { useTickerCloseSnapshot } from "../../hooks/useTickerCloseSnapshot";
 import { useTickerPriceSeries } from "../../hooks/useTickerPriceSeries";
+import { formatTickerSearchLabel } from "../../utils/tickerSearch";
 import SectionPanel from "../layout/SectionPanel";
 import PredictionHorizonSelector from "../predictions/PredictionHorizonSelector";
 import ChartTooltip, { type ChartTooltipItem } from "./ChartTooltip";
@@ -47,6 +48,7 @@ export default function TickerChart({
   selectedTicker,
   onTickerChange,
   loading,
+  tickerCompanyNames = emptyTickerCompanyNames,
   showTickerSelect = true,
   showDirectionalAgreement = false,
 }: TickerChartProps) {
@@ -66,6 +68,14 @@ export default function TickerChart({
   const tickers = useMemo(
     () => Array.from(new Set(predictions.map((row) => row.ticker))).sort(),
     [predictions],
+  );
+  const tickerOptions = useMemo(
+    () =>
+      tickers.map((ticker) => ({
+        value: ticker,
+        label: formatTickerSearchLabel(ticker, tickerCompanyNames),
+      })),
+    [tickerCompanyNames, tickers],
   );
   const [selectedHorizon, setSelectedHorizon] = useState<PredictionHorizon>("1w");
   const priceSeries = useTickerPriceSeries(normalizedTicker);
@@ -186,12 +196,12 @@ export default function TickerChart({
           />
           {showTickerSelect ? (
             <Select
-              data={tickers}
+              data={tickerOptions}
               value={selectedTicker}
               onChange={onTickerChange}
               placeholder="Select ticker"
               searchable
-              aria-label="Select ticker for chart"
+              aria-label="Select ticker for chart by symbol or company name"
             />
           ) : null}
         </Group>
@@ -311,3 +321,5 @@ export default function TickerChart({
     </SectionPanel>
   );
 }
+
+const emptyTickerCompanyNames = new Map<string, string>();

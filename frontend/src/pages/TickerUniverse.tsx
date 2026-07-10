@@ -18,11 +18,13 @@ import PredictionHorizonSelector from "../components/predictions/PredictionHoriz
 import { useDashboardData } from "../hooks/useDashboardData";
 import { useTickerPriceChanges } from "../hooks/useTickerPriceChanges";
 import { formatSignedPercent } from "../utils/format";
+import { buildTickerCompanyNameMap, tickerMatchesSearch } from "../utils/tickerSearch";
 
 type SortKey = "ticker" | "model" | "user" | "price";
 
 type TickerUniverseRow = {
   ticker: string;
+  companyName: string | null;
   logoUrl: string | null;
   close: number | null;
   priceChange: number | null;
@@ -44,6 +46,7 @@ export default function TickerUniverse() {
   // price move (independent of horizon).
   const rows = useMemo<TickerUniverseRow[]>(() => {
     const logoByTicker = new Map(tickerAssets.map((asset) => [asset.ticker, asset.logo_data_url]));
+    const companyNameByTicker = buildTickerCompanyNameMap(tickerAssets);
     const byTicker = new Map<string, LatestPrediction[]>();
     for (const prediction of latestPredictions) {
       const existing = byTicker.get(prediction.ticker);
@@ -80,6 +83,7 @@ export default function TickerUniverse() {
 
       return {
         ticker,
+        companyName: companyNameByTicker.get(ticker) ?? null,
         logoUrl: logoByTicker.get(ticker) ?? null,
         close: snapshot?.close ?? predictions[0]?.reference_close ?? null,
         priceChange,
@@ -90,9 +94,13 @@ export default function TickerUniverse() {
   }, [latestPredictions, latestUserPredictions, tickerAssets, horizon, priceChanges.data]);
 
   const visibleRows = useMemo(() => {
-    const search = query.trim().toUpperCase();
+    const companyNameByTicker = new Map(
+      rows
+        .filter((row) => row.companyName)
+        .map((row) => [row.ticker, row.companyName as string]),
+    );
     return rows
-      .filter((row) => (search ? row.ticker.includes(search) : true))
+      .filter((row) => tickerMatchesSearch(row.ticker, query, companyNameByTicker))
       .sort((a, b) => {
         if (sort === "ticker") {
           return a.ticker.localeCompare(b.ticker);
@@ -134,10 +142,10 @@ export default function TickerUniverse() {
             <TextInput
               className="ticker-universe-search"
               leftSection={<FiSearch />}
-              placeholder="Search ticker"
+              placeholder="Search ticker or company"
               value={query}
               onChange={(event) => setQuery(event.currentTarget.value)}
-              aria-label="Search tickers by symbol"
+              aria-label="Search tickers by symbol or company name"
             />
             <Text className="ticker-universe-count">{countLabel}</Text>
           </div>
@@ -218,6 +226,11 @@ function TickerCard({
               >
                 {row.ticker}
               </Text>
+              {row.companyName ? (
+                <Text component="span" className="ticker-universe-company">
+                  {row.companyName}
+                </Text>
+              ) : null}
             </Group>
           </EntityHoverCard>
           <div className="ticker-universe-move-block">

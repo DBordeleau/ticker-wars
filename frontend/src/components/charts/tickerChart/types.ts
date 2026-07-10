@@ -1,4 +1,5 @@
 import type { LatestPrediction, MetricHorizon, TickerHistoryRow } from "../../../api/dashboardData";
+import type { TickerCompanyNames } from "../../../utils/tickerSearch";
 import type { ChartTooltipItem } from "../ChartTooltip";
 
 export type PredictionHorizon = Exclude<MetricHorizon, "all">;
@@ -9,6 +10,7 @@ export type TickerChartProps = {
   selectedTicker: string | null;
   onTickerChange: (ticker: string | null) => void;
   loading: boolean;
+  tickerCompanyNames?: TickerCompanyNames;
   showTickerSelect?: boolean;
   showDirectionalAgreement?: boolean;
 };

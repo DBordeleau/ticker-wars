@@ -15,7 +15,7 @@ import {
   fetchUserLeaderboard,
   fetchUserTickerLeaderboard,
 } from "./queries";
-import { isRecord, normalizeDashboardBundle, normalizeRunMetadata } from "./normalizers";
+import { isRecord, normalizeDashboardBundle, normalizeRunMetadata, normalizeTickerAssetRow } from "./normalizers";
 import type {
   DashboardData,
   LatestPrediction,
@@ -108,7 +108,7 @@ async function fetchDashboardSnapshotData(): Promise<DashboardData | null> {
     if (!isFreshDashboardSnapshot(metadata)) {
       return null;
     }
-    const resolvedTickerAssets = tickerAssets ?? (await fetchSnapshotTickerAssetsFallback());
+    const resolvedTickerAssets = await withTickerAssetCompanyFallback(tickerAssets);
 
     return normalizeDashboardBundle(
       {
@@ -139,8 +139,11 @@ async function fetchDashboardBundleFromRpc(): Promise<DashboardData | null> {
   }
 
   const dashboardData = normalizeDashboardBundle(data, isSupabaseConfigured);
-  if (dashboardData.tickerAssets.length === 0) {
-    dashboardData.tickerAssets = await fetchSnapshotTickerAssetsFallback();
+  if (dashboardData.tickerAssets.length === 0 || !hasTickerAssetCompanyNames(dashboardData.tickerAssets)) {
+    dashboardData.tickerAssets = mergeTickerAssets(
+      dashboardData.tickerAssets,
+      await fetchSnapshotTickerAssetsFallback(),
+    );
   }
   return dashboardData;
 }
@@ -174,6 +177,47 @@ async function fetchSnapshotTickerAssetsFallback(): Promise<TickerAsset[]> {
   } catch {
     return [];
   }
+}
+
+async function withTickerAssetCompanyFallback(
+  tickerAssets: Partial<TickerAsset>[] | null,
+): Promise<Partial<TickerAsset>[]> {
+  if (tickerAssets && hasTickerAssetCompanyNames(tickerAssets)) {
+    return tickerAssets;
+  }
+  return mergeTickerAssets(tickerAssets ?? [], await fetchSnapshotTickerAssetsFallback());
+}
+
+function hasTickerAssetCompanyNames(tickerAssets: Partial<TickerAsset>[]): boolean {
+  return tickerAssets.some((asset) => typeof asset.company_name === "string" && asset.company_name.trim());
+}
+
+function mergeTickerAssets(
+  primary: Partial<TickerAsset>[],
+  fallback: Partial<TickerAsset>[],
+): TickerAsset[] {
+  if (primary.length === 0) {
+    return fallback.map(normalizeTickerAssetRow).filter((asset) => asset.ticker);
+  }
+  const fallbackByTicker = new Map(
+    fallback.map((asset) => [asset.ticker?.trim().toUpperCase(), asset]),
+  );
+  const merged: Partial<TickerAsset>[] = primary.map((asset) => {
+    const fallbackAsset = fallbackByTicker.get(asset.ticker?.trim().toUpperCase());
+    return {
+      ...asset,
+      company_name: asset.company_name ?? fallbackAsset?.company_name ?? null,
+      logo_data_url: asset.logo_data_url ?? fallbackAsset?.logo_data_url ?? null,
+    };
+  });
+  const primaryTickers = new Set(primary.map((asset) => asset.ticker?.trim().toUpperCase()));
+  fallback.forEach((asset) => {
+    const ticker = asset.ticker?.trim().toUpperCase();
+    if (ticker && !primaryTickers.has(ticker)) {
+      merged.push(asset);
+    }
+  });
+  return merged.map(normalizeTickerAssetRow).filter((asset) => asset.ticker);
 }
 
 function isFreshDashboardSnapshot(metadata: RunMetadata | null): boolean {

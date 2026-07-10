@@ -286,9 +286,75 @@ export async function fetchTickerAssets(): Promise<TickerAsset[]> {
     throw error;
   }
 
-  return (data ?? [])
+  const companyNames = await fetchTickerCompanyNames();
+
+  const assetByTicker = new Map<string, TickerAsset>();
+  (data ?? [])
     .map(normalizeTickerAssetRow)
+    .forEach((asset) => assetByTicker.set(asset.ticker, {
+      ...asset,
+      company_name: asset.company_name ?? companyNames.get(asset.ticker) ?? null,
+    }));
+  companyNames.forEach((companyName, ticker) => {
+    if (!assetByTicker.has(ticker)) {
+      assetByTicker.set(ticker, {
+        ticker,
+        logo_data_url: null,
+        company_name: companyName,
+      });
+    }
+  });
+
+  return Array.from(assetByTicker.values())
     .filter((row) => !isRemovedTicker(row.ticker));
+}
+
+async function fetchTickerCompanyNames(): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  if (!supabase) {
+    return names;
+  }
+
+  let start = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("fundamentals")
+      .select("ticker,long_name,short_name,display_name,as_of_date")
+      .order("ticker")
+      .order("as_of_date", { ascending: false })
+      .range(start, start + dashboardPageSize - 1);
+
+    if (error) {
+      if (
+        error.code === "42P01" ||
+        error.message.includes("fundamentals") ||
+        isMissingFundamentalsProfileColumnError(error)
+      ) {
+        return names;
+      }
+      throw error;
+    }
+
+    const batch = data ?? [];
+    for (const row of batch) {
+      const ticker = cleanString((row as Record<string, unknown>).ticker)?.toUpperCase();
+      if (!ticker || names.has(ticker)) {
+        continue;
+      }
+      const companyName =
+        cleanString((row as Record<string, unknown>).long_name) ??
+        cleanString((row as Record<string, unknown>).short_name) ??
+        cleanString((row as Record<string, unknown>).display_name);
+      if (companyName) {
+        names.set(ticker, companyName);
+      }
+    }
+
+    if (batch.length < dashboardPageSize) {
+      return names;
+    }
+    start += dashboardPageSize;
+  }
 }
 
 export async function fetchTickerCloseSnapshot(ticker: string): Promise<TickerCloseSnapshot | null> {

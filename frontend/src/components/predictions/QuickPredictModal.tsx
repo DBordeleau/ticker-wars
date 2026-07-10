@@ -7,6 +7,7 @@ import { FiArrowLeft, FiSearch, FiX } from "react-icons/fi";
 import { TbTargetArrow } from "react-icons/tb";
 import { isRemovedTicker } from "../../api/tickerUniverse";
 import { useDashboardData } from "../../hooks/useDashboardData";
+import { buildTickerCompanyNameMap, tickerMatchesSearch } from "../../utils/tickerSearch";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
 import SwipeSheet from "../layout/SwipeSheet";
 import TickerLogoMark from "../tickers/TickerLogoMark";
@@ -79,6 +80,10 @@ function QuickPredictContent({ onClose }: { onClose: () => void }) {
     tickerAssets.forEach((asset) => map.set(asset.ticker, asset.logo_data_url));
     return map;
   }, [tickerAssets]);
+  const companyNameByTicker = useMemo(
+    () => buildTickerCompanyNameMap(tickerAssets),
+    [tickerAssets],
+  );
 
   // Only tickers with at least one valid dashboard horizon target can anchor a
   // prediction, so those are the only ones we offer.
@@ -93,12 +98,8 @@ function QuickPredictContent({ onClose }: { onClose: () => void }) {
   }, [latestPredictions]);
 
   const filtered = useMemo(() => {
-    const needle = query.trim().toUpperCase();
-    if (!needle) {
-      return tickers;
-    }
-    return tickers.filter((ticker) => ticker.includes(needle));
-  }, [query, tickers]);
+    return tickers.filter((ticker) => tickerMatchesSearch(ticker, query, companyNameByTicker));
+  }, [companyNameByTicker, query, tickers]);
 
   return (
     <MagicHoverSurface className="prediction-magic-surface quick-predict-surface">
@@ -166,9 +167,9 @@ function QuickPredictContent({ onClose }: { onClose: () => void }) {
                 className="quick-predict-search"
                 value={query}
                 onChange={(event) => setQuery(event.currentTarget.value)}
-                placeholder="Search ticker"
+                placeholder="Search ticker or company"
                 leftSection={<FiSearch />}
-                aria-label="Search tickers"
+                aria-label="Search tickers by symbol or company name"
                 autoFocus
               />
               {tickers.length === 0 ? (
@@ -198,7 +199,14 @@ function QuickPredictContent({ onClose }: { onClose: () => void }) {
                       onClick={() => setSelected(ticker)}
                     >
                       <TickerLogoMark ticker={ticker} logoUrl={logoByTicker.get(ticker)} size="md" />
-                      <span className="quick-predict-ticker-symbol">{ticker}</span>
+                      <span className="quick-predict-ticker-copy">
+                        <span className="quick-predict-ticker-symbol">{ticker}</span>
+                        {companyNameByTicker.get(ticker) ? (
+                          <span className="quick-predict-ticker-name">
+                            {companyNameByTicker.get(ticker)}
+                          </span>
+                        ) : null}
+                      </span>
                     </button>
                   ))}
                 </div>

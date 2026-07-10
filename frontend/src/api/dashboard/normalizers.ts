@@ -165,9 +165,18 @@ export function normalizeTickerHistoryRow(row: Partial<TickerHistoryRow>): Ticke
 }
 
 export function normalizeTickerAssetRow(row: Partial<TickerAsset>): TickerAsset {
+  const record = row as Record<string, unknown>;
+  const ticker = cleanString(row.ticker) ?? "";
   return {
-    ticker: cleanString(row.ticker) ?? "",
+    ticker,
     logo_data_url: cleanDataUrl(row.logo_data_url),
+    company_name:
+      cleanString(row.company_name) ??
+      cleanString(record.long_name) ??
+      cleanString(record.short_name) ??
+      cleanString(record.display_name) ??
+      fallbackTickerProfiles[ticker]?.company_name ??
+      null,
   };
 }
 

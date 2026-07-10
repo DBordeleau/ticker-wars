@@ -397,6 +397,7 @@ export const fallbackTickerCloseSnapshots: Record<string, TickerCloseSnapshot> =
 const tickerAssets = Object.values(fallbackTickerProfiles).map((profile) => ({
   ticker: profile.ticker,
   logo_data_url: profile.logo_data_url,
+  company_name: profile.company_name,
 }));
 
 const modelMetrics: ModelMetricRow[] = leaderboard

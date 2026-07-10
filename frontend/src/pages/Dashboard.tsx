@@ -18,6 +18,7 @@ import MetricStrip from "../components/metrics/MetricStrip";
 import PredictionTable from "../components/predictions/PredictionTable";
 import UserPredictionTable from "../components/predictions/UserPredictionTable";
 import { useDashboardData } from "../hooks/useDashboardData";
+import { buildTickerCompanyNameMap } from "../utils/tickerSearch";
 
 const MotionPresence = AnimatePresence as unknown as ComponentType<{
   children: ReactNode;
@@ -38,6 +39,10 @@ export default function Dashboard() {
       Object.fromEntries(
         dashboard.tickerAssets.map((asset) => [asset.ticker, asset.logo_data_url]),
       ),
+    [dashboard.tickerAssets],
+  );
+  const tickerCompanyNames = useMemo(
+    () => buildTickerCompanyNameMap(dashboard.tickerAssets),
     [dashboard.tickerAssets],
   );
 
@@ -85,6 +90,7 @@ export default function Dashboard() {
           selectedTicker={dashboard.selectedTicker}
           onTickerChange={dashboard.setSelectedTicker}
           loading={dashboard.historyLoading || dashboard.loading}
+          tickerCompanyNames={tickerCompanyNames}
         />
       </AnimatedSection>
       <AnimatedSection delay={0.46}>
@@ -124,6 +130,7 @@ export default function Dashboard() {
                         onViewChange={setLatestPredictionsView}
                         onPredictionSaved={() => void dashboard.refetch()}
                         tickerLogos={tickerLogos}
+                        tickerCompanyNames={tickerCompanyNames}
                         embedded
                       />
                     ) : (

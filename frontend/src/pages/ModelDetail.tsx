@@ -15,6 +15,7 @@ import SectionPanel from "../components/layout/SectionPanel";
 import PredictionTable from "../components/predictions/PredictionTable";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { formatHorizon, formatMetric, formatPercent } from "../utils/format";
+import { buildTickerCompanyNameMap } from "../utils/tickerSearch";
 import { getModelInfo, modelTypeColor } from "../utils/models";
 
 const horizonOrder: Record<MetricHorizon, number> = {
@@ -57,6 +58,10 @@ export default function ModelDetail() {
       Object.fromEntries(
         dashboard.tickerAssets.map((asset) => [asset.ticker, asset.logo_data_url]),
       ),
+    [dashboard.tickerAssets],
+  );
+  const tickerCompanyNames = useMemo(
+    () => buildTickerCompanyNameMap(dashboard.tickerAssets),
     [dashboard.tickerAssets],
   );
   const latestForModel = dashboard.latestPredictions.filter((row) => row.model_slug === modelSlug);
@@ -248,6 +253,7 @@ export default function ModelDetail() {
           loading={dashboard.loading}
           onPredictionSaved={() => void dashboard.refetch()}
           tickerLogos={tickerLogos}
+          tickerCompanyNames={tickerCompanyNames}
           singleModel
         />
       </AnimatedSection>

@@ -27,6 +27,7 @@ import {
   formatDate,
   formatSignedPercent,
 } from "../utils/format";
+import { buildTickerCompanyNameMap } from "../utils/tickerSearch";
 
 export default function TickerDetail() {
   const { ticker = "" } = useParams();
@@ -46,6 +47,10 @@ export default function TickerDetail() {
       Object.fromEntries(
         dashboard.tickerAssets.map((asset) => [asset.ticker, asset.logo_data_url]),
       ),
+    [dashboard.tickerAssets],
+  );
+  const tickerCompanyNames = useMemo(
+    () => buildTickerCompanyNameMap(dashboard.tickerAssets),
     [dashboard.tickerAssets],
   );
   const predictions = dashboard.latestPredictions.filter((row) => row.ticker === ticker);
@@ -264,6 +269,7 @@ export default function TickerDetail() {
           showTickerFilter={false}
           onPredictionSaved={() => void dashboard.refetch()}
           tickerLogos={tickerLogos}
+          tickerCompanyNames={tickerCompanyNames}
         />
       ) : (
         <UserPredictionTable

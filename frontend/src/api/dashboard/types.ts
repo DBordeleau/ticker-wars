@@ -124,6 +124,7 @@ export type TickerCloseSnapshot = {
 export type TickerAsset = {
   ticker: string;
   logo_data_url: string | null;
+  company_name?: string | null;
 };
 
 export type ModelMetricRow = {

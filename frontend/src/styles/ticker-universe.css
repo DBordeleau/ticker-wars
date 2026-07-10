@@ -156,6 +156,16 @@
   color: #ffffff;
 }
 
+.ticker-universe-company {
+  overflow: hidden;
+  max-width: 150px;
+  color: rgba(219, 230, 223, 0.6);
+  font-size: 0.78rem;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ticker-universe-move-block {
   display: flex;
   flex: 0 0 auto;
@@ -351,6 +361,10 @@
     font-size: 0.95rem;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .ticker-universe-company {
+    display: none;
   }
 
   .ticker-universe-move-block {

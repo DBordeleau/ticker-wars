@@ -12,6 +12,7 @@ import {
   formatDate,
   formatHorizon,
 } from "../../utils/format";
+import { tickerMatchesSearch, type TickerCompanyNames } from "../../utils/tickerSearch";
 import MagicHoverSurface from "../layout/MagicHoverSurface";
 import SectionPanel from "../layout/SectionPanel";
 import EntityHoverCard from "../cards/EntityHoverCard";
@@ -34,6 +35,7 @@ type Props = {
   embedded?: boolean;
   onPredictionSaved?: (prediction: UserPrediction) => void;
   tickerLogos?: Record<string, string | null>;
+  tickerCompanyNames?: TickerCompanyNames;
   // Set on single-model pages (ModelDetail) so mobile cards can drop the
   // redundant model name.
   singleModel?: boolean;
@@ -41,6 +43,7 @@ type Props = {
 
 const predictionPreviewSize = 5;
 const predictionPageSize = 25;
+const emptyTickerCompanyNames = new Map<string, string>();
 
 export default function PredictionTable({
   rows,
@@ -52,6 +55,7 @@ export default function PredictionTable({
   embedded = false,
   onPredictionSaved,
   tickerLogos = {},
+  tickerCompanyNames = emptyTickerCompanyNames,
   singleModel = false,
 }: Props) {
   const [tickerQuery, setTickerQuery] = useState("");
@@ -74,10 +78,8 @@ export default function PredictionTable({
   );
 
   const visibleRows = useMemo(() => {
-    const query = tickerQuery.trim().toUpperCase();
-
     return predictionRows
-      .filter((row) => (query ? row.ticker.includes(query) : true))
+      .filter((row) => tickerMatchesSearch(row.ticker, tickerQuery, tickerCompanyNames))
       .filter((row) => (model ? row.model_name === model : true))
       .filter((row) => (horizon === "all" ? true : row.prediction_horizon === horizon))
       .sort((a, b) => {
@@ -102,7 +104,7 @@ export default function PredictionTable({
         }
         return a.ticker.localeCompare(b.ticker) * direction;
       });
-  }, [horizon, model, predictionRows, sortDirection, sortKey, tickerQuery]);
+  }, [horizon, model, predictionRows, sortDirection, sortKey, tickerCompanyNames, tickerQuery]);
 
   useEffect(() => {
     setIsPaged(false);
