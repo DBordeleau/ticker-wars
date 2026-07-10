@@ -1,0 +1,115 @@
+/* ---------------------------------------------------------------------------
+   Swipe-to-dismiss bottom sheets (mobile account menu + quick predict). The
+   Drawer content is transparent and content-height so the overlay above stays
+   tappable; the draggable panel carries the visible chrome.
+--------------------------------------------------------------------------- */
+.swipe-sheet-drawer .mantine-Drawer-content {
+  height: auto;
+  max-height: 92vh;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+
+.swipe-sheet-drawer .mantine-Drawer-body {
+  padding: 0;
+  overflow: visible;
+}
+
+.swipe-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  will-change: transform;
+}
+
+.swipe-sheet-grab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 9px 0 5px;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.swipe-sheet-grab:active {
+  cursor: grabbing;
+}
+
+.swipe-sheet-grabber {
+  width: 42px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(219, 230, 223, 0.42);
+  transition: background 160ms ease;
+}
+
+.swipe-sheet-grab:hover .swipe-sheet-grabber,
+.swipe-sheet-grab:active .swipe-sheet-grabber {
+  background: rgba(219, 230, 223, 0.72);
+}
+
+.swipe-sheet-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(74, 222, 128, 0.32);
+  border-radius: 999px;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+  cursor: pointer;
+  transition:
+    color 170ms ease,
+    border-color 170ms ease,
+    background 170ms ease,
+    transform 170ms ease;
+}
+
+.swipe-sheet-close:hover,
+.swipe-sheet-close:focus-visible {
+  color: #04130a;
+  border-color: rgba(134, 239, 172, 0.7);
+  background:
+    linear-gradient(135deg, rgba(74, 222, 128, 0.95), rgba(45, 212, 191, 0.85));
+  outline: none;
+  transform: scale(1.06) rotate(8deg);
+}
+
+.swipe-sheet-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Account sheet — the draggable panel now carries the glass surface. */
+.account-sheet {
+  border-radius: 18px 18px 0 0;
+  padding: 0 14px max(16px, env(safe-area-inset-bottom));
+  color: #f8fafc;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035)),
+    rgba(8, 13, 11, 0.96);
+  box-shadow: 0 -18px 54px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+}
+
+.account-sheet .app-account-menu {
+  width: 100%;
+  padding: 2px 2px 4px;
+}
+
+/* Quick predict sheet — the inner card provides its own glass, so the panel
+   stays bare (just the grab handle above the card). */
+.quick-predict-sheet {
+  align-items: stretch;
+}

@@ -1,0 +1,792 @@
+/* ===========================================================================
+   Landing page (marketing). Full-viewport scroll-snap sections, morphing CTA,
+   status strip, live prediction feed, simplified leaderboard, ticker sphere,
+   FAQ. Aurora background is global; the scroller sits above it.
+=========================================================================== */
+.landing-scroller {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+.landing-section {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
+  padding: 32px 0;
+}
+
+.scroll-cue {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: rgba(187, 247, 208, 0.7);
+  pointer-events: none;
+}
+
+.scroll-cue-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.scroll-cue-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  animation: scroll-cue-bounce 2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes scroll-cue-bounce {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: translate3d(0, 7px, 0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.5;
+  }
+}
+
+.landing-section--auto {
+  min-height: 100vh;
+  height: auto;
+  align-items: stretch;
+}
+
+/* Leave room at the top of the post-hero sections for the full-size docked
+   hero title. */
+.landing-section:not(.landing-hero-section) {
+  padding-top: 168px;
+}
+
+.landing-section--auto {
+  padding-bottom: 32px;
+}
+
+.landing-section-inner {
+  width: min(1320px, calc(100% - 56px));
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .landing-section--auto .landing-section-inner {
+    width: min(1760px, calc(100% - 64px));
+  }
+}
+
+@media (min-width: 768px) and (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .landing-scroller {
+    scroll-snap-type: y mandatory;
+  }
+
+  .landing-section {
+    scroll-snap-align: start;
+  }
+}
+
+/* Hero section ----------------------------------------------------------- */
+.landing-hero-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+.landing-hero.hero-header {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.landing-hero .hero-title {
+  font-size: clamp(2.8rem, 6.2vw, 6rem);
+}
+
+.landing-hero .hero-subtitle {
+  max-width: 760px;
+  font-size: clamp(1.05rem, 1.5vw, 1.32rem);
+}
+
+.live-feed-surface {
+  width: min(780px, 100%);
+}
+
+/* Fill the extra room on very large displays. */
+@media (min-width: 1800px) {
+  .landing-section-inner {
+    width: min(1480px, calc(100% - 64px));
+  }
+
+  .landing-hero .hero-title {
+    font-size: 6.4rem;
+  }
+
+  .landing-hero-inner {
+    gap: 38px;
+  }
+
+  .live-feed-surface {
+    width: min(860px, 100%);
+  }
+
+  .live-feed-row {
+    padding: 13px 18px;
+  }
+
+  .live-feed-name,
+  .live-feed-ticker {
+    font-size: 1.04rem;
+  }
+
+  .status-strip {
+    font-size: 0.98rem;
+    padding: 13px 26px;
+  }
+}
+
+.floating-compete-cta {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 92;
+  display: inline-flex;
+  will-change: transform;
+}
+
+.floating-compete-cta .hero-competition-cta {
+  margin-top: 0;
+}
+
+/* Floating hero title: scrolls up from the hero and docks as a small top-center
+   header above the later sections. Always horizontally centered by the wrapper. */
+.floating-hero-title-wrap {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 90;
+  width: max-content;
+  max-width: 100vw;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.floating-hero-title {
+  margin: 0;
+  white-space: nowrap;
+  font-size: clamp(2.8rem, 6.2vw, 6rem);
+  will-change: transform;
+}
+
+@media (min-width: 1800px) {
+  .floating-hero-title {
+    font-size: 6.4rem;
+  }
+}
+
+/* Status strip ----------------------------------------------------------- */
+/* The surface only tracks --magic-x/y; the spotlight is applied to the pill
+   itself so the highlighted border matches the pill shape exactly. */
+.status-strip-surface {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.status-strip {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px 14px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 12px 24px;
+  border: 1px solid rgba(187, 247, 208, 0.26);
+  border-radius: 999px;
+  margin-top: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+    rgba(8, 13, 11, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 40px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  font-size: 0.92rem;
+  color: #dbe6df;
+  white-space: nowrap;
+}
+
+.status-strip::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  border-radius: inherit;
+  background:
+    radial-gradient(220px circle at var(--magic-x) var(--magic-y),
+      rgba(74, 222, 128, 0.16),
+      rgba(34, 211, 238, 0.08) 38%,
+      transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.status-strip::after {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  content: "";
+  border-radius: inherit;
+  padding: 1px;
+  background:
+    radial-gradient(240px circle at var(--magic-x) var(--magic-y),
+      rgba(34, 211, 238, 0.98),
+      rgba(74, 222, 128, 0.9) 32%,
+      rgba(163, 230, 53, 0.4) 52%,
+      transparent 74%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.status-strip:hover::before,
+.status-strip:hover::after {
+  opacity: 1;
+}
+
+.status-strip>* {
+  position: relative;
+  z-index: 1;
+}
+
+.status-strip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.status-strip-item strong {
+  color: #ffffff;
+  font-weight: 850;
+}
+
+.status-strip-sep {
+  flex: 0 0 auto;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(187, 247, 208, 0.5);
+}
+
+.status-strip-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #4ade80;
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
+  animation: status-strip-pulse 2.4s ease-in-out infinite;
+}
+
+.status-strip-note {
+  margin-left: 4px;
+  color: rgba(219, 230, 223, 0.62);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+@keyframes status-strip-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5);
+    opacity: 0.85;
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(74, 222, 128, 0);
+    opacity: 1;
+  }
+}
+
+/* Live prediction feed --------------------------------------------------- */
+.live-feed-surface {
+  margin: 0 auto;
+}
+
+.live-feed-panel {
+  position: relative;
+  z-index: 2;
+  padding: 16px 18px;
+}
+
+.live-feed-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.live-feed-pulse {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #4ade80;
+  animation: status-strip-pulse 2.4s ease-in-out infinite;
+}
+
+.live-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.live-feed-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px 76px 196px;
+  align-items: center;
+  gap: 16px;
+  padding: 11px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.live-feed-actor {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.live-feed-avatar-slot {
+  flex: 0 0 30px;
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+}
+
+.live-feed-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Circular robot avatar for model rows (feed + leaderboard). */
+.model-avatar {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  color: #04130a;
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.95), rgba(45, 212, 191, 0.85));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.model-avatar svg {
+  width: 56%;
+  height: 56%;
+}
+
+.live-feed-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #ffffff;
+  font-weight: 750;
+  font-size: 0.96rem;
+}
+
+.live-feed-model-badge {
+  flex: 0 0 auto;
+}
+
+.live-feed-ticker-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  justify-self: start;
+}
+
+.live-feed-ticker {
+  font-weight: 850;
+  color: #ffffff;
+}
+
+.live-feed-move {
+  justify-self: start;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-feed-move-up {
+  color: #86efac;
+}
+
+.live-feed-move-down {
+  color: #fca5a5;
+}
+
+.live-feed-horizon-label {
+  justify-self: end;
+  text-align: right;
+  color: rgba(219, 230, 223, 0.6);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* Shared section copy ---------------------------------------------------- */
+.landing-section-copy {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.landing-section-eyebrow {
+  color: #6ee7a8;
+  font-size: 0.8rem;
+  font-weight: 750;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.landing-section-title {
+  margin-top: 4px;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 850;
+  line-height: 1.08;
+  color: #ffffff;
+}
+
+.landing-section-lead {
+  margin: 10px auto 0;
+  max-width: 620px;
+  color: rgba(219, 230, 223, 0.78);
+  font-size: 1.02rem;
+  line-height: 1.55;
+}
+
+/* Landing leaderboard ---------------------------------------------------- */
+.landing-leaderboard-surface {
+  width: min(880px, 100%);
+  margin: 0 auto;
+}
+
+.landing-leaderboard {
+  position: relative;
+  z-index: 2;
+  padding: 24px 26px;
+}
+
+.landing-leaderboard-head {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.landing-leaderboard-headline {
+  margin-top: 12px;
+  color: #bbf7d0;
+  font-weight: 800;
+}
+
+.landing-leaderboard-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.landing-leaderboard-row {
+  display: grid;
+  grid-template-columns: 30px minmax(250px, 330px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.landing-rank {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-weight: 850;
+}
+
+.landing-rank-1 {
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+  color: #1f1300;
+}
+
+.landing-rank-2 {
+  background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+  color: #15202b;
+}
+
+.landing-rank-3 {
+  background: linear-gradient(135deg, #fcd9b6, #d08a52);
+  color: #2a1605;
+}
+
+.landing-leaderboard-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.landing-competitor-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.landing-leaderboard-acc {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.landing-acc-bar {
+  flex: 1 1 auto;
+  min-width: 90px;
+}
+
+.landing-acc-value {
+  font-weight: 800;
+  color: #dbe6df;
+  font-variant-numeric: tabular-nums;
+}
+
+.landing-leaderboard-scored {
+  color: rgba(219, 230, 223, 0.6);
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+/* Ticker logo sphere ----------------------------------------------------- */
+.landing-sphere-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.ticker-sphere {
+  position: relative;
+  width: min(560px, 86vw);
+  height: min(560px, 86vw);
+  max-height: 60vh;
+  perspective: 1200px;
+}
+
+.ticker-sphere-stage {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.ticker-sphere-node {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.ticker-sphere-logo {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.34);
+  cursor: pointer;
+  transition: box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.ticker-sphere-logo:hover {
+  border-color: #86efac;
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.4), 0 12px 28px rgba(0, 0, 0, 0.4);
+}
+
+.ticker-sphere-img {
+  width: 74%;
+  height: 74%;
+  object-fit: contain;
+}
+
+.ticker-sphere-fallback {
+  color: #0f1d15;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.ticker-sphere-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: 14px;
+  width: min(560px, 100%);
+}
+
+.ticker-sphere-grid .ticker-sphere-logo {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto;
+}
+
+/* Landing FAQ + footer --------------------------------------------------- */
+.landing-faq-wrap {
+  width: 100%;
+  margin: 0 auto;
+  padding: 40px 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.landing-faq-head,
+.landing-faq-surface,
+.landing-rules-link-row {
+  width: min(860px, 100%);
+  margin-inline: auto;
+}
+
+.landing-faq-surface {
+  width: min(860px, 100%);
+}
+
+.landing-faq {
+  position: relative;
+  z-index: 2;
+}
+
+.landing-faq .mantine-Accordion-item {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(25, 35, 25, 0.3);
+  color: #ffffff;
+}
+
+/* Each accordion card is its own cursor-spotlight surface (the wrapping
+   container is transparent, so highlighting its border looked wrong). */
+.landing-faq-item {
+  --spotlight-child-x: 50%;
+  --spotlight-child-y: 50%;
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+    rgba(8, 13, 11, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 40px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+
+.landing-faq-item::after {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  content: "";
+  border-radius: inherit;
+  padding: 1px;
+  background:
+    radial-gradient(170px circle at var(--spotlight-child-x) var(--spotlight-child-y),
+      rgba(34, 211, 238, 0.98),
+      rgba(74, 222, 128, 0.9) 32%,
+      rgba(187, 247, 208, 0.4) 54%,
+      transparent 76%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 170ms ease;
+}
+
+.landing-faq-item:hover::after {
+  opacity: 1;
+}
+
+.landing-faq .mantine-Accordion-control {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.landing-faq .mantine-Accordion-panel {
+  color: rgba(219, 230, 223, 0.8);
+}
+
+.landing-faq .mantine-Accordion-chevron {
+  color: #86efac;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.header-copy {
+  min-width: 0;
+}
+
+.header-meta {
+  width: min(420px, 100%);
+  text-align: right;
+}
+
+.header-meta .mantine-Button-root {
+  margin-top: 12px;
+}

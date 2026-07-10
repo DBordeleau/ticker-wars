@@ -1,0 +1,342 @@
+/* ===========================================================================
+   LANDING PAGE — MOBILE PASS
+   Phones (<= 767px, below the scroll-snap/morph boundary) get a dedicated,
+   stacked, finger-friendly layout. Desktop is untouched: every rule here is
+   gated behind the mobile breakpoint, and the morphing hero title/CTA + the
+   scroll-snap experience only ever run at >= 768px with a hover pointer.
+=========================================================================== */
+@media (max-width: 767px) {
+
+  /* Use the *dynamic* viewport height so the scroller tracks the real visible
+     area as the mobile browser chrome (URL bar) grows/shrinks, instead of the
+     static 100vh that leaves content hidden behind the toolbar. */
+  .landing-scroller {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* On a phone there is no scroll-snap, so forcing every section to 100vh just
+     creates dead gaps (short sections) or hard cut-offs (tall ones). Letting
+     them size to their content — centered, with breathing room — makes each
+     section "fit" naturally as the user scrolls. Reliable uniform per-screen
+     sizing isn't achievable across the range of mobile viewports + content
+     heights, so natural flow is the more usable choice. */
+  .landing-section {
+    min-height: auto;
+    padding: 30px 0;
+  }
+
+  /* Keep the hero close to a full screen so the fold still feels intentional,
+     while the dvh unit accounts for the browser chrome. */
+  .landing-hero-section {
+    min-height: 100dvh;
+    padding: 18px 0 30px;
+  }
+
+  .landing-section-inner {
+    width: min(1320px, calc(100% - 28px));
+  }
+
+  /* No floating/docked hero title on mobile, so the big 168px reservation above
+     the later sections is dead space. Reclaim it. */
+  .landing-section:not(.landing-hero-section) {
+    padding-top: 8px;
+  }
+
+  /* The scroll cue is absolutely pinned to the bottom of a 100vh section; on a
+     phone the hero content overflows past it so it reads as clipped. Mobile
+     content visibly overflows on its own, so the cue is redundant noise. */
+  .scroll-cue {
+    display: none;
+  }
+
+  /* Hero ----------------------------------------------------------------- */
+  .landing-hero-inner {
+    gap: 22px;
+  }
+
+  .landing-hero.hero-header {
+    padding: 14px 0 4px;
+  }
+
+  .landing-hero .hero-title {
+    font-size: clamp(2.4rem, 11vw, 3.3rem);
+  }
+
+  .landing-hero .hero-subtitle {
+    margin-top: 14px;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.66rem;
+    letter-spacing: 0.26em;
+  }
+
+  /* Status strip --------------------------------------------------------- */
+  /* Wrap the stats onto multiple centered lines instead of forcing one
+     unreadable overflowing row. The dot separators look wrong at line breaks,
+     so they collapse and each stat becomes its own self-contained chip. */
+  .status-strip-surface {
+    width: 100%;
+  }
+
+  .status-strip {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 10px;
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    white-space: normal;
+  }
+
+  .status-strip-sep {
+    display: none;
+  }
+
+  .status-strip-item {
+    flex: 0 0 auto;
+    padding: 5px 11px;
+    border: 1px solid rgba(187, 247, 208, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    white-space: nowrap;
+  }
+
+  .status-strip-live {
+    flex-basis: 100%;
+    justify-content: center;
+  }
+
+  .status-strip-note {
+    flex-basis: 100%;
+    margin-left: 0;
+    text-align: center;
+    font-size: 0.72rem;
+    white-space: normal;
+  }
+
+  /* Live prediction feed ------------------------------------------------- */
+  .live-feed-panel {
+    padding: 14px 14px;
+  }
+
+  /* Two-tier card: the competitor headlines the row, then the ticker sits
+     directly beside its predicted move (no desktop column stretching them to
+     opposite edges), with the maturity on its own muted line. */
+  .live-feed-row {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "actor actor"
+      "ticker move"
+      "horizon horizon";
+    gap: 6px 10px;
+    padding: 11px 14px;
+  }
+
+  .live-feed-actor {
+    grid-area: actor;
+  }
+
+  .live-feed-ticker-cell {
+    grid-area: ticker;
+    justify-self: start;
+  }
+
+  /* Sit immediately to the right of the ticker rather than being pushed to the
+     far edge of the row. */
+  .live-feed-move {
+    grid-area: move;
+    justify-self: start;
+    font-size: 1rem;
+  }
+
+  .live-feed-horizon-label {
+    grid-area: horizon;
+    justify-self: start;
+    text-align: left;
+    font-size: 0.74rem;
+  }
+
+  .live-feed-name {
+    font-size: 0.92rem;
+  }
+
+  /* Landing leaderboard -------------------------------------------------- */
+  .landing-leaderboard {
+    padding: 18px 14px;
+  }
+
+  /* Redesigned mobile card. `display: contents` flattens the accuracy wrapper so
+     its bar and value become grid items, letting us headline the row with the
+     competitor + their accuracy % and drop the full-width bar beneath. The
+     redundant "scored" count is dropped, so names like "Linear Regression" stay
+     fully legible. */
+  .landing-leaderboard-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "rank name value"
+      "rank bar  bar";
+    gap: 7px 11px;
+    padding: 12px 14px;
+    align-items: center;
+  }
+
+  .landing-leaderboard-acc {
+    display: contents;
+  }
+
+  .landing-rank {
+    grid-area: rank;
+    align-self: center;
+    width: 28px;
+    height: 28px;
+    font-size: 0.84rem;
+  }
+
+  .landing-leaderboard-name {
+    grid-area: name;
+    min-width: 0;
+  }
+
+  .landing-acc-value {
+    grid-area: value;
+    justify-self: end;
+    font-size: 0.94rem;
+  }
+
+  .landing-acc-bar {
+    grid-area: bar;
+    width: 100%;
+  }
+
+  .landing-leaderboard-scored {
+    display: none;
+  }
+
+  /* Ticker sphere -------------------------------------------------------- */
+  .ticker-sphere {
+    width: min(420px, 84vw);
+    height: min(420px, 84vw);
+    max-height: 56vh;
+  }
+
+  .ticker-sphere-node {
+    width: 52px;
+    height: 52px;
+    margin: -26px 0 0 -26px;
+  }
+
+  .landing-sphere-block {
+    gap: 14px;
+  }
+
+  /* Footer --------------------------------------------------------------- */
+  /* The 2-column attempt squeezed the "View the source code on Github" link into
+     a min-content column, wrapping it one word per line. Each block instead gets
+     the full width and is centered, so credit + source each sit on a single
+     tidy line and the status sits above them. */
+  .dashboard-footer {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "status"
+      "credit"
+      "source";
+    justify-items: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 16px;
+    text-align: center;
+  }
+
+  .footer-status {
+    grid-area: status;
+    text-align: center;
+  }
+
+  .footer-status .mantine-Group-root {
+    justify-content: center;
+  }
+
+  .footer-credit {
+    grid-area: credit;
+    text-align: center;
+  }
+
+  .footer-source {
+    grid-area: source;
+    text-align: center;
+  }
+
+  .footer-source .mantine-Text-root {
+    justify-content: center;
+  }
+
+  /* Always-reachable sign-up CTA (mobile stand-in for the desktop morphing FAB).
+     Pinned bottom-centre; slides up + fades in once the user scrolls past the
+     hero so it never doubles up with the inline hero CTA. */
+  .mobile-compete-cta {
+    position: fixed;
+    right: 0;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    left: 0;
+    z-index: 92;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 240ms ease,
+      transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .mobile-compete-cta.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Only the button itself is interactive; the full-width centering wrapper must
+     not swallow taps on the content behind it. */
+  .mobile-compete-cta .hero-competition-cta {
+    margin-top: 0;
+    pointer-events: auto;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 0 24px rgba(34, 197, 94, 0.3),
+      0 14px 34px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* The swipe hint is a touch-only cue; hidden everywhere by default and revealed
+   only for coarse pointers below. (Declared before the media query so source
+   order doesn't override the touch reveal.) */
+.landing-sphere-hint {
+  display: none;
+}
+
+/* Touch-only affordances for the ticker cloud. Scoped to coarse pointers so a
+   desktop window narrowed below 768px keeps its mouse behaviour and never traps
+   the page scroll. */
+@media (pointer: coarse) {
+
+  /* The globe owns its gestures so a finger swipe spins it instead of scrolling
+     the page. The section keeps headroom/footroom around the globe to scroll. */
+  .ticker-sphere {
+    touch-action: none;
+  }
+
+  .landing-sphere-hint {
+    display: block;
+    margin-top: 2px;
+    color: rgba(187, 247, 208, 0.66);
+    font-size: 0.78rem;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    text-align: center;
+  }
+}

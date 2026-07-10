@@ -1,0 +1,164 @@
+/* ---------------------------------------------------------------------------
+   Interactive particle backdrop
+   Large blurred color fields sit behind a cursor-reactive green star field,
+   finished with film grain and a vignette so foreground panels stay legible.
+--------------------------------------------------------------------------- */
+.aurora-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(135% 120% at 50% -15%, #0a130d 0%, #060807 48%, #040504 100%);
+}
+
+.aurora-blob {
+  position: absolute;
+  width: 58vw;
+  height: 58vw;
+  max-width: 880px;
+  max-height: 880px;
+  border-radius: 50%;
+  filter: blur(72px);
+  mix-blend-mode: screen;
+  will-change: transform;
+}
+
+.aurora-blob-emerald {
+  top: -14%;
+  left: -8%;
+  background: radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.55), transparent 68%);
+  animation: aurora-drift-a 26s ease-in-out infinite alternate;
+}
+
+.aurora-blob-teal {
+  top: 8%;
+  right: -16%;
+  background: radial-gradient(circle at 50% 50%, rgba(20, 184, 166, 0.42), transparent 68%);
+  animation: aurora-drift-b 32s ease-in-out infinite alternate;
+}
+
+.aurora-blob-cyan {
+  bottom: -22%;
+  left: 18%;
+  background: radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.3), transparent 70%);
+  animation: aurora-drift-c 38s ease-in-out infinite alternate;
+}
+
+.aurora-blob-lime {
+  bottom: 2%;
+  right: 6%;
+  width: 42vw;
+  height: 42vw;
+  background: radial-gradient(circle at 50% 50%, rgba(163, 230, 53, 0.26), transparent 70%);
+  animation: aurora-drift-d 30s ease-in-out infinite alternate;
+}
+
+.gravity-stars-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.82;
+}
+
+.aurora-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.aurora-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(125% 105% at 50% 38%, transparent 46%, rgba(4, 5, 4, 0.62) 100%);
+}
+
+@keyframes aurora-drift-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(8vw, 6vh, 0) scale(1.16);
+  }
+}
+
+@keyframes aurora-drift-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+
+  to {
+    transform: translate3d(-9vw, 8vh, 0) scale(0.9);
+  }
+}
+
+@keyframes aurora-drift-c {
+  from {
+    transform: translate3d(0, 0, 0) scale(0.95);
+  }
+
+  to {
+    transform: translate3d(7vw, -7vh, 0) scale(1.2);
+  }
+}
+
+@keyframes aurora-drift-d {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.1);
+  }
+
+  to {
+    transform: translate3d(-6vw, -5vh, 0) scale(0.92);
+  }
+}
+
+.dashboard-shell {
+  position: relative;
+  z-index: 1;
+  width: min(1760px, calc(100% - 64px));
+  margin: 0 auto;
+  padding: 28px 0 48px;
+}
+
+.dashboard-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.dashboard-entry>div,
+.dashboard-header,
+.metric-strip,
+.leaderboard-panel {
+  width: 100%;
+}
+
+/* Route gate splash + compact dashboard header + landing scaffolding */
+.route-splash {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.dashboard-topbar {
+  /* Spacing between dashboard sections comes from .dashboard-entry's flex gap. */
+  margin-bottom: 0;
+}
+
+.dashboard-topbar-title {
+  font-size: clamp(1.5rem, 3vw, 2.3rem);
+  line-height: 1.1;
+}
+
+.compete-cta-anchor {
+  display: flex;
+  justify-content: center;
+  min-height: 64px;
+}
