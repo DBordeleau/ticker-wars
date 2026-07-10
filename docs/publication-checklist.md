@@ -49,7 +49,7 @@ states otherwise. Preserve:
 - `SECURITY.md`.
 - Source code for the Python pipeline and React frontend.
 - Tests that demonstrate the important contracts.
-- Curated Supabase schema or database documentation.
+- Curated Supabase schema and database documentation.
 - Public-safe GitHub Actions for validation.
 - `env.example` files that show required configuration without secrets.
 - Sanitized screenshots or demo media, if used.
