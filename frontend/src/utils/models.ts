@@ -55,6 +55,15 @@ const descriptions: Record<string, Omit<ModelInfo, "slug" | "name">> = {
   },
 };
 
+export const searchableModels: ModelInfo[] = [
+  ["baseline", "Baseline"],
+  ["linear-regression", "Linear Regression"],
+  ["random-forest", "Random Forest"],
+  ["timesfm", "TimesFM"],
+  ["chronos-2", "Chronos-2"],
+  ["warren-buffbot", "Warren Buffbot"],
+].map(([slug, name]) => getModelInfo(slug, name));
+
 export function getModelInfo(slug: string, fallbackName?: string): ModelInfo {
   const fallback = fallbackName ?? titleFromSlug(slug);
   return {
