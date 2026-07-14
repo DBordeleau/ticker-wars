@@ -2,11 +2,12 @@ import { Popover, Tooltip } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { motion } from "framer-motion";
 import type { CSSProperties, ReactNode } from "react";
-import { forwardRef, useMemo, useState } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import {
   FiEdit3,
   FiLogIn,
   FiLogOut,
+  FiSearch,
   FiTrendingUp,
   FiUser,
 } from "react-icons/fi";
@@ -24,6 +25,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useUserProgression } from "../../hooks/useUserProgression";
 import QuickPredictModal from "../predictions/QuickPredictModal";
 import SignInModal from "../users/SignInModal";
+import SiteSearch from "../search/SiteSearch";
 import AvatarImage from "../users/AvatarImage";
 import MagicHoverSurface from "./MagicHoverSurface";
 import SwipeSheet from "./SwipeSheet";
@@ -70,6 +72,8 @@ export default function AppNavigation() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
   const [predictOpen, setPredictOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   const hideNav = location.pathname === "/auth/callback" || (!user && location.pathname === "/");
   const progression = progressionState.progression;
@@ -133,6 +137,7 @@ export default function AppNavigation() {
               <AppNavLink key={item.to} item={item} />
             ))}
           </div>
+          <SiteSearch />
           <div className="app-nav-right">
             {user ? (
               <button type="button" className="app-nav-predict" onClick={() => setPredictOpen(true)}>
@@ -186,12 +191,17 @@ export default function AppNavigation() {
           <BrandLink to={brandTarget} compact />
           {/* Signed-in users reach their account from the bottom bar; only guests
               get a top-strip action (sign in). */}
+          <div className="mobile-top-actions">
+            <button type="button" className="mobile-search-trigger" aria-label="Search site" onClick={() => setSearchOpen(true)}>
+              <FiSearch />
+            </button>
           {user ? null : (
             <button type="button" className="app-nav-predict app-nav-predict--public" onClick={() => setSignInOpen(true)}>
               <FiLogIn />
               <span>Sign in</span>
             </button>
           )}
+          </div>
         </MagicHoverSurface>
       </motion.div>
 
@@ -244,6 +254,7 @@ export default function AppNavigation() {
         <QuickPredictModal opened={predictOpen} onClose={() => setPredictOpen(false)} />
       ) : null}
       <SignInModal opened={signInOpen} onClose={() => setSignInOpen(false)} />
+      <SiteSearch mobile opened={searchOpen} onClose={closeSearch} />
     </>
   );
 }

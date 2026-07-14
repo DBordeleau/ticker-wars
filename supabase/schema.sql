@@ -708,6 +708,57 @@ create index if not exists public_user_latest_predictions_user_order_idx
     on public.public_user_latest_predictions (user_id, display_order);
 create index if not exists public_user_ticker_specialties_ticker_idx
     on public.public_user_ticker_specialties (ticker, ticker_rank, scored_count desc);
+create index if not exists public_user_profiles_username_prefix_idx
+    on public.public_user_profiles (lower(username) text_pattern_ops);
+
+create or replace function public.search_public_user_profiles(
+    search_query text,
+    result_limit integer default 5
+)
+returns table (
+    username text,
+    display_username text,
+    avatar_style text,
+    avatar_seed text,
+    avatar_options jsonb,
+    level integer,
+    match_rank integer
+)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+    with input as (
+        select lower(left(trim(regexp_replace(coalesce(search_query, ''), '\s+', ' ', 'g')), 64)) as query,
+               least(greatest(coalesce(result_limit, 5), 1), 8) as row_limit
+    )
+    select p.username,
+           p.display_username,
+           p.avatar_style,
+           p.avatar_seed,
+           p.avatar_options,
+           p.level,
+           case
+               when lower(p.username) = i.query then 100
+               when lower(p.display_username) = i.query then 95
+               when position(i.query in lower(p.username)) = 1 then 80
+               when position(i.query in lower(p.display_username)) = 1 then 65
+               else 40
+           end as match_rank
+    from public.public_user_profiles p
+    cross join input i
+    where length(i.query) >= 2
+      and (
+          position(i.query in lower(p.username)) = 1
+          or position(i.query in lower(p.display_username)) = 1
+          or position(i.query in lower(p.display_username)) > 0
+      )
+    order by match_rank desc, p.username
+    limit (select row_limit from input);
+$$;
+
+grant execute on function public.search_public_user_profiles(text, integer) to anon, authenticated;
 
 -- Public/browser-facing tables use RLS read policies in production. Backend
 -- pipeline writes use service-role credentials and bypass RLS. RPC function
