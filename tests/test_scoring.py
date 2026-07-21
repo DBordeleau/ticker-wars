@@ -10,6 +10,15 @@ from pipeline.forecasting.horizons import FORECAST_HORIZONS
 
 
 class PredictionScoringTest(unittest.TestCase):
+    def test_duplicate_prediction_ids_are_scored_once(self) -> None:
+        prediction = _prediction("AAPL", predicted_close=100.0, reference_close=100.0)
+        price_rows = [{"ticker": "AAPL", "date": "2026-01-02", "close": 101.0}]
+
+        scores = score_matured_predictions([prediction, dict(prediction)], price_rows)
+
+        self.assertEqual(len(scores), 1)
+        self.assertEqual(scores[0]["prediction_id"], prediction["prediction_id"])
+
     def test_scores_only_predictions_with_actual_target_close(self) -> None:
         prediction_rows = [
             _prediction("AAPL", predicted_close=100.0, reference_close=100.0),

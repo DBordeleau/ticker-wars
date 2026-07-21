@@ -189,7 +189,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Refresh logos even when cached rows already exist.",
     )
 
-    subparsers.add_parser("run-daily", help="Run the daily pipeline.")
+    run_daily = subparsers.add_parser("run-daily", help="Run the daily pipeline.")
+    run_daily.add_argument(
+        "--skip-price-ingestion",
+        action="store_true",
+        help="Run downstream daily steps after a separate price-ingestion job.",
+    )
     prune_engagement = subparsers.add_parser(
         "prune-engagement-events",
         help="Delete old engagement events that have already been seen in all relevant surfaces.",
@@ -363,9 +368,10 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if args.command == "run-daily":
-        price_status = run_ingest_latest_prices()
-        if price_status != 0:
-            return price_status
+        if not args.skip_price_ingestion:
+            price_status = run_ingest_latest_prices()
+            if price_status != 0:
+                return price_status
         fundamentals_status = run_ingest_fundamentals()
         if fundamentals_status != 0:
             return fundamentals_status

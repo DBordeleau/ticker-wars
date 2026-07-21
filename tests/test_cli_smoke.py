@@ -384,6 +384,31 @@ class CliSmokeTest(unittest.TestCase):
             ],
         )
 
+    def test_run_daily_can_skip_price_ingestion_for_split_workflow(self) -> None:
+        calls: list[str] = []
+
+        def record(name: str):
+            def _inner(*_args: object, **_kwargs: object) -> int:
+                calls.append(name)
+                return 0
+
+            return _inner
+
+        with (
+            patch("pipeline.cli.run_ingest_latest_prices", side_effect=record("prices")),
+            patch("pipeline.cli.run_ingest_fundamentals", side_effect=record("fundamentals")),
+            patch("pipeline.cli.run_ingest_logos", return_value=0),
+            patch("pipeline.cli.run_build_features", return_value=0),
+            patch("pipeline.cli.run_score", return_value=0),
+            patch("pipeline.cli.run_predict_horizons", return_value=0),
+            patch("pipeline.cli.run_refresh_dashboard", return_value=0),
+            patch("pipeline.cli.run_prune_engagement_events", return_value=0),
+            patch("pipeline.cli.run_export_snapshot", return_value=0),
+        ):
+            self.assertEqual(main(["run-daily", "--skip-price-ingestion"]), 0)
+
+        self.assertEqual(calls, ["fundamentals"])
+
     def test_live_price_health_passes_for_fresh_regular_snapshots(self) -> None:
         now = datetime(2026, 6, 29, 14, 35, tzinfo=UTC)
         rows = [

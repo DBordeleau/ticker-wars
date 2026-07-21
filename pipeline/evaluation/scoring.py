@@ -19,8 +19,14 @@ def score_matured_predictions(
     actual_closes = _actual_close_by_ticker_date(price_rows)
     scored_at = datetime.now(UTC).isoformat()
     score_rows: list[dict[str, Any]] = []
+    seen_prediction_ids: set[str] = set()
 
     for prediction in prediction_rows:
+        prediction_id = str(prediction["prediction_id"])
+        if prediction_id in seen_prediction_ids:
+            continue
+        seen_prediction_ids.add(prediction_id)
+
         key = (str(prediction["ticker"]), str(prediction["target_date"]))
         actual_close = actual_closes.get(key)
         if actual_close is None:

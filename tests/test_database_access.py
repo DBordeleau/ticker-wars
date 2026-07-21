@@ -174,6 +174,32 @@ class DatabaseAccessTest(unittest.TestCase):
         )
         self.assertEqual(client.operations[0]["rows"], rows)
 
+    def test_fetch_predictions_uses_unique_pagination_order(self) -> None:
+        database, client = _database_with_fake_client()
+        client.data["predictions"] = [
+            {
+                "prediction_id": "prediction-2",
+                "ticker": "AAPL",
+                "target_date": "2026-07-06",
+            },
+            {
+                "prediction_id": "prediction-1",
+                "ticker": "AAPL",
+                "target_date": "2026-07-06",
+            },
+        ]
+
+        rows = database.fetch_predictions(batch_size=1)
+
+        self.assertEqual(
+            [row["prediction_id"] for row in rows],
+            ["prediction-1", "prediction-2"],
+        )
+        self.assertEqual(
+            client.operations[0]["order"],
+            [("ticker", False), ("target_date", False), ("prediction_id", False)],
+        )
+
     def test_prediction_score_upsert_writes_only_known_score_columns(self) -> None:
         database, client = _database_with_fake_client()
         rows = [
