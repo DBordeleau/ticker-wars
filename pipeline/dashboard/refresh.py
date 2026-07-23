@@ -98,6 +98,19 @@ def _build_latest_predictions(
     if not prediction_rows:
         return []
 
+    latest_by_series: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for row in sorted(
+        prediction_rows,
+        key=_recent_prediction_sort_key,
+        reverse=True,
+    ):
+        key = (
+            str(row["ticker"]),
+            str(row.get("model_slug") or _model_slug(row["model_name"])),
+            str(row["prediction_horizon"]),
+        )
+        latest_by_series.setdefault(key, row)
+
     return [
         {
             "generated_at": generated_at,
@@ -115,10 +128,10 @@ def _build_latest_predictions(
             "predicted_close_upper": row.get("predicted_close_upper"),
             "interval_level": row.get("interval_level"),
             "reasoning_summary": row.get("reasoning_summary"),
-            "model_metadata": row.get("model_metadata"),
+            "model_metadata": _public_model_metadata(row),
         }
         for row in sorted(
-            prediction_rows,
+            latest_by_series.values(),
             key=_recent_prediction_sort_key,
             reverse=True,
         )[:DASHBOARD_RECENT_PREDICTION_LIMIT]
@@ -512,3 +525,19 @@ def _model_slug(model_name: str) -> str:
 
 def _model_type(model_name: str) -> str:
     return MODEL_TYPES.get(model_name, "Classic ML")
+
+
+def _public_model_metadata(row: dict[str, Any]) -> dict[str, Any] | None:
+    if (row.get("model_slug") or _model_slug(str(row.get("model_name", "")))) != "warren-buffbot":
+        return None
+
+    metadata = row.get("model_metadata")
+    if not isinstance(metadata, dict):
+        return None
+
+    public_metadata = {
+        field: metadata[field]
+        for field in ("provider", "model")
+        if metadata.get(field) is not None
+    }
+    return public_metadata or None

@@ -133,7 +133,10 @@ async function fetchDashboardBundleFromRpc(): Promise<DashboardData | null> {
     return null;
   }
 
-  const { data, error } = await supabase.rpc("get_public_dashboard_bundle");
+  let { data, error } = await supabase.rpc("get_public_dashboard_summary");
+  if (error && (error.code === "42883" || error.message.includes("get_public_dashboard_summary"))) {
+    ({ data, error } = await supabase.rpc("get_public_dashboard_bundle"));
+  }
   if (error || !isRecord(data)) {
     return null;
   }

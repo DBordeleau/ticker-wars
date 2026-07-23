@@ -8,7 +8,69 @@ from pipeline.evaluation.metrics import METRIC_WINDOWS
 
 
 class DashboardContractTest(unittest.TestCase):
-    def test_latest_predictions_include_recent_rows_across_prediction_dates(self) -> None:
+    def test_latest_predictions_keep_only_the_newest_row_per_series(self) -> None:
+        older = _prediction(
+            "AAPL",
+            "2026-01-08",
+            "Baseline",
+            prediction_date="2026-01-01",
+        )
+        newer = _prediction(
+            "AAPL",
+            "2026-01-09",
+            "Baseline",
+            prediction_date="2026-01-02",
+        )
+
+        tables = build_dashboard_tables(
+            prediction_rows=[older, newer],
+            score_rows=[],
+            price_rows=[],
+            settings=Settings(),
+        )
+
+        self.assertEqual(
+            [row["prediction_id"] for row in tables["dashboard_latest_predictions"]],
+            [newer["prediction_id"]],
+        )
+
+    def test_latest_predictions_publish_only_buffbot_display_metadata(self) -> None:
+        buffbot = _prediction(
+            "AAPL",
+            "2026-01-08",
+            "Warren Buffbot",
+        )
+        baseline = _prediction(
+            "AAPL",
+            "2026-01-08",
+            "Baseline",
+        )
+        buffbot["model_metadata"] = {
+            "provider": "groq",
+            "model": "example-model",
+            "confidence": 0.9,
+            "prompt_version": "private-detail",
+        }
+        baseline["model_metadata"] = {"training_row_count": 1000}
+
+        tables = build_dashboard_tables(
+            prediction_rows=[buffbot, baseline],
+            score_rows=[],
+            price_rows=[],
+            settings=Settings(),
+        )
+        rows = {
+            row["prediction_id"]: row
+            for row in tables["dashboard_latest_predictions"]
+        }
+
+        self.assertEqual(
+            rows[buffbot["prediction_id"]]["model_metadata"],
+            {"provider": "groq", "model": "example-model"},
+        )
+        self.assertIsNone(rows[baseline["prediction_id"]]["model_metadata"])
+
+    def test_latest_predictions_exclude_older_rows_across_prediction_dates(self) -> None:
         tables = build_dashboard_tables(
             prediction_rows=[
                 _prediction("AAPL", "2026-01-02", "Baseline", prediction_date="2026-01-01"),
@@ -21,9 +83,8 @@ class DashboardContractTest(unittest.TestCase):
 
         latest = tables["dashboard_latest_predictions"]
 
-        self.assertEqual(len(latest), 2)
+        self.assertEqual(len(latest), 1)
         self.assertEqual(latest[0]["target_date"], "2026-01-03")
-        self.assertEqual(latest[1]["target_date"], "2026-01-02")
         self.assertEqual(latest[0]["model_slug"], "baseline")
 
     def test_latest_predictions_keep_latest_available_row_per_model(self) -> None:
