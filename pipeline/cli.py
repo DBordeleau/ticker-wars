@@ -23,6 +23,7 @@ from pipeline.commands.common import (
 from pipeline.commands.dashboard import (
     build_dashboard_tables_from_database,
     run_export_snapshot,
+    run_refresh_and_export_dashboard,
     run_refresh_dashboard,
 )
 from pipeline.commands.ingestion import (
@@ -89,6 +90,7 @@ __all__ = [
     "run_placeholder_step",
     "run_predict_horizons",
     "run_prune_engagement_events",
+    "run_refresh_and_export_dashboard",
     "run_refresh_dashboard",
     "run_refresh_live_prices",
     "run_score",
@@ -384,13 +386,13 @@ def main(argv: list[str] | None = None) -> int:
         prediction_status = run_predict_horizons()
         if prediction_status != 0:
             return prediction_status
-        refresh_status = run_refresh_dashboard()
-        if refresh_status != 0:
-            return refresh_status
+        publish_status = run_refresh_and_export_dashboard()
+        if publish_status != 0:
+            return publish_status
         prune_status = run_prune_engagement_events()
         if prune_status != 0:
             return prune_status
-        return run_export_snapshot()
+        return 0
 
     return run_placeholder_step(args.command)
 

@@ -30,9 +30,8 @@ python -m pipeline.cli benchmark-runtime
 2. Refresh fundamentals.
 3. Score matured predictions.
 4. Generate new model predictions, deriving features from the already persisted prices.
-5. Refresh dashboard projection tables.
+5. Build dashboard data once, then refresh projection tables and export JSON snapshots from it.
 6. Prune old fully seen engagement events.
-7. Export dashboard JSON snapshots.
 
 ## Price Ingestion
 
@@ -56,6 +55,10 @@ standalone run would download the complete `prices` table without producing dura
 Successful Supabase reads log the resource name, request count, row count, and approximate
 serialized JSON byte count. These summaries contain no row contents or credentials and make it
 possible to correlate a scheduled run with database egress.
+
+The standalone `refresh-dashboard` and `export-snapshot` commands remain available. `run-daily`
+uses a combined publish path so both outputs reuse the same in-memory dashboard tables instead of
+downloading prices, predictions, and scores from Supabase twice.
 
 ## Historical Prediction Seeding
 
