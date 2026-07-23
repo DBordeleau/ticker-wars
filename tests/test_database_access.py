@@ -5,7 +5,16 @@ import unittest
 from dataclasses import dataclass
 from typing import Any
 
-from pipeline.db import SupabaseDatabase
+from pipeline.db import (
+    FUNDAMENTAL_READ_COLUMNS,
+    PREDICTION_READ_COLUMNS,
+    PREDICTION_SCORE_READ_COLUMNS,
+    PRICE_READ_COLUMNS,
+    USER_PREDICTION_READ_COLUMNS,
+    USER_PREDICTION_SCORE_READ_COLUMNS,
+    USER_PROFILE_READ_COLUMNS,
+    SupabaseDatabase,
+)
 
 
 @dataclass
@@ -127,6 +136,35 @@ class FakeTable:
 
 
 class DatabaseAccessTest(unittest.TestCase):
+    def test_shared_pipeline_reads_request_only_consumer_columns(self) -> None:
+        database, client = _database_with_fake_client()
+
+        database.fetch_prices()
+        database.fetch_predictions()
+        database.fetch_prediction_scores()
+        database.fetch_user_predictions()
+        database.fetch_user_prediction_scores()
+        database.fetch_user_profiles()
+        database.fetch_latest_fundamentals()
+
+        expected_columns = {
+            "prices": PRICE_READ_COLUMNS,
+            "predictions": PREDICTION_READ_COLUMNS,
+            "prediction_scores": PREDICTION_SCORE_READ_COLUMNS,
+            "user_predictions": USER_PREDICTION_READ_COLUMNS,
+            "user_prediction_scores": USER_PREDICTION_SCORE_READ_COLUMNS,
+            "user_profiles": USER_PROFILE_READ_COLUMNS,
+            "fundamentals": FUNDAMENTAL_READ_COLUMNS,
+        }
+        selected_columns = {
+            operation["table"]: operation["columns"]
+            for operation in client.operations
+            if operation["action"] == "select"
+        }
+
+        self.assertEqual(selected_columns, expected_columns)
+        self.assertNotIn("*", selected_columns.values())
+
     def test_prediction_methods_are_the_only_public_prediction_accessors(self) -> None:
         expected_methods = {
             "upsert_predictions",
