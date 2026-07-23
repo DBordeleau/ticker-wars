@@ -1,3 +1,3 @@
 export * from "./dashboard/types";
 export * from "./dashboard/queries";
-export { fetchDashboardData } from "./dashboard/snapshots";
+export { fetchDashboardData, fetchDashboardVersion } from "./dashboard/snapshots";

@@ -6,6 +6,10 @@ import {
   type TickerHistoryRow,
   type TickerProfile,
 } from "./dashboardData";
+import {
+  readTickerHistoryCache,
+  writeTickerHistoryCache,
+} from "./dashboardPersistentCache";
 
 // Per-ticker promise caches shared across the app. Hovering a ticker quick-look
 // card and opening that ticker's detail page now resolve from the same cached
@@ -50,19 +54,32 @@ export function loadTickerCloseSnapshot(ticker: string): Promise<TickerCloseSnap
   return cached;
 }
 
-export function loadTickerHistory(ticker: string): Promise<TickerHistoryRow[]> {
-  const key = ticker.trim().toUpperCase();
-  if (!key) {
+export function loadTickerHistory(
+  ticker: string,
+  dashboardVersion: string | null = null,
+): Promise<TickerHistoryRow[]> {
+  const normalizedTicker = ticker.trim().toUpperCase();
+  if (!normalizedTicker) {
     return Promise.resolve([]);
   }
 
-  let cached = historyCache.get(key);
+  const cacheKey = `${normalizedTicker}:${dashboardVersion ?? "unversioned"}`;
+  let cached = historyCache.get(cacheKey);
   if (!cached) {
-    cached = fetchTickerHistory(key).catch((error) => {
-      historyCache.delete(key);
-      throw error;
-    });
-    historyCache.set(key, cached);
+    cached = readTickerHistoryCache(normalizedTicker, dashboardVersion)
+      .then(async (persisted) => {
+        if (persisted) {
+          return persisted;
+        }
+        const history = await fetchTickerHistory(normalizedTicker);
+        await writeTickerHistoryCache(normalizedTicker, dashboardVersion, history);
+        return history;
+      })
+      .catch((error) => {
+        historyCache.delete(cacheKey);
+        throw error;
+      });
+    historyCache.set(cacheKey, cached);
   }
   return cached;
 }
