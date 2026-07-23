@@ -3,7 +3,8 @@
 Ticker Wars uses Supabase PostgreSQL as the contract between the data ingestion pipeline
 and the React dashboard.
 
-The actual DDL lives in [supabase/schema.sql](supabase/schema.sql)
+The baseline DDL lives in [supabase/schema.sql](../supabase/schema.sql), with
+incremental production changes in [supabase/migrations](../supabase/migrations).
 
 ## Core Pipeline Tables
 
@@ -70,11 +71,17 @@ pipeline refreshes narrow projection tables instead:
 This keeps the browser query path fast and gives the backend a stable place to
 encode ranking, horizon, and retention rules.
 
-The primary public dashboard RPC is `get_public_dashboard_bundle()`. It returns
-a single JSON payload containing leaderboards, latest model predictions, latest
-public user predictions, model metrics, and run metadata. The frontend can also
-read `ticker_assets` directly for logo data; the current bundle reserves a
-ticker-assets slot for that contract.
+The primary public dashboard RPC is `get_public_dashboard_summary()`. It returns
+leaderboards, only the newest model prediction per ticker/model/horizon series,
+latest public user predictions, model metrics, and run metadata.
+`get_public_ticker_history(...)` loads chart/detail history only after a ticker
+is selected. The compatibility RPC `get_public_dashboard_bundle()` delegates to
+the summary contract. The frontend can also read `ticker_assets` directly for
+logo data; the summary reserves a ticker-assets slot for that contract.
+
+Public dashboard rows retain only the Warren Buffbot provider/model metadata
+used by the UI. Training diagnostics and checkpoint metadata remain in the
+backend `predictions` table instead of being copied into every browser payload.
 
 ## User Prediction Tables
 

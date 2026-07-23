@@ -193,9 +193,30 @@ export async function fetchTickerHistory(ticker: string): Promise<TickerHistoryR
     return fallbackDashboardData.tickerHistory.filter((row) => row.ticker === ticker);
   }
 
+  const { data, error } = await supabase.rpc("get_public_ticker_history", {
+    p_ticker: ticker,
+  });
+
+  if (error) {
+    if (error.code !== "42883" && !error.message.includes("get_public_ticker_history")) {
+      throw error;
+    }
+    return fetchTickerHistoryFromTable(ticker);
+  }
+
+  return (data ?? []).map(normalizeTickerHistoryRow).filter(isVisibleModelRow);
+}
+
+async function fetchTickerHistoryFromTable(ticker: string): Promise<TickerHistoryRow[]> {
+  if (!supabase) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("dashboard_ticker_history")
-    .select("*")
+    .select(
+      "ticker,prediction_date,target_date,prediction_horizon,actual_close,model_name,model_slug,predicted_close,predicted_close_lower,predicted_close_upper,predicted_return,actual_return,winkler_score,reasoning_summary",
+    )
     .eq("ticker", ticker)
     .order("target_date")
     .order("model_name");
