@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from typing import Any
 
 from pipeline.db import SupabaseDatabase
 from pipeline.evaluation.metrics import calculate_model_metrics
@@ -12,6 +14,12 @@ from pipeline.evaluation.scoring import (
 LOGGER = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class ScoringResult:
+    prediction_scores: list[dict[str, Any]]
+    user_prediction_scores: list[dict[str, Any]]
+
+
 def run_score() -> int:
     database = SupabaseDatabase.from_settings()
     if database is None:
@@ -21,9 +29,25 @@ def run_score() -> int:
     prediction_rows = database.fetch_predictions()
     user_prediction_rows = database.fetch_user_predictions(status="pending")
     price_rows = database.fetch_prices()
+    score_predictions_from_rows(
+        database=database,
+        prediction_rows=prediction_rows,
+        user_prediction_rows=user_prediction_rows,
+        price_rows=price_rows,
+    )
+    return 0
+
+
+def score_predictions_from_rows(
+    *,
+    database: SupabaseDatabase,
+    prediction_rows: list[dict[str, Any]],
+    user_prediction_rows: list[dict[str, Any]],
+    price_rows: list[dict[str, Any]],
+) -> ScoringResult:
     if not price_rows:
         LOGGER.warning("Prediction scoring skipped because prices are missing.")
-        return 0
+        return ScoringResult(prediction_scores=[], user_prediction_scores=[])
 
     score_rows = score_matured_predictions(prediction_rows, price_rows)
     written = database.upsert_prediction_scores(score_rows)
@@ -44,4 +68,7 @@ def run_score() -> int:
     if latest_scored_target_date is not None:
         LOGGER.info("Latest scored target date: %s", latest_scored_target_date)
     LOGGER.info("Calculated %s model metric rows for this scoring batch.", len(metrics))
-    return 0
+    return ScoringResult(
+        prediction_scores=score_rows,
+        user_prediction_scores=user_score_rows,
+    )

@@ -364,21 +364,23 @@ class CliSmokeTest(unittest.TestCase):
                 "pipeline.cli.run_build_features",
                 side_effect=AssertionError("run-daily must not rebuild and discard features"),
             ),
-            patch("pipeline.cli.run_score", side_effect=record("score")),
-            patch("pipeline.cli.run_predict_horizons", side_effect=record("predict")),
+            patch(
+                "pipeline.cli.run_shared_daily_pipeline",
+                side_effect=record("downstream"),
+            ),
+            patch(
+                "pipeline.cli.run_score",
+                side_effect=AssertionError("run-daily must use the shared downstream context"),
+            ),
+            patch(
+                "pipeline.cli.run_predict_horizons",
+                side_effect=AssertionError("run-daily must use the shared downstream context"),
+            ),
             patch(
                 "pipeline.cli.run_refresh_and_export_dashboard",
-                side_effect=record("publish"),
-            ),
-            patch(
-                "pipeline.cli.run_refresh_dashboard",
-                side_effect=AssertionError("run-daily must use the combined dashboard path"),
+                side_effect=AssertionError("run-daily must use the shared downstream context"),
             ),
             patch("pipeline.cli.run_prune_engagement_events", side_effect=record("prune")),
-            patch(
-                "pipeline.cli.run_export_snapshot",
-                side_effect=AssertionError("run-daily must use the combined dashboard path"),
-            ),
         ):
             self.assertEqual(main(["run-daily"]), 0)
 
@@ -388,9 +390,7 @@ class CliSmokeTest(unittest.TestCase):
                 "prices",
                 "fundamentals",
                 "logos",
-                "score",
-                "predict",
-                "publish",
+                "downstream",
                 "prune",
             ],
         )
@@ -413,9 +413,7 @@ class CliSmokeTest(unittest.TestCase):
                 "pipeline.cli.run_build_features",
                 side_effect=AssertionError("run-daily must not rebuild and discard features"),
             ),
-            patch("pipeline.cli.run_score", return_value=0),
-            patch("pipeline.cli.run_predict_horizons", return_value=0),
-            patch("pipeline.cli.run_refresh_and_export_dashboard", return_value=0),
+            patch("pipeline.cli.run_shared_daily_pipeline", return_value=0),
             patch("pipeline.cli.run_prune_engagement_events", return_value=0),
         ):
             self.assertEqual(main(["run-daily", "--skip-price-ingestion"]), 0)

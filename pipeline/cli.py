@@ -20,6 +20,7 @@ from pipeline.commands.common import (
 from pipeline.commands.common import (
     parse_ticker_arg as _parse_ticker_arg,
 )
+from pipeline.commands.daily import run_shared_daily_pipeline
 from pipeline.commands.dashboard import (
     build_dashboard_tables_from_database,
     run_export_snapshot,
@@ -95,6 +96,7 @@ __all__ = [
     "run_refresh_live_prices",
     "run_score",
     "run_seed_model_predictions",
+    "run_shared_daily_pipeline",
     "run_train_predict_alias",
 ]
 
@@ -380,15 +382,9 @@ def main(argv: list[str] | None = None) -> int:
         logos_status = run_ingest_logos()
         if logos_status != 0:
             return logos_status
-        score_status = run_score()
-        if score_status != 0:
-            return score_status
-        prediction_status = run_predict_horizons()
-        if prediction_status != 0:
-            return prediction_status
-        publish_status = run_refresh_and_export_dashboard()
-        if publish_status != 0:
-            return publish_status
+        downstream_status = run_shared_daily_pipeline()
+        if downstream_status != 0:
+            return downstream_status
         prune_status = run_prune_engagement_events()
         if prune_status != 0:
             return prune_status

@@ -60,6 +60,11 @@ The standalone `refresh-dashboard` and `export-snapshot` commands remain availab
 uses a combined publish path so both outputs reuse the same in-memory dashboard tables instead of
 downloading prices, predictions, and scores from Supabase twice.
 
+The scheduled downstream path also loads its source tables into a single process-local context.
+Scoring updates that context with newly calculated scores, prediction generation adds the new
+prediction rows, and dashboard publication consumes the updated collections. Standalone commands
+continue to load their own inputs, while `run-daily` reads each large source table only once.
+
 ## Historical Prediction Seeding
 
 `seed-model-predictions` generates historical as-of model predictions for a target-date window.

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
 
 from pipeline.commands.common import daily_prediction_tickers
-from pipeline.config import load_settings
+from pipeline.config import Settings, load_settings
 from pipeline.dates import parse_date
 from pipeline.db import SupabaseDatabase
 from pipeline.features.build_features import build_feature_rows
@@ -18,6 +19,11 @@ from pipeline.models.warren_buffbot import generate_warren_buffbot_predictions
 LOGGER = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class PredictionResult:
+    prediction_rows: list[dict[str, Any]]
+
+
 def run_predict_horizons() -> int:
     settings = load_settings()
     database = SupabaseDatabase.from_settings(settings)
@@ -28,16 +34,32 @@ def run_predict_horizons() -> int:
         return 0
 
     price_rows = database.fetch_prices()
+    fundamental_rows = database.fetch_latest_fundamentals() if price_rows else []
+    generate_predictions_from_rows(
+        database=database,
+        settings=settings,
+        price_rows=price_rows,
+        fundamental_rows=fundamental_rows,
+    )
+    return 0
+
+
+def generate_predictions_from_rows(
+    *,
+    database: SupabaseDatabase,
+    settings: Settings,
+    price_rows: list[dict[str, Any]],
+    fundamental_rows: list[dict[str, Any]],
+) -> PredictionResult:
     if not price_rows:
         LOGGER.warning("Prediction generation skipped because prices are missing.")
-        return 0
+        return PredictionResult(prediction_rows=[])
 
     feature_rows = build_feature_rows(price_rows)
     if not feature_rows:
         LOGGER.warning("Prediction generation skipped because no features could be built.")
-        return 0
+        return PredictionResult(prediction_rows=[])
 
-    fundamental_rows = database.fetch_latest_fundamentals()
     training_result = train_and_predict(feature_rows, price_rows)
     buffbot_rows = generate_warren_buffbot_predictions(
         feature_rows,
@@ -67,7 +89,7 @@ def run_predict_horizons() -> int:
         if len(training_result.skipped) > 10:
             LOGGER.warning("...and %s more skips.", len(training_result.skipped) - 10)
 
-    return 0
+    return PredictionResult(prediction_rows=prediction_rows)
 
 
 def run_seed_model_predictions(
