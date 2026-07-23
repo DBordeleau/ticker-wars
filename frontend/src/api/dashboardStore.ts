@@ -1,11 +1,22 @@
-import { fetchDashboardData, type DashboardData } from "./dashboardData";
+import {
+  fetchDashboardData,
+  fetchDashboardVersion,
+  type DashboardData,
+} from "./dashboardData";
+import {
+  clearDashboardPersistentCache,
+  readDashboardDataCache,
+  writeDashboardDataCache,
+} from "./dashboardPersistentCache";
+import { isSupabaseConfigured } from "./supabaseClient";
 
 // Shared, subscribable cache for the heavy dashboard payload (leaderboards,
 // predictions, ticker assets, metadata). Every page mounts useDashboardData,
 // which previously refetched the whole payload on each navigation. This store
-// fetches it once per session and broadcasts updates, so page transitions are
-// instant and Supabase is queried far less. An explicit refresh (Retry, or
-// after a prediction is saved) still re-fetches and notifies all consumers.
+// fetches it once per session and broadcasts updates. IndexedDB extends that
+// cache across browser sessions; a tiny version read decides whether the full
+// payload has changed. An explicit refresh still re-fetches and notifies all
+// consumers.
 
 type DashboardStoreState = {
   data: DashboardData | null;
@@ -35,6 +46,7 @@ export function getDashboardState(): DashboardStoreState {
 
 export function resetDashboardCache() {
   inFlight = null;
+  void clearDashboardPersistentCache();
   setState({ data: null, loading: false, error: null });
 }
 
@@ -44,16 +56,8 @@ export function refreshDashboard(): Promise<void> {
     return inFlight;
   }
   setState({ loading: true, error: null });
-  inFlight = fetchDashboardData()
-    .then((data) => {
-      setState({ data, loading: false, error: null });
-    })
-    .catch((caught) => {
-      setState({
-        loading: false,
-        error: caught instanceof Error ? caught.message : "Unable to load dashboard data.",
-      });
-    })
+  inFlight = fetchAndStoreDashboard()
+    .catch((caught) => setDashboardError(caught))
     .finally(() => {
       inFlight = null;
     });
@@ -66,5 +70,63 @@ export function ensureDashboard(): Promise<void> {
   if (state.data || inFlight) {
     return inFlight ?? Promise.resolve();
   }
-  return refreshDashboard();
+  setState({ loading: true, error: null });
+  inFlight = hydrateDashboard().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+async function hydrateDashboard(): Promise<void> {
+  const cached = await readDashboardDataCache();
+  if (!cached) {
+    try {
+      await fetchAndStoreDashboard();
+    } catch (caught) {
+      setDashboardError(caught);
+    }
+    return;
+  }
+
+  const hydrated = { ...cached, hasSupabaseConfig: isSupabaseConfigured };
+  setState({ data: hydrated, loading: false, error: null });
+
+  try {
+    const latestVersion = await fetchDashboardVersion();
+    if (
+      !latestVersion ||
+      dashboardVersionsMatch(latestVersion, hydrated.metadata?.generated_at ?? null)
+    ) {
+      return;
+    }
+    await fetchAndStoreDashboard();
+  } catch {
+    // The persistent result remains usable when an offline version check or
+    // background refresh fails.
+  }
+}
+
+async function fetchAndStoreDashboard(): Promise<void> {
+  const data = await fetchDashboardData();
+  setState({ data, loading: false, error: null });
+  await writeDashboardDataCache(data);
+}
+
+function setDashboardError(caught: unknown) {
+  setState({
+    loading: false,
+    error: caught instanceof Error ? caught.message : "Unable to load dashboard data.",
+  });
+}
+
+function dashboardVersionsMatch(left: string, right: string | null): boolean {
+  if (!right) {
+    return false;
+  }
+  const leftTimestamp = Date.parse(left);
+  const rightTimestamp = Date.parse(right);
+  if (Number.isFinite(leftTimestamp) && Number.isFinite(rightTimestamp)) {
+    return leftTimestamp === rightTimestamp;
+  }
+  return left === right;
 }

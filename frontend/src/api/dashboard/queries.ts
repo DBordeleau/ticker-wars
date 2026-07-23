@@ -605,3 +605,22 @@ export async function fetchRunMetadata(): Promise<RunMetadata | null> {
   return data ? normalizeRunMetadata(data) : null;
 }
 
+export async function fetchRunMetadataVersion(): Promise<string | null> {
+  if (!supabase) {
+    return fallbackDashboardData.metadata?.generated_at ?? null;
+  }
+
+  const { data, error } = await supabase
+    .from("dashboard_run_metadata")
+    .select("generated_at")
+    .order("generated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return cleanString((data as { generated_at?: unknown } | null)?.generated_at);
+}
+

@@ -69,7 +69,7 @@ export function useDashboardData(): DashboardState {
     let isCurrentRequest = true;
     setHistoryLoading(true);
 
-    loadTickerHistory(selectedTicker)
+    loadTickerHistory(selectedTicker, data.metadata?.generated_at ?? null)
       .then((history) => {
         if (isCurrentRequest) {
           setTickerHistory(history);
@@ -89,7 +89,7 @@ export function useDashboardData(): DashboardState {
     return () => {
       isCurrentRequest = false;
     };
-  }, [data.hasSupabaseConfig, selectedTicker]);
+  }, [data.hasSupabaseConfig, data.metadata?.generated_at, selectedTicker]);
 
   return useMemo(
     () => ({

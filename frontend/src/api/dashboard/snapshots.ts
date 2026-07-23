@@ -11,6 +11,7 @@ import {
   fetchLeaderboard,
   fetchModelMetrics,
   fetchRunMetadata,
+  fetchRunMetadataVersion,
   fetchTickerAssets,
   fetchUserLeaderboard,
   fetchUserTickerLeaderboard,
@@ -40,6 +41,23 @@ export async function fetchDashboardData(): Promise<DashboardData> {
   }
 
   return fetchDashboardDataFromTables();
+}
+
+export async function fetchDashboardVersion(): Promise<string | null> {
+  if (dashboardSnapshotBaseUrl) {
+    try {
+      const metadataRows = await fetchSnapshotArray<Partial<RunMetadata>>(
+        dashboardSnapshotFiles.metadata,
+      );
+      const metadata = metadataRows[0] ? normalizeRunMetadata(metadataRows[0]) : null;
+      if (isFreshDashboardSnapshot(metadata)) {
+        return metadata?.generated_at ?? null;
+      }
+    } catch {
+      // A missing static snapshot falls back to the small Supabase version read.
+    }
+  }
+  return fetchRunMetadataVersion();
 }
 
 async function fetchDashboardDataFromTables(): Promise<DashboardData> {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { TickerHistoryRow } from "../api/dashboardData";
 import { loadTickerHistory } from "../api/tickerCache";
+import { getDashboardState } from "../api/dashboardStore";
 
 export function useTickerHistory(ticker: string | undefined) {
   const [data, setData] = useState<TickerHistoryRow[]>([]);
@@ -15,7 +16,7 @@ export function useTickerHistory(ticker: string | undefined) {
 
     setLoading(true);
     setError(null);
-    loadTickerHistory(ticker)
+    loadTickerHistory(ticker, getDashboardState().data?.metadata?.generated_at ?? null)
       .then(setData)
       .catch((caught) => {
         setError(caught instanceof Error ? caught.message : "Unable to load ticker history.");
