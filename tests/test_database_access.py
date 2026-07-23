@@ -200,6 +200,33 @@ class DatabaseAccessTest(unittest.TestCase):
             [("ticker", False), ("target_date", False), ("prediction_id", False)],
         )
 
+    def test_paginated_reads_log_transfer_metrics_without_row_contents(self) -> None:
+        database, client = _database_with_fake_client()
+        client.data["predictions"] = [
+            {
+                "prediction_id": "private-prediction-id",
+                "ticker": "AAPL",
+                "target_date": "2026-07-06",
+            },
+            {
+                "prediction_id": "another-private-id",
+                "ticker": "MSFT",
+                "target_date": "2026-07-07",
+            },
+        ]
+
+        with self.assertLogs("pipeline.db", level="INFO") as captured:
+            rows = database.fetch_predictions(batch_size=1)
+
+        self.assertEqual(len(rows), 2)
+        summary = captured.output[-1]
+        self.assertIn("resource=predictions", summary)
+        self.assertIn("requests=3", summary)
+        self.assertIn("rows=2", summary)
+        self.assertRegex(summary, r"approximate_json_bytes=\d+")
+        self.assertNotIn("private-prediction-id", summary)
+        self.assertNotIn("another-private-id", summary)
+
     def test_prediction_score_upsert_writes_only_known_score_columns(self) -> None:
         database, client = _database_with_fake_client()
         rows = [
@@ -266,14 +293,20 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertEqual(client.operations[0]["action"], "upsert")
         self.assertEqual(client.operations[0]["on_conflict"], "ticker,as_of_date")
         self.assertEqual(client.operations[1]["action"], "delete")
-        self.assertEqual(client.operations[1]["filters"], [
-            ("eq", "ticker", "AAPL"),
-            ("lt", "as_of_date", "2026-01-03"),
-        ])
-        self.assertEqual(client.operations[2]["filters"], [
-            ("eq", "ticker", "MSFT"),
-            ("lt", "as_of_date", "2026-01-04"),
-        ])
+        self.assertEqual(
+            client.operations[1]["filters"],
+            [
+                ("eq", "ticker", "AAPL"),
+                ("lt", "as_of_date", "2026-01-03"),
+            ],
+        )
+        self.assertEqual(
+            client.operations[2]["filters"],
+            [
+                ("eq", "ticker", "MSFT"),
+                ("lt", "as_of_date", "2026-01-04"),
+            ],
+        )
 
     def test_fetch_latest_price_dates_uses_bulk_rpc(self) -> None:
         database, client = _database_with_fake_client()
@@ -430,9 +463,7 @@ class DatabaseAccessTest(unittest.TestCase):
 
     def test_fetch_user_predictions_can_filter_by_status(self) -> None:
         database, client = _database_with_fake_client()
-        client.data["user_predictions"] = [
-            {"prediction_id": "prediction-1", "status": "pending"}
-        ]
+        client.data["user_predictions"] = [{"prediction_id": "prediction-1", "status": "pending"}]
 
         rows = database.fetch_user_predictions(status="pending")
 
