@@ -11,6 +11,106 @@ from pipeline.config import Settings, load_settings
 
 LOGGER = logging.getLogger(__name__)
 
+PRICE_READ_COLUMNS = "ticker,date,open,high,low,close,volume"
+FUNDAMENTAL_READ_COLUMNS = ",".join(
+    (
+        "ticker",
+        "as_of_date",
+        "market_cap",
+        "trailing_pe",
+        "forward_pe",
+        "price_to_book",
+        "price_to_sales",
+        "revenue_ttm",
+        "revenue_growth",
+        "net_income_ttm",
+        "profit_margin",
+        "operating_margin",
+        "free_cash_flow",
+        "total_debt",
+        "debt_to_equity",
+        "current_ratio",
+        "sector",
+        "industry",
+        "long_name",
+        "short_name",
+        "display_name",
+        "business_summary",
+        "website",
+    )
+)
+PREDICTION_READ_COLUMNS = ",".join(
+    (
+        "prediction_id",
+        "ticker",
+        "prediction_date",
+        "target_date",
+        "prediction_horizon",
+        "model_name",
+        "model_slug",
+        "reference_close",
+        "predicted_return",
+        "predicted_close",
+        "predicted_close_lower",
+        "predicted_close_upper",
+        "interval_level",
+        "reasoning_summary",
+        "model_metadata",
+    )
+)
+PREDICTION_SCORE_READ_COLUMNS = ",".join(
+    (
+        "prediction_id",
+        "actual_close",
+        "actual_return",
+        "absolute_error",
+        "squared_error",
+        "absolute_pct_error",
+        "direction_correct",
+        "winkler_score",
+        "scored_at",
+    )
+)
+USER_PROFILE_READ_COLUMNS = ",".join(
+    (
+        "user_id",
+        "username",
+        "display_username",
+        "is_public",
+        "avatar_style",
+        "avatar_seed",
+        "avatar_options",
+    )
+)
+USER_PREDICTION_READ_COLUMNS = ",".join(
+    (
+        "prediction_id",
+        "user_id",
+        "ticker",
+        "prediction_date",
+        "target_date",
+        "prediction_horizon",
+        "reference_close",
+        "predicted_close",
+        "predicted_return",
+        "status",
+    )
+)
+USER_PREDICTION_SCORE_READ_COLUMNS = ",".join(
+    (
+        "prediction_id",
+        "user_id",
+        "ticker",
+        "target_date",
+        "prediction_horizon",
+        "absolute_error",
+        "squared_error",
+        "absolute_pct_error",
+        "direction_correct",
+        "scored_at",
+    )
+)
+
 
 @dataclass(frozen=True)
 class DatabaseConfig:
@@ -104,7 +204,12 @@ class SupabaseDatabase:
 
         while True:
             end = start + batch_size - 1
-            query = self._client.table("prices").select("*").order("ticker").order("date")
+            query = (
+                self._client.table("prices")
+                .select(PRICE_READ_COLUMNS)
+                .order("ticker")
+                .order("date")
+            )
             if start_date is not None:
                 query = query.gte("date", start_date)
             if end_date is not None:
@@ -322,7 +427,7 @@ class SupabaseDatabase:
             end = start + batch_size - 1
             response = (
                 self._client.table("fundamentals")
-                .select("*")
+                .select(FUNDAMENTAL_READ_COLUMNS)
                 .order("ticker")
                 .order("as_of_date", desc=True)
                 .range(start, end)
@@ -399,7 +504,7 @@ class SupabaseDatabase:
             end = start + batch_size - 1
             response = (
                 self._client.table("predictions")
-                .select("*")
+                .select(PREDICTION_READ_COLUMNS)
                 .order("ticker")
                 .order("target_date")
                 .order("prediction_id")
@@ -469,7 +574,7 @@ class SupabaseDatabase:
             end = start + batch_size - 1
             response = (
                 self._client.table("prediction_scores")
-                .select("*")
+                .select(PREDICTION_SCORE_READ_COLUMNS)
                 .order("scored_at")
                 .order("prediction_id")
                 .range(start, end)
@@ -494,7 +599,7 @@ class SupabaseDatabase:
             end = start + batch_size - 1
             response = (
                 self._client.table("user_profiles")
-                .select("*")
+                .select(USER_PROFILE_READ_COLUMNS)
                 .order("display_username")
                 .order("user_id")
                 .range(start, end)
@@ -523,7 +628,7 @@ class SupabaseDatabase:
             end = start + batch_size - 1
             query = (
                 self._client.table("user_predictions")
-                .select("*")
+                .select(USER_PREDICTION_READ_COLUMNS)
                 .order("ticker")
                 .order("target_date")
                 .order("prediction_id")
@@ -647,7 +752,7 @@ class SupabaseDatabase:
             end = start + batch_size - 1
             response = (
                 self._client.table("user_prediction_scores")
-                .select("*")
+                .select(USER_PREDICTION_SCORE_READ_COLUMNS)
                 .order("scored_at")
                 .order("prediction_id")
                 .range(start, end)
