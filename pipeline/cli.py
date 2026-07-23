@@ -378,9 +378,6 @@ def main(argv: list[str] | None = None) -> int:
         logos_status = run_ingest_logos()
         if logos_status != 0:
             return logos_status
-        feature_status = run_build_features()
-        if feature_status != 0:
-            return feature_status
         score_status = run_score()
         if score_status != 0:
             return score_status

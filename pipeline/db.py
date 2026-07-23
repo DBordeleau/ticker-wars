@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -15,6 +16,35 @@ LOGGER = logging.getLogger(__name__)
 class DatabaseConfig:
     url: str
     has_secret_key: bool
+
+
+@dataclass
+class DatabaseReadMetrics:
+    resource: str
+    requests: int = 0
+    rows: int = 0
+    approximate_json_bytes: int = 0
+
+    def record(self, rows: list[dict[str, Any]]) -> None:
+        self.requests += 1
+        self.rows += len(rows)
+        self.approximate_json_bytes += len(
+            json.dumps(
+                rows,
+                default=str,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+
+    def log(self) -> None:
+        LOGGER.info(
+            "Supabase read resource=%s requests=%s rows=%s approximate_json_bytes=%s",
+            self.resource,
+            self.requests,
+            self.rows,
+            self.approximate_json_bytes,
+        )
 
 
 def get_database_config(settings: Settings | None = None) -> DatabaseConfig | None:
@@ -69,6 +99,7 @@ class SupabaseDatabase:
         tickers: tuple[str, ...] | None = None,
     ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
+        metrics = DatabaseReadMetrics("prices")
         start = 0
 
         while True:
@@ -83,9 +114,11 @@ class SupabaseDatabase:
 
             response = query.range(start, end).execute()
             batch = response.data or []
+            metrics.record(batch)
             rows.extend(batch)
 
             if len(batch) < batch_size:
+                metrics.log()
                 return rows
 
             start += batch_size
@@ -99,6 +132,9 @@ class SupabaseDatabase:
             {"p_tickers": list(tickers)},
         ).execute()
         rows = response.data or []
+        metrics = DatabaseReadMetrics("get_latest_price_dates")
+        metrics.record(rows)
+        metrics.log()
         latest_dates: dict[str, str] = {}
         for row in rows:
             ticker = row.get("ticker")
@@ -158,6 +194,7 @@ class SupabaseDatabase:
         batch_size: int = 1000,
     ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
+        metrics = DatabaseReadMetrics("live_price_snapshots")
         start = 0
 
         while True:
@@ -168,9 +205,11 @@ class SupabaseDatabase:
 
             response = query.range(start, end).execute()
             batch = response.data or []
+            metrics.record(batch)
             rows.extend(batch)
 
             if len(batch) < batch_size:
+                metrics.log()
                 return rows
 
             start += batch_size
@@ -194,6 +233,7 @@ class SupabaseDatabase:
         tickers: tuple[str, ...] | None = None,
     ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
+        metrics = DatabaseReadMetrics("features")
         start = 0
 
         while True:
@@ -208,15 +248,18 @@ class SupabaseDatabase:
 
             response = query.range(start, end).execute()
             batch = response.data or []
+            metrics.record(batch)
             rows.extend(batch)
 
             if len(batch) < batch_size:
+                metrics.log()
                 return rows
 
             start += batch_size
 
     def fetch_latest_feature_dates(self, tickers: tuple[str, ...]) -> dict[str, str]:
         latest_dates: dict[str, str] = {}
+        metrics = DatabaseReadMetrics("latest_feature_dates")
         for ticker in tickers:
             response = (
                 self._client.table("features")
@@ -227,9 +270,11 @@ class SupabaseDatabase:
                 .execute()
             )
             rows = response.data or []
+            metrics.record(rows)
             if rows and rows[0].get("date") is not None:
                 latest_dates[ticker] = str(rows[0]["date"])
 
+        metrics.log()
         return latest_dates
 
     def upsert_fundamentals(self, rows: list[dict[str, Any]], batch_size: int = 500) -> int:
@@ -270,6 +315,7 @@ class SupabaseDatabase:
 
     def fetch_latest_fundamentals(self, batch_size: int = 1000) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
+        metrics = DatabaseReadMetrics("fundamentals")
         start = 0
 
         while True:
@@ -283,9 +329,11 @@ class SupabaseDatabase:
                 .execute()
             )
             batch = response.data or []
+            metrics.record(batch)
             rows.extend(batch)
 
             if len(batch) < batch_size:
+                metrics.log()
                 return _latest_fundamentals_by_ticker(rows)
 
             start += batch_size
@@ -306,6 +354,7 @@ class SupabaseDatabase:
 
     def fetch_ticker_assets(self, batch_size: int = 1000) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
+        metrics = DatabaseReadMetrics("ticker_assets")
         start = 0
 
         while True:
@@ -318,9 +367,11 @@ class SupabaseDatabase:
                 .execute()
             )
             batch = response.data or []
+            metrics.record(batch)
             rows.extend(batch)
 
             if len(batch) < batch_size:
+                metrics.log()
                 return rows
 
             start += batch_size
@@ -341,6 +392,7 @@ class SupabaseDatabase:
 
     def fetch_predictions(self, batch_size: int = 1000) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
+        metrics = DatabaseReadMetrics("predictions")
         start = 0
 
         while True:
@@ -355,9 +407,11 @@ class SupabaseDatabase:
                 .execute()
             )
             batch = response.data or []
+            metrics.record(batch)
             rows.extend(batch)
 
             if len(batch) < batch_size:
+                metrics.log()
                 return rows
 
             start += batch_size
@@ -396,8 +450,7 @@ class SupabaseDatabase:
         written = 0
         for batch in _chunks(rows, batch_size):
             cleaned_batch = [
-                {key: value for key, value in row.items() if key in table_columns}
-                for row in batch
+                {key: value for key, value in row.items() if key in table_columns} for row in batch
             ]
             self._client.table("prediction_scores").upsert(
                 cleaned_batch,
@@ -409,6 +462,7 @@ class SupabaseDatabase:
 
     def fetch_prediction_scores(self, batch_size: int = 1000) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
+        metrics = DatabaseReadMetrics("prediction_scores")
         start = 0
 
         while True:
@@ -422,15 +476,18 @@ class SupabaseDatabase:
                 .execute()
             )
             batch = response.data or []
+            metrics.record(batch)
             rows.extend(batch)
 
             if len(batch) < batch_size:
+                metrics.log()
                 return rows
 
             start += batch_size
 
     def fetch_user_profiles(self, batch_size: int = 1000) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
+        metrics = DatabaseReadMetrics("user_profiles")
         start = 0
 
         while True:
@@ -444,9 +501,11 @@ class SupabaseDatabase:
                 .execute()
             )
             batch = response.data or []
+            metrics.record(batch)
             rows.extend(batch)
 
             if len(batch) < batch_size:
+                metrics.log()
                 return rows
 
             start += batch_size
@@ -457,6 +516,7 @@ class SupabaseDatabase:
         batch_size: int = 1000,
     ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
+        metrics = DatabaseReadMetrics("user_predictions")
         start = 0
 
         while True:
@@ -473,9 +533,11 @@ class SupabaseDatabase:
 
             response = query.range(start, end).execute()
             batch = response.data or []
+            metrics.record(batch)
             rows.extend(batch)
 
             if len(batch) < batch_size:
+                metrics.log()
                 return rows
 
             start += batch_size
@@ -512,8 +574,7 @@ class SupabaseDatabase:
         written = 0
         for batch in _chunks(rows, batch_size):
             cleaned_batch = [
-                {key: value for key, value in row.items() if key in table_columns}
-                for row in batch
+                {key: value for key, value in row.items() if key in table_columns} for row in batch
             ]
             self._client.table("user_prediction_scores").upsert(
                 cleaned_batch,
@@ -579,6 +640,7 @@ class SupabaseDatabase:
         batch_size: int = 1000,
     ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
+        metrics = DatabaseReadMetrics("user_prediction_scores")
         start = 0
 
         while True:
@@ -592,9 +654,11 @@ class SupabaseDatabase:
                 .execute()
             )
             batch = response.data or []
+            metrics.record(batch)
             rows.extend(batch)
 
             if len(batch) < batch_size:
+                metrics.log()
                 return rows
 
             start += batch_size

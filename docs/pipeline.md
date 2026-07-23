@@ -28,12 +28,11 @@ python -m pipeline.cli benchmark-runtime
 
 1. Ingest latest daily prices.
 2. Refresh fundamentals.
-3. Build derived features.
-4. Score matured predictions.
-5. Generate new model predictions.
-6. Refresh dashboard projection tables.
-7. Prune old fully seen engagement events.
-8. Export dashboard JSON snapshots.
+3. Score matured predictions.
+4. Generate new model predictions, deriving features from the already persisted prices.
+5. Refresh dashboard projection tables.
+6. Prune old fully seen engagement events.
+7. Export dashboard JSON snapshots.
 
 ## Price Ingestion
 
@@ -49,6 +48,14 @@ can be upserted.
 The normal prediction paths derive in-memory features directly from `prices`. Initially
 I was storing these features in Supabase, but because I am relying on the free tier I wanted
 to alleviate as much storage burden as possible.
+
+`build-features` remains available as a manual diagnostic command. The daily pipeline does not
+run it separately because `predict-horizons` immediately derives the same feature rows and a
+standalone run would download the complete `prices` table without producing durable output.
+
+Successful Supabase reads log the resource name, request count, row count, and approximate
+serialized JSON byte count. These summaries contain no row contents or credentials and make it
+possible to correlate a scheduled run with database egress.
 
 ## Historical Prediction Seeding
 
