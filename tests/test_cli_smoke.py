@@ -366,9 +366,19 @@ class CliSmokeTest(unittest.TestCase):
             ),
             patch("pipeline.cli.run_score", side_effect=record("score")),
             patch("pipeline.cli.run_predict_horizons", side_effect=record("predict")),
-            patch("pipeline.cli.run_refresh_dashboard", side_effect=record("refresh")),
+            patch(
+                "pipeline.cli.run_refresh_and_export_dashboard",
+                side_effect=record("publish"),
+            ),
+            patch(
+                "pipeline.cli.run_refresh_dashboard",
+                side_effect=AssertionError("run-daily must use the combined dashboard path"),
+            ),
             patch("pipeline.cli.run_prune_engagement_events", side_effect=record("prune")),
-            patch("pipeline.cli.run_export_snapshot", side_effect=record("export")),
+            patch(
+                "pipeline.cli.run_export_snapshot",
+                side_effect=AssertionError("run-daily must use the combined dashboard path"),
+            ),
         ):
             self.assertEqual(main(["run-daily"]), 0)
 
@@ -380,9 +390,8 @@ class CliSmokeTest(unittest.TestCase):
                 "logos",
                 "score",
                 "predict",
-                "refresh",
+                "publish",
                 "prune",
-                "export",
             ],
         )
 
@@ -406,9 +415,8 @@ class CliSmokeTest(unittest.TestCase):
             ),
             patch("pipeline.cli.run_score", return_value=0),
             patch("pipeline.cli.run_predict_horizons", return_value=0),
-            patch("pipeline.cli.run_refresh_dashboard", return_value=0),
+            patch("pipeline.cli.run_refresh_and_export_dashboard", return_value=0),
             patch("pipeline.cli.run_prune_engagement_events", return_value=0),
-            patch("pipeline.cli.run_export_snapshot", return_value=0),
         ):
             self.assertEqual(main(["run-daily", "--skip-price-ingestion"]), 0)
 
